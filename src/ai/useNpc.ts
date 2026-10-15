@@ -4,7 +4,7 @@ import type { Difficulty } from '../match/record';
 import type { ThinkRequest, ThinkResponse } from './protocol';
 export function useNpc(
   game: GameState,
-  human: Player,
+  human: Player | null,
   difficulty: Difficulty,
   submit: (action: GameAction, revision: number) => void,
   enabled = true,

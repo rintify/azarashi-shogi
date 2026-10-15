@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ArrowRight, ChevronDown, X } from 'lucide-react';
 import type { Difficulty, MatchSettings } from '../match/record';
 import type { Player } from '../game/types';
+import { aiDifficulty, isSpectator } from '../match/record';
 import { LEVELS } from '../ai/levels';
 export function NewGameDialog({
   current,
@@ -12,6 +13,8 @@ export function NewGameDialog({
   close: () => void;
   start: (settings: MatchSettings) => void;
 }) {
+  const [watching, setWatching] = useState(isSpectator(current));
+  const [southLevel, setSouthLevel] = useState(aiDifficulty(current, 'south'));
   const ref = useRef<HTMLDialogElement>(null);
   const [human, setHuman] = useState<Player>(current.human);
   const [difficulty, setDifficulty] = useState<Difficulty>(current.difficulty);
@@ -36,26 +39,66 @@ export function NewGameDialog({
           <X size={20} />
         </button>
       </header>
-      <p className="dialog-intro">先後とNPCの強さを選びます。開始すると現在の対局は終了します。</p>
-      <label className="setting-label">あなたの手番</label>
-      <div className="side-options">
+      <p className="dialog-intro">対戦モードと強さを選びます。開始すると現在の対局は終了します。</p>
+      <label className="setting-label">対戦モード</label>
+      <div className="side-options mode-options">
         <button
-          aria-pressed={human === 'south'}
-          className={human === 'south' ? 'active' : ''}
-          onClick={() => setHuman('south')}
+          aria-pressed={!watching}
+          className={!watching ? 'active' : ''}
+          onClick={() => setWatching(false)}
         >
-          先手<span>あなたから配置</span>
+          あなた vs AI<span>自分で対局する</span>
         </button>
         <button
-          aria-pressed={human === 'north'}
-          className={human === 'north' ? 'active' : ''}
-          onClick={() => setHuman('north')}
+          aria-pressed={watching}
+          className={watching ? 'active' : ''}
+          onClick={() => setWatching(true)}
         >
-          後手<span>NPCから配置</span>
+          AI vs AI<span>対局を観戦する</span>
         </button>
       </div>
+      {!watching && (
+        <>
+          <label className="setting-label">あなたの手番</label>
+          <div className="side-options">
+            <button
+              aria-pressed={human === 'south'}
+              className={human === 'south' ? 'active' : ''}
+              onClick={() => setHuman('south')}
+            >
+              先手<span>あなたから配置</span>
+            </button>
+            <button
+              aria-pressed={human === 'north'}
+              className={human === 'north' ? 'active' : ''}
+              onClick={() => setHuman('north')}
+            >
+              後手<span>NPCから配置</span>
+            </button>
+          </div>
+        </>
+      )}
+      {watching && (
+        <>
+          <label className="setting-label" htmlFor="south-difficulty">
+            先手AIの強さ
+            <span>
+              Lv.{southLevel} · {LEVELS[southLevel].name}
+            </span>
+          </label>
+          <input
+            id="south-difficulty"
+            type="range"
+            min="1"
+            max="5"
+            step="1"
+            value={southLevel}
+            onChange={(e) => setSouthLevel(Number(e.target.value) as Difficulty)}
+          />
+        </>
+      )}
       <label className="setting-label" htmlFor="difficulty">
-        相手の強さ
+        {watching ? '後手AIの強さ' : '相手の強さ'}
         <span>
           Lv.{difficulty} · {LEVELS[difficulty].name}
         </span>
@@ -78,7 +121,17 @@ export function NewGameDialog({
           ? '最長10秒じっくり考える「極」。同じルールで、全力の一手を指します。'
           : `NPCの思考時間は最大${LEVELS[difficulty].thinkingMs / 1000}秒。${LEVELS[difficulty].name}レベルで対戦します。`}
       </p>
-      <button className="primary-button full" onClick={() => start({ human, difficulty })}>
+      <button
+        className="primary-button full"
+        onClick={() =>
+          start({
+            human: watching ? 'south' : human,
+            difficulty,
+            mode: watching ? 'ai-vs-ai' : 'human-vs-ai',
+            aiLevels: watching ? { south: southLevel, north: difficulty } : undefined,
+          })
+        }
+      >
         この設定ではじめる
         <ArrowRight size={17} />
       </button>

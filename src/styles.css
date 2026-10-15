@@ -1074,3 +1074,45 @@ svg {
     visibility: hidden;
   }
 }
+
+.mode-options {
+  margin-bottom: 18px;
+}
+.spectator-controls {
+  display: flex;
+  gap: 6px;
+}
+.spectator-control {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 40px;
+  padding: 6px 10px;
+  color: #daedf6;
+  border: 1px solid #80b8d044;
+  border-radius: 8px;
+  background: #ffffff08;
+  font-size: 11px;
+}
+.spectator-control:disabled {
+  opacity: 0.35;
+}
+.spectator-stock {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 16px 0 4px;
+  font-size: 11px;
+}
+.spectator-stock small {
+  color: #a5c4d4;
+}
+.spectator-stock .opponent-stock {
+  gap: 8px;
+}
+.spectator-stock .animal-icon {
+  width: 20px;
+  height: 20px;
+}

@@ -10,6 +10,9 @@ import {
   Snowflake,
   X,
 } from 'lucide-react';
+import { aiDifficulty, isSpectator, playerLabel } from './match/record';
+import { otherPlayer } from './game/types';
+import { SpectatorDock } from './components/SpectatorDock';
 import { useMatch } from './match/useMatch';
 import { useNpc } from './ai/useNpc';
 import { MatchResult } from './components/MatchResult';
@@ -32,6 +35,10 @@ const BoardScene = lazy(() =>
 
 export default function App() {
   const { game, settings, warning, submit, restart } = useMatch();
+  const watching = isSpectator(settings);
+  const [paused, setPaused] = useState(false);
+  const [stepRequested, setStepRequested] = useState(false);
+  useEffect(() => setStepRequested(false), [game.revision]);
   const [sceneReady, setSceneReady] = useState(false);
   const markReady = useCallback(() => setSceneReady(true), []);
   const [rulesOpen, setRulesOpen] = useState(false),
@@ -54,7 +61,7 @@ export default function App() {
     game,
     settings.human,
     submit,
-    sceneReady && !playback.busy,
+    sceneReady && !playback.busy && !watching,
   );
   const { area, ref: playRef } = usePlayArea();
   const {
@@ -63,12 +70,22 @@ export default function App() {
     retry: retryNpc,
   } = useNpc(
     game,
-    settings.human,
-    settings.difficulty,
+    watching ? null : settings.human,
+    aiDifficulty(settings, game.turn),
     submit,
-    sceneReady && !playback.busy && !rulesOpen && !newGameOpen,
+    sceneReady &&
+      !playback.busy &&
+      !rulesOpen &&
+      !newGameOpen &&
+      (!watching || !paused || stepRequested),
   );
   const status = statusCopy(game, settings.human, interaction);
+  const resultTitle = watching
+    ? game.result?.winner
+      ? `${playerLabel(settings, game.result.winner)}の勝ちです`
+      : '引き分けです'
+    : status.title;
+  const actorLabel = (owner = game.turn) => playerLabel(settings, owner);
   useEffect(() => {
     function escape(e: KeyboardEvent) {
       if (e.key === 'Escape' && !document.querySelector('dialog[open]')) {
@@ -81,7 +98,10 @@ export default function App() {
   }, [interaction]);
   const king = game.pieces.find((p) => p.kind === 'walrus' && p.owner === settings.human);
   const kingDanger =
-    !!king && interaction.threats.some((t) => t.targetId === king.id) && !playback.busy;
+    !watching &&
+    !!king &&
+    interaction.threats.some((t) => t.targetId === king.id) &&
+    !playback.busy;
   const ended = game.phase === 'finished' && !playback.busy;
   const last = game.lastAction;
   return (
@@ -177,19 +197,19 @@ export default function App() {
         <OpponentBar
           game={game}
           human={settings.human}
-          difficulty={settings.difficulty}
+          difficulty={aiDifficulty(settings, otherPlayer(settings.human))}
+          name={actorLabel(otherPlayer(settings.human))}
           thinking={aiStatus.thinking}
         />
       </div>
       <div className={`turn-banner ${kingDanger ? 'king-danger' : ''}`} role="status">
         {playback.busy ? (
           <>
-            <span className="status-pulse" />{' '}
-            {last?.piece.owner === settings.human ? 'あなた' : 'NPC'}：
+            <span className="status-pulse" /> {actorLabel(last?.piece.owner)}：
             {last && pieceName(last.piece)}を{last?.from ? '移動' : '配置'}
           </>
         ) : ended ? (
-          status.title
+          resultTitle
         ) : kingDanger ? (
           <>
             <b>!</b> 王が狙われています <small>捕食されると敗北</small>
@@ -197,7 +217,13 @@ export default function App() {
         ) : (
           <>
             <span className={`status-pulse ${interaction.humanTurn ? 'human' : ''}`} />
-            {interaction.setup ? '王を配置' : interaction.humanTurn ? 'あなたの手番' : 'NPCの手番'}
+            {watching
+              ? `${actorLabel()}${paused && !stepRequested ? ' · 一時停止' : interaction.setup ? 'が王を配置' : 'の手番'}`
+              : interaction.setup
+                ? '王を配置'
+                : interaction.humanTurn
+                  ? 'あなたの手番'
+                  : 'NPCの手番'}
             <small>
               {interaction.setup
                 ? game.phase === 'setup-south'
@@ -230,13 +256,28 @@ export default function App() {
       )}
       {!ended && (
         <div className="bottom-hud">
-          <ActionDock
-            game={game}
-            settings={settings}
-            interaction={interaction}
-            busy={playback.busy}
-            onHelp={() => setRulesOpen(true)}
-          />
+          {watching ? (
+            <SpectatorDock
+              game={game}
+              settings={settings}
+              paused={paused}
+              busy={playback.busy}
+              thinking={aiStatus.thinking}
+              onPause={() => {
+                setStepRequested(false);
+                setPaused((p) => !p);
+              }}
+              onStep={() => setStepRequested(true)}
+            />
+          ) : (
+            <ActionDock
+              game={game}
+              settings={settings}
+              interaction={interaction}
+              busy={playback.busy}
+              onHelp={() => setRulesOpen(true)}
+            />
+          )}
         </div>
       )}
       <div className="match-message" aria-live="polite">
@@ -248,7 +289,7 @@ export default function App() {
           <span role="alert">{warning}</span>
         ) : last && !playback.busy ? (
           <span>
-            {last.piece.owner === settings.human ? 'あなた' : 'NPC'} · {pieceName(last.piece)}{' '}
+            {actorLabel(last.piece.owner)} · {pieceName(last.piece)}{' '}
             {last.from ? `${coordinate(last.from)} → ` : ''}
             {coordinate(last.piece.at)}
             {last.captured.length ? ` · ${last.captured.map(pieceName).join('・')}を捕食` : ''}
@@ -257,17 +298,19 @@ export default function App() {
           <span>
             {playback.busy
               ? '一手を再生中'
-              : `あなたは${settings.human === 'south' ? '先手・青' : '後手・橙'}`}
+              : watching
+                ? '先手AI・青 / 後手AI・橙'
+                : `あなたは${settings.human === 'south' ? '先手・青' : '後手・橙'}`}
           </span>
         )}
       </div>
       {ended && !resultDismissed && (
         <MatchResult
-          title={status.title}
+          title={resultTitle}
           detail={
             game.result?.reason === 'both-kings'
               ? '両方の王が同じ一手で捕食されました。'
-              : `${last ? pieceName(last.piece) : '駒'}が${last?.captured.find((p) => p.kind === 'walrus')?.owner === settings.human ? 'あなた' : '相手'}の王を捕食しました。`
+              : `${last ? pieceName(last.piece) : '駒'}が${actorLabel(last?.captured.find((p) => p.kind === 'walrus')?.owner)}の王を捕食しました。`
           }
           onNewGame={() => setNewGameOpen(true)}
           onInspect={() => setResultDismissed(true)}
@@ -292,6 +335,8 @@ export default function App() {
           close={() => setNewGameOpen(false)}
           start={(s) => {
             setResultDismissed(false);
+            setPaused(false);
+            setStepRequested(false);
             restart(s);
             setNewGameOpen(false);
             interaction.clearSelection();

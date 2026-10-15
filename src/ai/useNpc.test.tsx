@@ -102,3 +102,23 @@ it('does not start the NPC until playback releases the next turn', () => {
   act(() => FakeWorker.instances[0].send({ type: 'result', revision: 0, result }));
   expect(submit).not.toHaveBeenCalled();
 });
+
+it('runs both armies in spectator mode and submits their king placements in sequence', () => {
+  const initial = createGame(),
+    submit = vi.fn();
+  const hook = renderHook(({ game, level }) => useNpc(game, null, level, submit), {
+    initialProps: { game: initial, level: 2 as import('../match/record').Difficulty },
+  });
+  const first = FakeWorker.instances[0];
+  expect(first.postMessage).toHaveBeenCalledWith({ state: initial, difficulty: 2, revision: 0 });
+  act(() => first.send({ type: 'result', revision: 0, result }));
+  expect(submit).toHaveBeenCalledWith(result.action, 0);
+  const north = { ...initial, revision: 1, turn: 'north' as const, phase: 'setup-north' as const };
+  hook.rerender({ game: north, level: 4 });
+  expect(first.terminate).toHaveBeenCalledOnce();
+  expect(FakeWorker.instances[1].postMessage).toHaveBeenCalledWith({
+    state: north,
+    difficulty: 4,
+    revision: 1,
+  });
+});
