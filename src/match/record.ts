@@ -1,0 +1,25 @@
+import { applyAction, createGame } from '../game/engine';
+import type { GameAction, GameState, Player } from '../game/types';
+export type Difficulty = 1 | 2 | 3 | 4 | 5;
+export interface MatchSettings { human: Player; difficulty: Difficulty }
+export interface GameRecord { version: 1; settings: MatchSettings; actions: GameAction[] }
+export const DEFAULT_SETTINGS: MatchSettings = { human: 'south', difficulty: 3 };
+export const STORAGE_KEY = 'azarashi-shogi.match.v1';
+export function newRecord(settings = DEFAULT_SETTINGS): GameRecord {
+  return { version: 1, settings: { ...settings }, actions: [] };
+}
+export function replayRecord(record: GameRecord): GameState {
+  return record.actions.reduce((state, action) => applyAction(state, action), createGame());
+}
+export function decodeRecord(text: string): { record: GameRecord; game: GameState } {
+  const record = JSON.parse(text) as GameRecord;
+  if (record.version !== 1 || !['south', 'north'].includes(record.settings?.human) || ![1, 2, 3, 4, 5].includes(record.settings?.difficulty) || !Array.isArray(record.actions)) throw new Error('保存データの形式が違います。');
+  return { record, game: replayRecord(record) };
+}
+export function loadMatch(): { record: GameRecord; game: GameState; warning: string | null } {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) return { ...decodeRecord(saved), warning: null };
+  } catch { return { record: newRecord(), game: createGame(), warning: '保存データを読み込めなかったため、新しい対局を始めました。' }; }
+  return { record: newRecord(), game: createGame(), warning: null };
+}
