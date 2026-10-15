@@ -18,6 +18,7 @@ export interface BoardProps {
   human: Player;
   selectedId: string | null;
   legalCells: Cell[];
+  reachableCells: Cell[];
   unsafeCells: Cell[];
   preview: ActionPreview | null;
   threats: Threat[];
@@ -35,9 +36,10 @@ function BoardContents(props: BoardProps & { htmlPortal: RefObject<HTMLDivElemen
   const { game, selectedId, preview, motion, busy } = props;
   useEffect(props.onReady, [props.onReady]);
   const legal = useMemo(() => new Set(props.legalCells.map(cellKey)), [props.legalCells]);
+  const reachable = new Set(props.reachableCells.map(cellKey));
   const unsafe = new Set(props.unsafeCells.map(cellKey));
-  const target = new Set(preview?.footprint.map(cellKey));
-  const extra = new Set(preview?.captureCells.map(cellKey));
+  const target = new Set((preview ?? motion?.action)?.footprint.map(cellKey));
+  const extra = new Set((preview ?? motion?.action)?.captureCells.map(cellKey));
   const captured = new Set(preview?.captured.map((p) => p.id));
   const last = new Set(game.lastAction?.footprint.map(cellKey));
   return (
@@ -74,18 +76,21 @@ function BoardContents(props: BoardProps & { htmlPortal: RefObject<HTMLDivElemen
               <planeGeometry args={[0.98, 0.98]} />
               <meshStandardMaterial
                 envMapIntensity={0.2}
-                color={
-                  active
-                    ? '#9bdde5'
-                    : additional
-                      ? '#fbc78f'
-                      : (cell.x + cell.y) % 2
-                        ? '#b9d4e0'
-                        : '#e3f0f5'
-                }
+                color={(cell.x + cell.y) % 2 ? '#b9d4e0' : '#e3f0f5'}
                 roughness={0.82}
               />
             </mesh>
+            {(active || additional || reachable.has(key) || last.has(key)) && (
+              <mesh position={[0, 0.005, 0]} rotation={[-Math.PI / 2, 0, 0]} raycast={() => null}>
+                <planeGeometry args={[0.98, 0.98]} />
+                <meshBasicMaterial
+                  color={additional ? '#f4ad62' : '#42b9d8'}
+                  transparent
+                  opacity={active || additional ? 0.36 : reachable.has(key) ? 0.2 : 0.1}
+                  depthWrite={false}
+                />
+              </mesh>
+            )}
             {legal.has(key) && !busy && (
               <mesh position={[0, 0.008, 0]} rotation={[-Math.PI / 2, 0, 0]}>
                 <circleGeometry args={[0.105, 32]} />

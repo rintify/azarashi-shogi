@@ -110,6 +110,7 @@ export default function App() {
               human={settings.human}
               selectedId={interaction.selectedId}
               legalCells={interaction.legalCells}
+              reachableCells={interaction.reachableCells}
               unsafeCells={interaction.unsafeCells}
               preview={interaction.preview}
               threats={interaction.threats}
@@ -221,6 +222,7 @@ export default function App() {
             game={game}
             human={settings.human}
             legalCells={interaction.legalCells}
+            reachableCells={interaction.reachableCells}
             onCell={interaction.clickCell}
             onHover={interaction.setHover}
           />

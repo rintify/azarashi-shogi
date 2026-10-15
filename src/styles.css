@@ -588,6 +588,9 @@ svg {
   color: #b56c2d;
   box-shadow: inset 0 -3px 0 #d89252;
 }
+.coordinate-board button.reachable {
+  background: #d1eaf1;
+}
 .coordinate-board button.legal {
   background: #a4dce7;
 }

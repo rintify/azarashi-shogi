@@ -110,3 +110,17 @@ it('marks risky king destinations without removing legal moves', () => {
   act(() => hook.result.current.clickCell({ x: 4, y: 6 }));
   expect(submit).toHaveBeenCalledWith({ type: 'move', pieceId: 'own', to: { x: 4, y: 6 } }, 0);
 });
+
+it('shades the entire reachable footprint without treating trailing cells as destination anchors', () => {
+  const orca: Piece = { ...penguin, kind: 'orca', at: { x: 4, y: 5 } };
+  const game = { ...createGame(), phase: 'playing' as const, pieces: [orca] };
+  const hook = renderHook(() => useBoardInteraction(game, 'south', vi.fn()));
+  act(() => hook.result.current.clickCell(orca.at));
+  expect(hook.result.current.legalCells).toContainEqual({ x: 4, y: 7 });
+  expect(hook.result.current.legalCells).not.toContainEqual({ x: 4, y: 8 });
+  expect(hook.result.current.reachableCells).toContainEqual({ x: 4, y: 8 });
+  const keys = hook.result.current.reachableCells.map(({ x, y }) => `${x},${y}`);
+  expect(new Set(keys).size).toBe(keys.length);
+  act(() => hook.result.current.clearSelection());
+  expect(hook.result.current.reachableCells).toEqual([]);
+});

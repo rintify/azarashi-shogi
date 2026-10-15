@@ -8,7 +8,8 @@ import {
   placementCells,
   previewAction,
 } from '../game/engine';
-import { sameCell } from '../game/types';
+import { cellKey, sameCell } from '../game/types';
+import { footprint } from '../game/pieces';
 import type {
   ActionPreview,
   Cell,
@@ -40,6 +41,15 @@ export function useBoardInteraction(
     if (selected) return moveCells(game, selected);
     return activeKind ? placementCells(game, activeKind) : [];
   }, [game, humanTurn, pending, selected, activeKind]);
+  // Destination markers use anchors; the pale guide covers each body's entire footprint.
+  const reachableCells = useMemo(() => {
+    const body = selected ?? (activeKind ? { kind: activeKind, promoted: false } : null);
+    if (!body) return [];
+    const cells = new Map<string, Cell>();
+    for (const at of legalCells)
+      for (const cell of footprint({ ...body, at })) cells.set(cellKey(cell), cell);
+    return [...cells.values()];
+  }, [selected, activeKind, legalCells]);
   // Amber destinations remain legal; the rules never prohibit moving into danger.
   const unsafeCells = useMemo(() => {
     if (!selected || selected.kind !== 'walrus' || !humanTurn || pending) return [];
@@ -137,6 +147,7 @@ export function useBoardInteraction(
     humanTurn,
     setup,
     legalCells,
+    reachableCells,
     unsafeCells,
     threats,
     threat,

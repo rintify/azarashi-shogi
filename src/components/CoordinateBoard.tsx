@@ -10,6 +10,7 @@ export function CoordinateBoard({
   game,
   human,
   legalCells,
+  reachableCells = [],
   unsafeCells = [],
   onCell,
   onHover,
@@ -17,6 +18,7 @@ export function CoordinateBoard({
   game: GameState;
   human: Player;
   legalCells: Cell[];
+  reachableCells?: Cell[];
   unsafeCells?: Cell[];
   onCell: (cell: Cell) => void;
   onHover: (cell: Cell) => void;
@@ -30,6 +32,7 @@ export function CoordinateBoard({
         const cell = { x: i % 10, y: Math.floor(i / 10) };
         const piece = pieceAt(game, cell);
         const legal = legalCells.some((c) => sameCell(c, cell));
+        const reachable = reachableCells.some((c) => sameCell(c, cell));
         const unsafe = unsafeCells.some((c) => sameCell(c, cell));
         return (
           <button
@@ -51,7 +54,7 @@ export function CoordinateBoard({
                 ?.querySelector<HTMLButtonElement>(`button[data-index="${next}"]`)
                 ?.focus();
             }}
-            className={`${unsafe ? 'unsafe' : ''} ${legal ? 'legal' : ''} ${piece ? (piece.owner === human ? 'own' : 'enemy') : ''}`}
+            className={`${reachable ? 'reachable' : ''} ${unsafe ? 'unsafe' : ''} ${legal ? 'legal' : ''} ${piece ? (piece.owner === human ? 'own' : 'enemy') : ''}`}
             aria-label={`${coordinate(cell)}${piece ? ` ${pieceName(piece)}` : ''}${legal ? ' 選択可能' : ''}${unsafe ? ' 王が危険' : ''}`}
             onClick={() => onCell(cell)}
             onFocus={() => {
