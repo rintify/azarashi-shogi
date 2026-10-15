@@ -33,11 +33,9 @@ export function TurnSplash({ game, settings, ready, busy }: {
     : playerLabel(settings, notice.turn);
   return (
     <div className="turn-splash" key={notice.revision} data-side={notice.turn} aria-hidden="true">
-      <div className="turn-splash-streak" />
       <div className="turn-splash-copy">
         <Snowflake className="turn-splash-spark" />
         <strong>{label}<small>の番</small></strong>
-        <Snowflake className="turn-splash-spark" />
       </div>
     </div>
   );
