@@ -1,5 +1,5 @@
 const noiseBuffers = new WeakMap<AudioContext, AudioBuffer>();
-/** Rounded jaw snap plus two short filtered crunches: a playful, non-verbal "gab". */
+/** A soft two-syllable nibble, with a rounded voice and a quiet breath. */
 export function scheduleBite(ctx: AudioContext, at: number): () => void {
   let buffer = noiseBuffers.get(ctx);
   if (!buffer) {
@@ -17,11 +17,11 @@ export function scheduleBite(ctx: AudioContext, at: number): () => void {
     source.playbackRate.value = delay ? 0.7 : 1.1;
     const start = at + delay;
     filter.type = 'lowpass';
-    filter.Q.value = 1.6;
-    filter.frequency.setValueAtTime(2200, start);
-    filter.frequency.exponentialRampToValueAtTime(190, start + 0.12);
+    filter.Q.value = 0.45;
+    filter.frequency.setValueAtTime(780, start);
+    filter.frequency.exponentialRampToValueAtTime(260, start + 0.12);
     gain.gain.setValueAtTime(0, start);
-    gain.gain.linearRampToValueAtTime(delay ? 0.12 : 0.19, start + 0.005);
+    gain.gain.linearRampToValueAtTime(delay ? 0.018 : 0.025, start + 0.018);
     gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.12);
     source.connect(filter);
     filter.connect(gain);
@@ -37,16 +37,20 @@ export function scheduleBite(ctx: AudioContext, at: number): () => void {
   }
   const jaw = ctx.createOscillator(),
     gain = ctx.createGain();
-  jaw.type = 'triangle';
-  jaw.frequency.setValueAtTime(240, at);
-  jaw.frequency.exponentialRampToValueAtTime(75, at + 0.13);
+  jaw.type = 'sine';
+  jaw.frequency.setValueAtTime(310, at);
+  jaw.frequency.exponentialRampToValueAtTime(220, at + 0.055);
+  jaw.frequency.exponentialRampToValueAtTime(340, at + 0.085);
+  jaw.frequency.exponentialRampToValueAtTime(155, at + 0.2);
   gain.gain.setValueAtTime(0.0001, at);
-  gain.gain.exponentialRampToValueAtTime(0.1, at + 0.008);
-  gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.18);
+  gain.gain.exponentialRampToValueAtTime(0.065, at + 0.018);
+  gain.gain.exponentialRampToValueAtTime(0.018, at + 0.06);
+  gain.gain.exponentialRampToValueAtTime(0.055, at + 0.095);
+  gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.23);
   jaw.connect(gain);
   gain.connect(ctx.destination);
   jaw.start(at);
-  jaw.stop(at + 0.2);
+  jaw.stop(at + 0.25);
   jaw.onended = () => {
     jaw.disconnect();
     gain.disconnect();

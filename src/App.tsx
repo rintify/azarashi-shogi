@@ -39,6 +39,7 @@ import { useReplayLibrary } from './match/useReplayLibrary';
 import { useReplay } from './match/useReplay';
 import { ReplayLibraryDialog } from './components/ReplayLibraryDialog';
 import { ReplayDock } from './components/ReplayDock';
+import { TurnSplash } from './components/TurnSplash';
 const BoardScene = lazy(() =>
   import('./scene/BoardScene').then((m) => ({ default: m.BoardScene })),
 );
@@ -216,6 +217,13 @@ export default function App() {
         </SceneBoundary>
       </section>
       <div className="screen-vignette" />
+      <TurnSplash
+        key={match.record.id}
+        game={playback.settled}
+        settings={settings}
+        ready={sceneReady && !replay.active && !libraryVisible && !rulesVisible && !settingsVisible}
+        busy={playback.busy}
+      />
       <header className="game-header">
         <div className="game-brand">
           <AnimalIcon kind="seal" className="brand-mascot" />

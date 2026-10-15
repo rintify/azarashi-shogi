@@ -70,7 +70,7 @@ export function useGameAudio(motion: MoveMotion | null) {
         (motion.duration / 1000) * landingMoment(motion),
         motion.action.piece.kind === 'walrus' ? 85 : motion.action.captured.length ? 160 : 260,
         motion.action.piece.kind === 'walrus' ? 0.3 : 0.18,
-        motion.action.piece.kind === 'walrus' ? 0.1 : 0.065,
+        motion.action.piece.kind === 'walrus' ? 0.1 : motion.action.captured.length ? 0.025 : 0.065,
       );
       if (hasTransformation(motion)) {
         const start = motion.stage === 'resolve' ? 0.18 : 0.44;
