@@ -79,3 +79,44 @@ it('waits above the destination untransformed, then transforms in the air and la
   expect(sampleMotion(resolving, 0.6).position[1]).toBeCloseTo(HOVER_HEIGHT);
   expect(sampleMotion(resolving, 1).position[1]).toBeCloseTo(0);
 });
+
+it('previews each orca footprint in the air and resolves from the preview without snapping', () => {
+  const options = moveOptions(state, orca, food.at);
+  const flight = {
+    ...createMotion(state, applyAction(state, options[0].action), 0)!,
+    duration: 620,
+    stage: 'choice' as const,
+  };
+  for (const target of options.slice(1)) {
+    const staged = {
+      ...flight,
+      choicePreview: { target, from: sampleMotion(flight, 1), startedAt: 620 },
+    };
+    expect(sampleMotion(staged, 0.3, 186)).toEqual(sampleMotion(flight, 0.3));
+    const preview = sampleMotion(staged, 1, 900);
+    expect(preview.position).toEqual([
+      center(target.piece)[0],
+      HOVER_HEIGHT,
+      center(target.piece)[2],
+    ]);
+    expect(preview.yaw).toBeCloseTo(facing(target.piece));
+    expect(preview.promoted).toBe(true);
+    const resolving = {
+      ...createMotion(state, applyAction(state, target.action), 900)!,
+      stage: 'resolve' as const,
+      resolveFrom: preview,
+    };
+    expect(sampleMotion(resolving, 0).position).toEqual(preview.position);
+    expect(sampleMotion(resolving, 0).baseYaw).toBeCloseTo(preview.baseYaw);
+    expect(sampleMotion(resolving, 1).position).toEqual(center(target.piece));
+    // Keeping the original footprint smoothly rotates back before landing.
+    const keeping = {
+      ...createMotion(state, applyAction(state, options[0].action), 900)!,
+      stage: 'resolve' as const,
+      resolveFrom: preview,
+    };
+    expect(sampleMotion(keeping, 0).position).toEqual(preview.position);
+    expect(sampleMotion(keeping, 1).position).toEqual(center(options[0].piece));
+    expect(sampleMotion(keeping, 1).baseYaw).toBe(0);
+  }
+});

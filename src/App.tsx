@@ -10,6 +10,7 @@ import {
   Snowflake,
   X,
 } from 'lucide-react';
+import { AnimalIcon } from './components/AnimalIcon';
 import { aiDifficulty, isSpectator, playerLabel } from './match/record';
 import { otherPlayer } from './game/types';
 import { SpectatorDock } from './components/SpectatorDock';
@@ -65,6 +66,9 @@ export default function App() {
     sceneReady && !playback.resolving && !watching,
     playback.presentChoice,
   );
+  useEffect(() => {
+    if (interaction.pending) playback.previewChoice(interaction.preview);
+  }, [interaction.pending, interaction.preview, playback.previewChoice]);
   const { area, ref: playRef } = usePlayArea();
   const {
     status: aiStatus,
@@ -150,7 +154,7 @@ export default function App() {
       <div className="screen-vignette" />
       <header className="game-header">
         <div className="game-brand">
-          <Snowflake size={24} />
+          <AnimalIcon kind="seal" className="brand-mascot" />
           <h1>アザラシ将棋</h1>
         </div>
         <nav aria-label="対局メニュー">
@@ -208,7 +212,7 @@ export default function App() {
             <span className="status-pulse" />{' '}
             {actorLabel(playback.motion?.action.piece.owner ?? last?.piece.owner)}：
             {playback.motion?.stage === 'choice' ? (
-              '移動先の上空で変身を選択'
+              '好きな姿をえらぼう！'
             ) : (
               <>
                 {last && pieceName(last.piece)}を{last?.from ? '移動' : '配置'}

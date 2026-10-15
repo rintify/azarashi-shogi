@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Flag } from 'lucide-react';
+import { AnimalIcon } from './AnimalIcon';
 
 /** Native modality keeps keyboard focus on the result until the board is reopened. */
 export function MatchResult({
@@ -25,7 +25,7 @@ export function MatchResult({
       onCancel={onInspect}
     >
       <section>
-        <Flag size={32} />
+        <AnimalIcon kind="walrus" className="result-mascot" />
         <p className="result-kicker">対局終了</p>
         <h2 id="result-title">{title}</h2>
         <p>{detail}</p>

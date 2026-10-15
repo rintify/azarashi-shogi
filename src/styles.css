@@ -1,12 +1,13 @@
 :root {
-  font-family:
-    -apple-system, BlinkMacSystemFont, 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
+  font-family: ui-rounded, 'Hiragino Maru Gothic ProN', 'Yu Gothic', system-ui, sans-serif;
   color: #edf6fb;
   background: #123b52;
   font-synthesis: none;
   font-size: 14px;
   --ink: #173344;
-  --icon-cutout: #163344;
+  --icon-cutout: #f8fcff;
+  --game-ink: #375775;
+  --game-shadow: #347da177;
 }
 * {
   box-sizing: border-box;
@@ -94,10 +95,10 @@ svg {
   z-index: 3;
   background: linear-gradient(
     180deg,
-    #061f355c 0%,
+    #84d8ff22 0%,
     transparent 22%,
     transparent 70%,
-    #082c4666 100%
+    #3c8ac422 100%
   );
 }
 .game-header {
@@ -115,15 +116,19 @@ svg {
   align-items: center;
   gap: 10px;
   color: white;
-  text-shadow: 0 2px 12px #06283a88;
+  text-shadow: 0 3px 0 #3985a5;
 }
 .game-brand h1 {
   font-size: 18px;
   letter-spacing: 0.03em;
-  font-weight: 700;
+  font-weight: 900;
+  -webkit-text-stroke: 3px #4286a3;
+  paint-order: stroke fill;
 }
-.game-brand > svg {
-  color: #b4e8fc;
+.game-brand .brand-mascot {
+  width: 44px;
+  height: 44px;
+  filter: drop-shadow(0 3px 0 #397b9a66);
 }
 .game-header nav {
   display: flex;
@@ -137,22 +142,32 @@ svg {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  background: #0a2a3bd9;
-  border: 1px solid #b9e8ff26;
-  border-radius: 10px;
-  box-shadow: 0 3px 14px #06283a14;
-  color: #d5edf6;
+  background: #fff9e9;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow:
+    0 4px 0 #568ba8,
+    0 6px 12px #266e9c24;
+  color: #507497;
   transition:
     background 0.15s,
     transform 0.15s;
 }
 .hud-button:hover {
-  background: #1d4d63;
+  background: #fff1bd;
 }
 .hud-button[aria-pressed='true'] {
-  background: #1c5d76;
-  color: #a7efff;
-  border-color: #7ad2ed66;
+  background: #ffe08d;
+  color: #795e49;
+  border-color: #fff8dc;
+}
+.game-header nav > .hud-button:nth-child(2) {
+  background: #e6e4ff;
+  color: #7a6ea1;
+}
+.game-header nav > .hud-button:nth-child(3) {
+  background: #ffdedc;
+  color: #a36471;
 }
 .view-controls {
   display: flex;
@@ -176,10 +191,13 @@ svg {
   justify-content: space-between;
   gap: 8px;
   padding: 0 14px;
-  background: #0b2d40de;
-  border: 1px solid #c6edff21;
-  border-radius: 10px;
-  box-shadow: 0 6px 20px #03273a1f;
+  background: #fff7ef;
+  color: var(--game-ink);
+  border: 2px solid #fff;
+  border-radius: 24px;
+  box-shadow:
+    0 4px 0 #bd9f9999,
+    0 6px 16px #236a9620;
 }
 .opponent-name {
   display: flex;
@@ -194,7 +212,7 @@ svg {
 .opponent-name small {
   font-size: 10px;
   font-weight: 400;
-  color: #a6c9da;
+  color: #918591;
 }
 .thinking-copy {
   display: none;
@@ -220,13 +238,13 @@ svg {
   align-items: center;
   gap: 3px;
   font-size: 11px;
-  color: #c6e0eb;
+  color: #587088;
   font-variant-numeric: tabular-nums;
 }
 .opponent-stock .animal-icon {
   width: 22px;
   height: 22px;
-  color: #a7cbdc;
+  color: #587088;
 }
 .turn-banner {
   position: absolute;
@@ -239,7 +257,10 @@ svg {
   justify-content: center;
   gap: 8px;
   white-space: nowrap;
-  text-shadow: 0 2px 10px #062236;
+  text-shadow:
+    0 2px 0 #3986a3,
+    1px 0 0 #3986a3,
+    -1px 0 0 #3986a3;
   font-weight: 600;
   font-size: 12px;
   color: #fff;
@@ -293,11 +314,13 @@ svg {
   display: flex;
   align-items: center;
   gap: 2px;
-  border-radius: 10px;
-  color: #d4edf6;
-  background: #0b2d40ed;
-  border: 1px solid #c6edff21;
-  box-shadow: 0 5px 20px #03273a26;
+  border-radius: 24px;
+  color: var(--game-ink);
+  background: #f4fcff;
+  border: 2px solid white;
+  box-shadow:
+    0 4px 0 #6babc4,
+    0 6px 18px #176ba82b;
 }
 .reserve-toggle {
   flex: 1;
@@ -328,10 +351,10 @@ svg {
   gap: 2px;
 }
 .reserve-toggle .opponent-stock [data-active] {
-  color: #9befff;
+  color: #1b89a4;
 }
 .reserve-toggle .opponent-stock [data-active] .animal-icon {
-  color: #88edff;
+  color: #1b89a4;
 }
 .reserve-toggle > svg {
   transition: transform 150ms;
@@ -344,8 +367,8 @@ svg {
   width: 34px;
   display: grid;
   place-items: center;
-  color: #b5d9e6;
-  border-left: 1px solid #a4d2df22;
+  color: #658da6;
+  border-left: 1px solid #81b0c233;
   background: transparent;
   border-radius: 0 9px 9px 0;
 }
@@ -360,13 +383,14 @@ svg {
   margin-bottom: 8px;
 }
 .action-dock {
-  background: #092b3de8;
-  border: 1px solid #b5e5f533;
-  border-radius: 16px;
+  background: #f5fbff;
+  color: var(--game-ink);
+  border: 3px solid white;
+  border-radius: 24px;
   padding: 12px 16px;
   box-shadow:
-    0 12px 45px #031e3955,
-    inset 0 1px 0 #d9f5ff08;
+    0 5px 0 #6babc4,
+    0 12px 30px #2774a333;
 }
 .dock-heading {
   display: flex;
@@ -393,10 +417,10 @@ svg {
   flex: 0 0 36px;
   background: transparent;
   border-radius: 8px;
-  color: #a8c8d7;
+  color: #7395ac;
 }
 .icon-button:hover {
-  background: #b5e1ed14;
+  background: #dcedf7;
 }
 .icon-button:disabled {
   opacity: 0.25;
@@ -411,9 +435,9 @@ svg {
 }
 .reserve-grid button {
   position: relative;
-  border: 1px solid #86bfd32b;
-  background: #ffffff07;
-  border-radius: 10px;
+  border: 2px solid #d5e6f0;
+  background: #e9f5fc;
+  border-radius: 17px;
   height: 66px;
   display: flex;
   flex-direction: column;
@@ -421,7 +445,7 @@ svg {
   justify-content: center;
   gap: 3px;
   padding: 4px;
-  color: #dceef7;
+  color: #52728e;
   transition:
     background 0.15s,
     border-color 0.15s,
@@ -432,15 +456,22 @@ svg {
   font-weight: 500;
 }
 .reserve-grid button:hover:not(:disabled) {
-  background: #65c4e51a;
+  background: #d7f0fb;
 }
 .reserve-grid button.selected {
-  border-color: #6fdcf6;
-  background: #28718c66;
-  box-shadow:
-    inset 0 -2px 0 #7be9ff,
-    0 0 18px #52caf112;
-  color: white;
+  border-color: #70c8d6;
+  background: #d2f4ef;
+  box-shadow: 0 3px 0 #80b8c4;
+  color: #286b83;
+}
+.reserve-grid button:nth-child(2) {
+  background: #eeebfc;
+}
+.reserve-grid button:nth-child(3) {
+  background: #fff1d9;
+}
+.reserve-grid button:nth-child(4) {
+  background: #e4effb;
 }
 .reserve-grid button:disabled {
   opacity: 0.3;
@@ -452,7 +483,7 @@ svg {
   position: absolute;
   top: 5px;
   right: 7px;
-  color: #e6f7ff;
+  color: #4d6a86;
   font-size: 11px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -461,96 +492,23 @@ svg {
   width: 33px;
   height: 33px;
 }
-.is-confirming {
-  padding: 12px 16px;
-}
-.choice-selector {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 4px;
-  height: 43px;
-  margin: 4px 0;
-}
-.choice-description {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.choice-description .animal-icon {
-  width: 34px;
-  height: 34px;
-}
-.choice-description strong {
-  display: block;
-  font-size: 12px;
-}
-.choice-description span {
-  display: block;
-  font-size: 10px;
-  color: #9ec1d1;
-  margin-top: 3px;
-}
-.choice-tabs {
-  display: flex;
-  gap: 5px;
-}
-.choice-tabs button {
-  flex: 1;
-  min-width: 0;
-  height: 36px;
-  padding: 4px;
-  border-radius: 7px;
-  border: 1px solid #84c4da33;
-  background: #ffffff08;
-  font-size: 11px;
-}
-.choice-tabs button.active {
-  background: #276d84;
-  border-color: #6dd5ee;
-  color: white;
-}
-.capture-line {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  min-height: 36px;
-}
-.capture-summary {
-  flex: 1;
-  font-size: 10px;
-  color: #b1cfda;
-  line-height: 1.5;
-}
-.capture-summary.danger {
-  color: #ffd195;
-}
-.capture-detail-button {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  min-height: 36px;
-  background: transparent;
-  color: #a0cede;
-  font-size: 10px;
-}
 .primary-button {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: #238eb0;
-  border: 1px solid #6ee4ff55;
-  border-radius: 9px;
+  background: #48afc8;
+  border: 2px solid #f7ffff;
+  border-radius: 24px;
   color: #fff;
   font-size: 12px;
   font-weight: 600;
   min-height: 44px;
   padding: 10px 16px;
-  box-shadow: inset 0 1px 0 #b1f7ff30;
+  box-shadow: 0 4px 0 #3a7f9e;
 }
 .primary-button:hover {
-  background: #2da0c2;
+  background: #65c0d3;
 }
 .full {
   width: 100%;
@@ -680,30 +638,30 @@ svg {
   backdrop-filter: blur(4px);
 }
 .result-overlay section {
-  background: #0b2c40f5;
-  color: #fff;
+  background: #fffbef;
+  color: #47617c;
   text-align: center;
-  border: 1px solid #9fd3e649;
+  border: 4px solid white;
   box-shadow: 0 24px 80px #011a4655;
-  border-radius: 20px;
+  border-radius: 32px;
   padding: 30px;
   width: min(360px, 100%);
 }
 .result-overlay svg {
-  color: #93dfff;
+  color: #f3bb55;
 }
 .result-kicker {
   letter-spacing: 0.2em;
   font-size: 11px;
   margin: 14px 0 7px;
-  color: #9cbfce;
+  color: #9a8792;
 }
 .result-overlay h2 {
   font-size: 28px;
 }
 .result-overlay p:not(.result-kicker) {
   font-size: 12px;
-  color: #b5d1e0;
+  color: #6f8da2;
   line-height: 1.8;
   margin: 16px 0 24px;
 }
@@ -715,11 +673,11 @@ svg {
 
 .dialog {
   color: #18394c;
-  background: #f2f8fa;
-  --icon-cutout: #f2f8fa;
-  border: 1px solid #d6ebf5;
+  background: #fffcf3;
+  --icon-cutout: #fffcf3;
+  border: 4px solid white;
   padding: 24px;
-  border-radius: 16px;
+  border-radius: 28px;
   width: min(92vw, 540px);
   max-height: calc(100dvh - 24px);
   overflow: auto;
@@ -727,7 +685,7 @@ svg {
   box-shadow: 0 20px 80px #021c4a55;
 }
 .dialog::backdrop {
-  background: #031f42aa;
+  background: #347ba466;
   backdrop-filter: blur(7px);
 }
 .dialog header {
@@ -737,7 +695,7 @@ svg {
   gap: 10px;
   position: sticky;
   top: -24px;
-  background: #f2f8fa;
+  background: #fffcf3;
   padding: 8px 0;
   z-index: 1;
 }
@@ -772,7 +730,7 @@ svg {
   align-items: center;
   gap: 12px;
   padding: 12px;
-  background: #e4eff4;
+  background: #e9f5f8;
   border-radius: 10px;
 }
 .rule-animal-list .animal-icon {
@@ -793,12 +751,12 @@ svg {
 .rule-note {
   margin: 20px 0;
   padding: 12px;
-  background: #e5eff3;
+  background: #fff0d4;
   border-radius: 8px;
 }
 .dialog .primary-button {
   color: white;
-  background: #1c809f;
+  background: #49afc7;
   min-height: 46px;
 }
 .setting-label {
@@ -824,9 +782,9 @@ svg {
   margin-top: 6px;
 }
 .side-options button.active {
-  background: #d6eaf1;
+  background: #d6f0ec;
   color: #196783;
-  border-color: #6bb0c6;
+  border-color: #7cbdc2;
 }
 .cancel-button {
   display: flex;
@@ -876,7 +834,7 @@ svg {
   .game-brand {
     gap: 6px;
   }
-  .game-brand > svg {
+  .game-brand > svg:not(.brand-mascot) {
     display: none;
   }
   .game-brand h1 {
@@ -890,7 +848,7 @@ svg {
   .hud-button {
     width: 38px;
     height: 40px;
-    border-radius: 8px;
+    border-radius: 50%;
   }
   .opponent-hud {
     top: max(64px, calc(env(safe-area-inset-top) + 52px));
@@ -924,7 +882,7 @@ svg {
   }
   .action-dock {
     padding: 10px 12px;
-    border-radius: 14px;
+    border-radius: 24px;
   }
   .reserve-grid {
     gap: 6px;
@@ -937,12 +895,6 @@ svg {
   }
   .dock-heading h2 {
     font-size: 12px;
-  }
-  .choice-description strong {
-    font-size: 11px;
-  }
-  .choice-tabs button {
-    font-size: 10px;
   }
   .match-message {
     font-size: 8px;
@@ -1004,7 +956,7 @@ svg {
   .game-brand h1 {
     font-size: 14px;
   }
-  .game-brand > svg {
+  .game-brand > svg:not(.brand-mascot) {
     display: none;
   }
   .hud-button {
@@ -1066,13 +1018,6 @@ svg {
   .reserve-grid button > span:last-child {
     font-size: 9px;
   }
-  .choice-description .animal-icon {
-    width: 28px;
-    height: 28px;
-  }
-  .choice-description strong {
-    font-size: 10px;
-  }
   .match-message {
     bottom: 7px;
   }
@@ -1094,7 +1039,7 @@ svg {
   min-height: 44px;
   padding: 8px 16px;
   background: transparent;
-  color: #b5d1e0;
+  color: #6f8da2;
   font-size: 12px;
 }
 .result-actions {
@@ -1117,7 +1062,7 @@ svg {
   height: 36px;
   width: 30px;
   padding: 0;
-  color: #daedf6;
+  color: #537e99;
   border-radius: 6px;
   background: transparent;
 }
@@ -1140,7 +1085,7 @@ svg {
 .spectator-name small {
   display: block;
   font-size: 9px;
-  color: #a5c4d4;
+  color: #7f93a9;
 }
 .spectator-dock .opponent-stock {
   gap: 4px;
@@ -1158,7 +1103,7 @@ svg {
   position: fixed;
   inset: auto auto max(30px, calc(env(safe-area-inset-bottom) + 16px)) 50%;
   transform: translateX(-50%);
-  width: min(560px, calc(100% - 20px));
+  width: min(380px, calc(100% - 24px));
   max-width: none;
   max-height: calc(100dvh - 28px);
   padding: 0;
@@ -1166,15 +1111,11 @@ svg {
   border: 0;
   background: transparent;
   overflow: visible;
-  color: #e5f6ff;
+  color: #355c78;
   animation: choice-pop 160ms ease-out;
 }
 .transformation-dialog::backdrop {
-  background: #061d301f;
-}
-.transformation-dialog .action-dock {
-  box-shadow: 0 18px 65px #00172888;
-  border: 1px solid #a1dfed66;
+  background: transparent;
 }
 @keyframes choice-pop {
   from {
@@ -1260,4 +1201,197 @@ svg {
   .play-window {
     right: calc(100px + max(14px, env(safe-area-inset-right)));
   }
+}
+
+/* Floating game controls: no panel, overlay tint, heading or extra confirmation step. */
+.promotion-controls {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+}
+.promotion-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+}
+.promotion-button {
+  min-height: 56px;
+  min-width: 108px;
+  padding: 10px 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 3px solid white;
+  border-radius: 30px;
+  font-size: 18px;
+  font-weight: 900;
+  box-shadow:
+    0 5px 0 #518ea9,
+    0 8px 16px #1f5b8e33;
+  transition:
+    transform 140ms,
+    box-shadow 140ms;
+}
+.keep-button {
+  background: #f0faff;
+  color: #55748f;
+}
+.evolve-button {
+  background: #ffcf70;
+  color: #775549;
+  box-shadow:
+    0 5px 0 #c7935c,
+    0 8px 16px #1f5b8e33;
+}
+.promotion-button:hover {
+  translate: 0 -2px;
+}
+.promotion-button:active {
+  translate: 0 3px;
+}
+.promotion-cancel {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #eff8ff;
+  color: #6c8b9d;
+  border: 2px solid white;
+  box-shadow: 0 3px 0 #6397b2;
+}
+.rotation-choices {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+.rotation-choice {
+  width: 62px;
+  height: 58px;
+  border-radius: 19px;
+  background: #f5fcff;
+  border: 3px solid white;
+  color: #90acc1;
+  padding: 0;
+  box-shadow:
+    0 4px 0 #6d9bb5,
+    0 6px 10px #255a8722;
+  transition:
+    transform 160ms,
+    background 160ms;
+}
+.rotation-choice svg {
+  width: 100%;
+  height: 100%;
+}
+.rotation-choice[aria-pressed='true'] {
+  background: #cefae9;
+  color: #429a9b;
+  border-color: #fff9d9;
+  transform: translateY(-5px);
+  box-shadow:
+    0 5px 0 #509eab,
+    0 7px 14px #255a8733;
+}
+.promotion-warning {
+  color: #9a4c4e;
+  background: #fff4e3;
+  border: 2px solid white;
+  border-radius: 20px;
+  padding: 8px 14px;
+  font-size: 12px;
+  box-shadow: 0 3px 0 #c79988;
+}
+.promotion-warning strong {
+  display: block;
+  margin-bottom: 4px;
+}
+@media (max-height: 520px) and (min-width: 500px) {
+  .promotion-controls {
+    gap: 12px;
+  }
+  .rotation-choices {
+    gap: 6px;
+  }
+  .rotation-choice {
+    width: 54px;
+    height: 52px;
+  }
+  .promotion-actions {
+    gap: 6px;
+  }
+  .promotion-button {
+    min-width: 86px;
+    min-height: 50px;
+    padding: 8px 12px;
+    font-size: 15px;
+    gap: 4px;
+  }
+  .promotion-cancel {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+@media (max-width: 760px) {
+  .game-brand .brand-mascot {
+    width: 26px;
+    height: 30px;
+  }
+  .game-brand {
+    gap: 3px;
+  }
+}
+@media (max-width: 360px) {
+  .game-brand .brand-mascot {
+    width: 20px;
+    height: 26px;
+  }
+}
+
+.dialog-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.dialog-title .animal-icon {
+  width: 44px;
+  height: 44px;
+}
+.dialog-title h2 {
+  margin: 0;
+  font-weight: 900;
+}
+.mode-portraits {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.mode-portraits .animal-icon {
+  width: 40px;
+  height: 40px;
+}
+.mode-portraits b {
+  font-size: 11px;
+  color: #a295b2;
+  font-style: italic;
+}
+.side-options button {
+  border-width: 2px;
+  border-radius: 20px;
+  font-weight: 800;
+}
+.side-options button.active {
+  box-shadow: 0 3px 0 #83b7bf;
+}
+.result-overlay .result-mascot {
+  width: 90px;
+  height: 90px;
+  margin: 0 auto;
 }

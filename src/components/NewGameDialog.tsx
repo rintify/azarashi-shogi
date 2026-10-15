@@ -3,6 +3,7 @@ import { ArrowRight, ChevronDown, X } from 'lucide-react';
 import type { Difficulty, MatchSettings } from '../match/record';
 import type { Player } from '../game/types';
 import { aiDifficulty, isSpectator } from '../match/record';
+import { AnimalIcon } from './AnimalIcon';
 import { LEVELS } from '../ai/levels';
 export function NewGameDialog({
   current,
@@ -32,7 +33,8 @@ export function NewGameDialog({
       }}
     >
       <header>
-        <div>
+        <div className="dialog-title">
+          <AnimalIcon kind="seal" />
           <h2 id="new-game-title">新しい対局</h2>
         </div>
         <button className="icon-button" onClick={close} aria-label="設定を閉じる">
@@ -47,6 +49,11 @@ export function NewGameDialog({
           className={!watching ? 'active' : ''}
           onClick={() => setWatching(false)}
         >
+          <div className="mode-portraits" aria-hidden="true">
+            <AnimalIcon kind="seal" />
+            <b>VS</b>
+            <AnimalIcon kind="penguin" />
+          </div>
           あなた vs AI<span>自分で対局する</span>
         </button>
         <button
@@ -54,6 +61,11 @@ export function NewGameDialog({
           className={watching ? 'active' : ''}
           onClick={() => setWatching(true)}
         >
+          <div className="mode-portraits" aria-hidden="true">
+            <AnimalIcon kind="penguin" />
+            <b>VS</b>
+            <AnimalIcon kind="orca" />
+          </div>
           AI vs AI<span>対局を観戦する</span>
         </button>
       </div>

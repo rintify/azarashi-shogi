@@ -1,12 +1,10 @@
-import { useState } from 'react';
-import { ArrowRight, ChevronLeft, ChevronRight, Info, X } from 'lucide-react';
+import { Sparkles, X } from 'lucide-react';
 import type { ActionPreview, Player } from '../game/types';
-import { dimensions, pieceName } from '../game/pieces';
-import { CaptureDetails } from './CaptureDetails';
-import { AnimalIcon } from './AnimalIcon';
+import { sameCell } from '../game/types';
 import { coordinate } from './coordinates';
 import type { BoardInteraction } from './useBoardInteraction';
 
+/** A live board preview carries the explanation; only the decisions remain in the HUD. */
 export function CaptureChoice({
   human,
   interaction,
@@ -15,122 +13,137 @@ export function CaptureChoice({
   interaction: BoardInteraction;
 }) {
   const { pending, optionIndex, setOptionIndex, clearChoice, chooseOption } = interaction;
-  const [detailsOpen, setDetailsOpen] = useState(false);
-  const option = pending?.[optionIndex];
-  if (!pending || !option) return null;
-  const ownKing = option.captured.some((p) => p.kind === 'walrus' && p.owner === human);
+  if (!pending?.length) return null;
+  const choice = pending[optionIndex];
+  const transformIndex = optionIndex > 0 ? optionIndex : 1;
+  const transform = pending[transformIndex];
+  const ownKing = choice.captured.some((p) => p.kind === 'walrus' && p.owner === human);
   const bothKings =
-    ownKing && option.captured.some((p) => p.kind === 'walrus' && p.owner !== human);
+    ownKing && choice.captured.some((p) => p.kind === 'walrus' && p.owner !== human);
+  const rotations =
+    pending[1]?.action.type === 'move' && pending[1].action.transformation?.type === 'rotate';
   return (
-    <aside className="action-dock is-confirming" aria-label="対局の操作">
-      <div className="dock-heading">
-        <div>
-          <span className="step-label">移動の確認</span>
-          <h2>{pending.length > 1 ? '変身を選択' : '自分の王を捕食します'}</h2>
-        </div>
-        <button
-          className="icon-button"
-          aria-label="移動を取り消す"
-          onClick={() => {
-            setDetailsOpen(false);
-            clearChoice();
-          }}
-        >
-          <X size={20} />
-        </button>
-      </div>
-      {pending.length > 1 && (
-        <div className="choice-selector" aria-label="変身の候補">
-          <button
-            className="icon-button"
-            aria-label="前の変身候補"
-            disabled={pending.length === 1}
-            onClick={() => setOptionIndex((optionIndex + pending.length - 1) % pending.length)}
-          >
-            <ChevronLeft size={22} />
-          </button>
-          <div className="choice-description" aria-live="polite">
-            <AnimalIcon kind={option.piece.kind} promoted={option.piece.promoted} />
-            <div>
-              <strong>{transformationLabel(option, pending[0], optionIndex)}</strong>
-              <span>
-                {dimensions(option.piece).join(' × ')}マス · {option.captured.length}体を捕食
-              </span>
-            </div>
-          </div>
-          <button
-            className="icon-button"
-            aria-label="次の変身候補"
-            disabled={pending.length === 1}
-            onClick={() => setOptionIndex((optionIndex + 1) % pending.length)}
-          >
-            <ChevronRight size={22} />
-          </button>
-        </div>
-      )}
-      {pending.length > 1 && (
-        <div className="choice-tabs" aria-label="変身を選択">
-          {pending.map((p, i) => (
+    <aside className="promotion-controls" aria-label="対局の操作">
+      {rotations && (
+        <div className="rotation-choices" role="group" aria-label="シャチの向きを選択">
+          {pending.slice(1).map((candidate, i) => (
             <button
               key={i}
-              aria-label={transformationLabel(p, pending[0], i)}
-              aria-pressed={optionIndex === i}
-              className={optionIndex === i ? 'active' : ''}
-              onClick={() => setOptionIndex(i)}
+              className="rotation-choice"
+              aria-label={rotationLabel(candidate, pending[0])}
+              aria-pressed={optionIndex === i + 1}
+              onClick={() => setOptionIndex(i + 1)}
             >
-              {i === 0
-                ? 'そのまま'
-                : p.action.type === 'move' && p.action.transformation?.type === 'rotate'
-                  ? `回転 ${i}`
-                  : '変身'}
+              <RotationShape candidate={candidate} options={pending} human={human} />
             </button>
           ))}
         </div>
       )}
-      <div className="capture-line">
-        <p
-          className={`capture-summary ${ownKing ? 'danger' : ''}`}
-          role={ownKing ? 'alert' : undefined}
-        >
-          {ownKing
-            ? bothKings
-              ? '両方の王を捕食 → 引き分け'
-              : '自分の王を捕食 → 敗北'
-            : `相手 ${option.captured.filter((p) => p.owner !== human).length}体・味方 ${option.captured.filter((p) => p.owner === human).length}体を捕食`}
+      {ownKing && (
+        <p className="promotion-warning" role="alert">
+          {pending.length === 1 && <strong>自分の王を捕食します</strong>}
+          {bothKings ? '両方の王を捕食 → 引き分け' : '自分の王を捕食 → 敗北'}
         </p>
-        <button
-          className="capture-detail-button"
-          aria-label="捕食する駒の内訳"
-          onClick={() => setDetailsOpen(true)}
-        >
-          内訳 <Info size={13} />
+      )}
+      <div className="promotion-actions">
+        {pending.length > 1 ? (
+          <>
+            <button
+              className="promotion-button keep-button"
+              onClick={() => chooseOption(pending[0])}
+            >
+              そのまま
+            </button>
+            <button
+              className="promotion-button evolve-button"
+              onClick={() => chooseOption(transform)}
+            >
+              <Sparkles size={21} />
+              成る
+            </button>
+          </>
+        ) : (
+          <button className="promotion-button evolve-button" onClick={() => chooseOption(choice)}>
+            この手を指す
+          </button>
+        )}
+        <button className="promotion-cancel" aria-label="移動を取り消す" onClick={clearChoice}>
+          <X size={20} />
         </button>
       </div>
-      {detailsOpen && (
-        <CaptureDetails
-          pieces={option.captured}
-          human={human}
-          close={() => setDetailsOpen(false)}
-        />
-      )}
-      <button className="primary-button full confirm-move" onClick={() => chooseOption(option)}>
-        {pending.length > 1 ? (optionIndex > 0 ? '変身して着地' : 'このまま着地') : 'この手を指す'}{' '}
-        <ArrowRight size={18} />
-      </button>
     </aside>
   );
 }
 
-function transformationLabel(
-  preview: ActionPreview,
-  landing: ActionPreview,
-  index: number,
-): string {
-  if (index === 0) return 'そのまま進む';
-  const action = preview.action;
-  if (action.type === 'move' && action.transformation?.type === 'rotate') {
-    const { direction, pivot } = action.transformation;
-    return `${direction === 1 ? '右' : '左'}回転 · 軸 ${coordinate(landing.footprint[pivot])}`;
-  }
-  return pieceName(preview.piece);
+function rotationLabel(candidate: ActionPreview, landing: ActionPreview) {
+  const action = candidate.action;
+  if (action.type !== 'move' || action.transformation?.type !== 'rotate') return '';
+  const { direction, pivot } = action.transformation;
+  return `${direction === 1 ? '右' : '左'}回転 · 軸 ${coordinate(landing.footprint[pivot])}`;
+}
+
+/** Every thumbnail uses the same board coordinates, so all four pivots compare directly. */
+function RotationShape({
+  candidate,
+  options,
+  human,
+}: {
+  candidate: ActionPreview;
+  options: ActionPreview[];
+  human: Player;
+}) {
+  const cells = options.flatMap((p) => p.captureCells);
+  const minX = Math.min(...cells.map((c) => c.x));
+  const maxX = Math.max(...cells.map((c) => c.x));
+  const minY = Math.min(...cells.map((c) => c.y));
+  const maxY = Math.max(...cells.map((c) => c.y));
+  const action = candidate.action;
+  const pivot =
+    action.type === 'move' && action.transformation?.type === 'rotate'
+      ? options[0].footprint[action.transformation.pivot]
+      : null;
+  const size = 15;
+  const width = (maxX - minX + 1) * size;
+  const height = (maxY - minY + 1) * size;
+  return (
+    <svg viewBox="0 0 64 52" aria-hidden="true">
+      <g
+        transform={`translate(32 26) rotate(${human === 'north' ? 180 : 0}) translate(${-width / 2} ${-height / 2})`}
+      >
+        {options[0].footprint.map((cell) => (
+          <rect
+            key={`old-${cell.x},${cell.y}`}
+            x={(cell.x - minX) * size + 1}
+            y={(cell.y - minY) * size + 1}
+            width="13"
+            height="13"
+            rx="4"
+            fill="none"
+            stroke="currentColor"
+            strokeDasharray="2 2"
+            opacity=".4"
+          />
+        ))}
+        {candidate.footprint.map((cell) => (
+          <rect
+            key={`${cell.x},${cell.y}`}
+            x={(cell.x - minX) * size + 1}
+            y={(cell.y - minY) * size + 1}
+            width="13"
+            height="13"
+            rx="4"
+            fill="currentColor"
+          />
+        ))}
+        {pivot && candidate.footprint.some((c) => sameCell(c, pivot)) && (
+          <circle
+            cx={(pivot.x - minX) * size + 7.5}
+            cy={(pivot.y - minY) * size + 7.5}
+            r="3"
+            fill="#fff0a6"
+          />
+        )}
+      </g>
+    </svg>
+  );
 }

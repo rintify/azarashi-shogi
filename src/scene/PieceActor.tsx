@@ -11,7 +11,6 @@ import {
   facing,
   progress,
   sampleMotion,
-  transformationProgress,
   type MoveMotion,
 } from '../presentation/motion';
 
@@ -49,11 +48,7 @@ export function PieceActor({
     beforeModel = useRef<Group>(null),
     afterModel = useRef<Group>(null);
   const moving = !!motion && !victim && motion.action.piece.id === piece.id;
-  const rotation =
-    moving &&
-    motion?.action.action.type === 'move' &&
-    motion.action.action.transformation?.type === 'rotate';
-  const [w, h] = dimensions(rotation && motion?.before ? motion.before : piece);
+  const [w, h] = dimensions(moving && motion?.before ? motion.before : piece);
   const ownerColor = piece.owner === 'south' ? '#087fad' : '#e58e3f';
   const color = targeted ? '#ef7049' : source ? '#f5b83b' : selected ? '#38d1df' : ownerColor;
   useFrame(() => {
@@ -61,7 +56,8 @@ export function PieceActor({
     let position = center(piece),
       scale = 1,
       yaw = facing(piece),
-      promoted = piece.promoted;
+      promoted = piece.promoted,
+      baseYaw = 0;
     if (motion) {
       const t = progress(motion, performance.now());
       if (victim) {
@@ -69,21 +65,12 @@ export function PieceActor({
         scale = 1 - eaten;
         position[1] = eaten * 0.7;
       } else if (moving) {
-        const pose = sampleMotion(motion, t);
+        const pose = sampleMotion(motion, t, performance.now());
         position = pose.position;
         scale = pose.scale;
         yaw = pose.yaw;
         promoted = pose.promoted;
-        if (
-          base.current &&
-          rotation &&
-          motion.action.action.type === 'move' &&
-          motion.action.action.transformation?.type === 'rotate'
-        ) {
-          const ease = transformationProgress(motion, t);
-          base.current.rotation.y =
-            ((-motion.action.action.transformation.direction * Math.PI) / 2) * ease;
-        }
+        baseYaw = pose.baseYaw;
       }
     }
     root.current.position.set(...position);
@@ -95,7 +82,7 @@ export function PieceActor({
         !moving || promoted === (motion?.before?.promoted ?? piece.promoted);
     if (afterModel.current)
       afterModel.current.visible = !!moving && promoted !== motion?.before?.promoted;
-    if (base.current && !rotation) base.current.rotation.y = 0;
+    if (base.current) base.current.rotation.y = baseYaw;
   });
   const initialPromoted = moving && motion?.before ? motion.before.promoted : piece.promoted;
   const modelScale = piece.kind === 'walrus' ? 1 : piece.kind === 'orca' ? 0.9 : 0.86;
@@ -156,9 +143,9 @@ export function PieceActor({
         <group ref={beforeModel}>
           <Animal kind={piece.kind} promoted={initialPromoted} animate={selected && !disabled} />
         </group>
-        {moving && motion?.before && motion.before.promoted !== piece.promoted && (
+        {moving && motion?.before && (
           <group ref={afterModel} visible={false}>
-            <Animal kind={piece.kind} promoted={piece.promoted} />
+            <Animal kind={piece.kind} promoted={!initialPromoted} />
           </group>
         )}
       </group>

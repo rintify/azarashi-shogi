@@ -116,14 +116,22 @@ export function useBoardInteraction(
     if (!humanTurn || pending) return;
     if (legalCells.some((c) => sameCell(c, cell))) {
       if (selected) {
-        const options = moveOptions(game, selected, cell);
+        const legal = moveOptions(game, selected, cell);
+        // Black seals strictly add moves without changing the footprint or capture.
+        // This is a UI shortcut; the shared rules still permit declining promotion.
+        const options =
+          selected.kind === 'seal' &&
+          !selected.promoted &&
+          legal.some((option) => option.piece.promoted)
+            ? legal.filter((option) => option.piece.promoted)
+            : legal;
         if (
           options.length > 1 ||
           options[0]?.captured.some((p) => p.kind === 'walrus' && p.owner === human)
         ) {
           setPending(options);
           if (options.length > 1) onCaptureChoice?.(options[0]);
-          setOptionIndex(0);
+          setOptionIndex(selected.kind === 'orca' && options.length > 1 ? 1 : 0);
         } else if (options[0]) submit(options[0].action, game.revision);
       } else if (activeKind) submit({ type: 'place', kind: activeKind, at: cell }, game.revision);
       return;

@@ -93,7 +93,7 @@ it('shows a warning-only confirmation for a single-option friendly king capture'
       onHelp={() => {}}
     />,
   );
-  expect(screen.getByRole('heading', { name: '自分の王を捕食します' })).toBeTruthy();
+  expect(screen.getByText('自分の王を捕食します')).toBeTruthy();
   expect(screen.queryByRole('heading', { name: '変身を選択' })).toBeNull();
   expect(screen.queryByRole('button', { name: '次の変身候補' })).toBeNull();
   expect(screen.getByRole('button', { name: 'この手を指す' })).toBeTruthy();
@@ -138,4 +138,40 @@ it('includes all legal orca rotation footprints in the same reachable guide', ()
   expect(notify).toHaveBeenCalledOnce();
   expect(hook.result.current.pending).toHaveLength(5);
   expect(hook.result.current.reachableCells).toContainEqual({ x: 6, y: 4 });
+});
+
+it('automatically promotes a white seal after capture without opening a choice', () => {
+  const seal: Piece = { ...penguin, kind: 'seal' };
+  const target: Piece = { ...food, owner: 'north', at: { x: 4, y: 6 } };
+  const game = { ...createGame(), phase: 'playing' as const, pieces: [seal, target] };
+  const submit = vi.fn(),
+    present = vi.fn();
+  const hook = renderHook(() => useBoardInteraction(game, 'south', submit, true, present));
+  act(() => hook.result.current.clickCell(seal.at));
+  act(() => hook.result.current.clickCell(target.at));
+  expect(hook.result.current.pending).toBeNull();
+  expect(present).not.toHaveBeenCalled();
+  expect(submit).toHaveBeenCalledWith(
+    { type: 'move', pieceId: seal.id, to: target.at, transformation: { type: 'promote' } },
+    0,
+  );
+});
+it('retains an ordinary white seal move and the friendly king loss warning', () => {
+  const seal: Piece = { ...penguin, kind: 'seal' };
+  const game = { ...createGame(), phase: 'playing' as const, pieces: [seal] };
+  const submit = vi.fn();
+  const hook = renderHook(() => useBoardInteraction(game, 'south', submit));
+  act(() => hook.result.current.clickCell(seal.at));
+  act(() => hook.result.current.clickCell({ x: 4, y: 6 }));
+  expect(submit).toHaveBeenCalledWith({ type: 'move', pieceId: seal.id, to: { x: 4, y: 6 } }, 0);
+  const king: Piece = { ...food, kind: 'walrus', at: { x: 4, y: 5 } };
+  const danger = renderHook(() =>
+    useBoardInteraction({ ...game, pieces: [seal, king] }, 'south', submit),
+  );
+  submit.mockClear();
+  act(() => danger.result.current.clickCell(seal.at));
+  act(() => danger.result.current.clickCell({ x: 4, y: 6 }));
+  expect(danger.result.current.pending).toHaveLength(1);
+  expect(danger.result.current.pending![0].piece.promoted).toBe(true);
+  expect(submit).not.toHaveBeenCalled();
 });

@@ -1,7 +1,16 @@
 import type { ActionPreview, GameState, Piece } from '../game/types';
 import { dimensions, footprint } from '../game/pieces';
 export type Vec3 = [number, number, number];
+export interface MotionPose {
+  position: Vec3;
+  scale: number;
+  yaw: number;
+  promoted: boolean;
+  baseYaw: number;
+}
 export interface MoveMotion {
+  choicePreview?: { target: ActionPreview; from: MotionPose; startedAt: number };
+  resolveFrom?: MotionPose;
   stage?: 'choice' | 'resolve';
   before: Piece | null;
   action: ActionPreview;
@@ -73,14 +82,21 @@ export function landingMoment(motion: MoveMotion) {
   return motion.before ? IMPACT : 0.66;
 }
 /** A deterministic path shared by staged player choices and complete NPC actions. */
-export function sampleMotion(motion: MoveMotion, t: number) {
+function samplePath(motion: MoveMotion, t: number) {
   const after = motion.action.piece;
   const before = motion.before;
   const final = center(after);
   if (motion.reduced) {
     const waiting = motion.stage === 'choice';
     return {
-      position: waiting && before ? center({ ...before, at: after.at }) : final,
+      position:
+        waiting && before
+          ? ([
+              center({ ...before, at: after.at })[0],
+              HOVER_HEIGHT,
+              center({ ...before, at: after.at })[2],
+            ] as Vec3)
+          : final,
       scale: 1,
       yaw: facing(waiting && before ? before : after),
       promoted: waiting && before ? before.promoted : after.promoted,
@@ -157,4 +173,69 @@ export function captureProgress(motion: MoveMotion, victim: Piece, t: number) {
     (t - (motion.reduced ? 0 : at)) /
       (hasTransformation(motion) || motion.stage === 'resolve' ? 0.12 : 0.16),
   );
+}
+
+/** Preview poses are presentation data only; they never modify a legal action or match state. */
+export function sampleMotion(
+  motion: MoveMotion,
+  t: number,
+  now = motion.startedAt + t * motion.duration,
+): MotionPose {
+  const path = samplePath(motion, t);
+  const action = motion.action.action;
+  const baseYaw =
+    action.type === 'move' && action.transformation?.type === 'rotate'
+      ? ((-action.transformation.direction * Math.PI) / 2) * transformationProgress(motion, t)
+      : 0;
+  const pose: MotionPose = { ...path, baseYaw };
+  if (motion.stage === 'choice' && motion.choicePreview && now >= motion.choicePreview.startedAt) {
+    const preview = motion.choicePreview;
+    const target = preview.target;
+    const rotation =
+      target.action.type === 'move' && target.action.transformation?.type === 'rotate'
+        ? (-target.action.transformation.direction * Math.PI) / 2
+        : 0;
+    const blend = motion.reduced ? 1 : smooth((now - preview.startedAt) / 280);
+    return blendPose(
+      preview.from,
+      {
+        position: [center(target.piece)[0], HOVER_HEIGHT, center(target.piece)[2]],
+        yaw: facing(target.piece),
+        baseYaw: rotation,
+        scale: 1,
+        promoted: target.piece.promoted,
+      },
+      blend,
+    );
+  }
+  if (motion.stage === 'resolve' && motion.resolveFrom) {
+    const blend = motion.reduced ? 1 : smooth(t / 0.62);
+    const target: MotionPose = {
+      ...pose,
+      position: [center(motion.action.piece)[0], pose.position[1], center(motion.action.piece)[2]],
+      yaw: facing(motion.action.piece),
+      baseYaw:
+        action.type === 'move' && action.transformation?.type === 'rotate'
+          ? (-action.transformation.direction * Math.PI) / 2
+          : 0,
+    };
+    const result = blendPose(motion.resolveFrom, target, blend);
+    result.position[1] = pose.position[1];
+    result.scale = pose.scale;
+    result.promoted =
+      transformationProgress(motion, t) > 0.5
+        ? motion.action.piece.promoted
+        : motion.resolveFrom.promoted;
+    return result;
+  }
+  return pose;
+}
+function blendPose(from: MotionPose, to: MotionPose, t: number): MotionPose {
+  return {
+    position: from.position.map((v, i) => v + (to.position[i] - v) * t) as Vec3,
+    yaw: from.yaw + (to.yaw - from.yaw) * t,
+    baseYaw: from.baseYaw + (to.baseYaw - from.baseYaw) * t,
+    scale: from.scale + (to.scale - from.scale) * t,
+    promoted: t > 0.5 ? to.promoted : from.promoted,
+  };
 }

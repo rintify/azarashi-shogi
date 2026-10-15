@@ -45,14 +45,16 @@ describe('compact touch controls', () => {
     fireEvent.click(screen.getByText('シャチを選ぶ'));
     fireEvent.click(screen.getByText('捕食先を選ぶ'));
     expect(screen.queryByLabelText('あなたのストック')).toBeNull();
-    const candidates = screen.getByLabelText('変身を選択').querySelectorAll('button');
-    expect(candidates).toHaveLength(5);
-    for (let i = 1; i < 5; i++) {
-      fireEvent.click(screen.getByLabelText('次の変身候補'));
+    const candidates = screen
+      .getByRole('group', { name: 'シャチの向きを選択' })
+      .querySelectorAll('button');
+    expect(candidates).toHaveLength(4);
+    for (let i = 0; i < 4; i++) {
+      fireEvent.click(candidates[i]);
       expect(candidates[i].getAttribute('aria-pressed')).toBe('true');
       expect(submit).not.toHaveBeenCalled();
     }
-    fireEvent.click(screen.getByRole('button', { name: '変身して着地' }));
+    fireEvent.click(screen.getByRole('button', { name: '成る' }));
     expect(submit).toHaveBeenCalledWith(
       {
         type: 'move',

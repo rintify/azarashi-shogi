@@ -1,14 +1,6 @@
 import type { Kind } from '../game/types';
-/** Hand-drawn silhouette vocabulary shared by every inventory and dialog. */
-const silhouettes: Record<Kind, string> = {
-  seal: 'M7 44c3-9 10-10 18-9 3-10 8-17 18-17 10 0 15 10 11 18-3 7-12 10-21 10l-8 8-6-3 3-7-11 3-8-5 4-6Z',
-  penguin:
-    'M23 22c-1-7 3-13 9-13s10 6 9 13c8 7 9 19 6 27l8 7-13 1-10-4-10 4-13-1 8-7c-3-8-2-20 6-27Zm-2 7-12 13 3 5 9-6m22-12 12 13-3 5-9-6',
-  bear: 'M9 30c1-10 12-12 22-9l8-7 8 1 3 7 9 6-2 9-10 2-3 14-7 0-2-15-13 0-3 15-7 0 1-16-4-7Z',
-  orca: 'M6 36c4-9 13-15 26-14l5-14 8 15c6 2 10 6 13 10l-2 12-9-2-9 9-7-3 5-8c-11 4-20 3-27 1l-6 9-2-12 5-3Z',
-  walrus:
-    'M8 35c0-13 9-22 24-22s24 9 24 22c0 9-5 15-14 17l-3-20-5 0-2 24-2-24-5 0-3 20C13 50 8 44 8 35Z',
-};
+
+/** Small, authored animal portraits remain legible in the compact stock bars. */
 export function AnimalIcon({
   kind,
   promoted = false,
@@ -18,22 +10,93 @@ export function AnimalIcon({
   promoted?: boolean;
   className?: string;
 }) {
+  const dark = kind === 'orca' || kind === 'penguin' || (kind === 'seal' && promoted);
+  const coat = dark ? '#30415a' : kind === 'walrus' ? '#d5a78c' : '#fffdf4';
   return (
     <svg
       className={`animal-icon ${className}`}
       viewBox="0 0 64 64"
-      fill="currentColor"
       aria-hidden="true"
+      stroke="#30415a"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
     >
-      <path d={silhouettes[kind]} stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
-      {kind === 'seal' && <circle cx="45" cy="25" r="2" fill="var(--icon-cutout,#123346)" />}
-      {kind === 'penguin' && (
-        <ellipse cx="32" cy="36" rx="8" ry="12" fill="var(--icon-cutout,#123346)" />
+      {kind === 'bear' && (
+        <g fill={coat}>
+          <circle cx="16" cy="16" r="9" />
+          <circle cx="48" cy="16" r="9" />
+        </g>
       )}
       {kind === 'orca' && (
-        <ellipse cx="17" cy="32" rx="5" ry="2.7" fill="var(--icon-cutout,#123346)" />
+        <path d="M26 17 35 4 39 20M12 42 3 49 13 51M52 42 61 49 51 51" fill={coat} />
       )}
-      {promoted && <path d="m50 5-7 12h7l-3 9L60 11h-8l3-6Z" fill="#f6bf6a" />}
+      {kind === 'seal' && <path d="m13 40-10 9 15 1m33-10 10 9-15 1" fill={coat} />}
+      <path d="M9 35C9 18 18 12 32 12s23 6 23 23c0 14-10 21-23 21S9 49 9 35Z" fill={coat} />
+      {kind === 'penguin' && (
+        <path
+          d="M18 39c0-12 6-15 14-15s14 3 14 15c0 10-6 15-14 15s-14-5-14-15Z"
+          fill="#fffdf4"
+          stroke="none"
+        />
+      )}
+      {kind === 'orca' && (
+        <g fill="#fffdf4" stroke="none">
+          <ellipse cx="19" cy="32" rx="8" ry="6" transform="rotate(-20 19 32)" />
+          <ellipse cx="45" cy="32" rx="8" ry="6" transform="rotate(20 45 32)" />
+          <path d="M22 46q10-12 20 0-10 10-20 0" />
+        </g>
+      )}
+      <g fill={dark && kind === 'seal' ? '#fffdf4' : '#30415a'} stroke="none">
+        <ellipse cx="23" cy="32" rx="2.3" ry="3" />
+        <ellipse cx="41" cy="32" rx="2.3" ry="3" />
+      </g>
+      <g fill="#f4a7ad" stroke="none" opacity=".65">
+        <ellipse cx="17" cy="39" rx="4" ry="2.5" />
+        <ellipse cx="47" cy="39" rx="4" ry="2.5" />
+      </g>
+      {kind === 'penguin' ? (
+        <path d="m27 37 5 6 5-6Z" fill="#ffc765" stroke="#d99a45" />
+      ) : (
+        <>
+          {kind === 'walrus' && (
+            <g fill="#fff8e7" strokeWidth="1.8">
+              <path d="M22 39q-1 16 4 18l3-18Z" />
+              <path d="M35 39q1 16 4 18l3-18Z" />
+            </g>
+          )}
+          <path d="m29 37 3 3 3-3Z" fill="#30415a" />
+          <path
+            d="M32 40v3m-5 0q5 5 10 0"
+            fill="none"
+            stroke={dark && kind === 'seal' ? '#fffdf4' : '#30415a'}
+            strokeWidth="1.8"
+          />
+          {kind === 'seal' && (
+            <path
+              d="m13 39 9 1m-8 4 8-2m20-2 9-1m-9 3 8 2"
+              stroke={dark ? '#fffdf4' : '#688198'}
+              strokeWidth="1.3"
+            />
+          )}
+        </>
+      )}
+      {kind === 'walrus' && (
+        <path
+          d="m22 13-2-10 10 5 6-6 6 7 5-4-2 10Z"
+          fill="#ffdc72"
+          stroke="#cb9544"
+          strokeWidth="1.8"
+        />
+      )}
+      {promoted && kind !== 'seal' && (
+        <path
+          d="m50 3-5 12h6l-3 10L61 10h-8l3-7Z"
+          fill="#ffdc72"
+          stroke="#cb9544"
+          strokeWidth="1.8"
+        />
+      )}
     </svg>
   );
 }

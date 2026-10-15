@@ -2,6 +2,7 @@
 import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { applyAction, createGame, moveOptions } from '../game/engine';
+import { sampleMotion } from './motion';
 import { usePlayback } from './usePlayback';
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => {
@@ -134,4 +135,46 @@ it('cancels an airborne choice and discards its arrival timer on restart', () =>
   act(() => vi.runAllTimers());
   expect(hook.result.current.motion).toBeNull();
   expect(hook.result.current.choiceReady).toBe(false);
+});
+it('keeps the arrival deadline while rotating previews and preserves the exact pose on confirmation', () => {
+  const before = {
+    ...createGame(),
+    phase: 'playing' as const,
+    pieces: [
+      {
+        id: 'o',
+        kind: 'orca' as const,
+        owner: 'south' as const,
+        promoted: false,
+        at: { x: 4, y: 6 },
+      },
+      {
+        id: 's',
+        kind: 'seal' as const,
+        owner: 'north' as const,
+        promoted: false,
+        at: { x: 4, y: 4 },
+      },
+    ],
+  };
+  const options = moveOptions(before, before.pieces[0], before.pieces[1].at);
+  const hook = renderHook(({ game }) => usePlayback(game), {
+    initialProps: { game: before as ReturnType<typeof createGame> },
+  });
+  act(() => hook.result.current.presentChoice(options[0]));
+  act(() => vi.advanceTimersByTime(300));
+  act(() => hook.result.current.previewChoice(options[1]));
+  act(() => vi.advanceTimersByTime(320));
+  expect(hook.result.current.choiceReady).toBe(true);
+  act(() => vi.advanceTimersByTime(280));
+  act(() => hook.result.current.previewChoice(options[4]));
+  expect(hook.result.current.choiceReady).toBe(true);
+  act(() => vi.advanceTimersByTime(140));
+  const motion = hook.result.current.motion!;
+  const now = performance.now();
+  const hovering = sampleMotion(motion, 1, now);
+  hook.rerender({ game: applyAction(before, options[4].action) });
+  expect(hook.result.current.motion!.resolveFrom).toEqual(hovering);
+  expect(sampleMotion(hook.result.current.motion!, 0).position).toEqual(hovering.position);
+  expect(hook.result.current.settled).toBe(before);
 });

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { ActionPreview, GameState } from '../game/types';
-import { createMotion, hasTransformation, type MoveMotion } from './motion';
+import { createMotion, hasTransformation, progress, sampleMotion, type MoveMotion } from './motion';
 
 /** Choice flights are transient; canonical state changes only after confirmation. */
 export function usePlayback(game: GameState, reduced = false) {
@@ -29,11 +29,35 @@ export function usePlayback(game: GameState, reduced = false) {
     },
     [game, reduced],
   );
+  const previewChoice = useCallback((target: ActionPreview | null) => {
+    const current = staged.current?.motion;
+    if (!current || !target || target.piece.kind !== 'orca') return;
+    if (current.choicePreview?.target === target) return;
+    const now = performance.now();
+    const next: MoveMotion = {
+      ...current,
+      choicePreview: {
+        target,
+        from: sampleMotion(current, progress(current, now), now),
+        startedAt: Math.max(now, current.startedAt + current.duration),
+      },
+    };
+    // The flight completes first. Selection changes then animate in place.
+    if (now < current.startedAt + current.duration)
+      next.choicePreview!.from = sampleMotion(current, 1, current.startedAt + current.duration);
+    staged.current = { game: staged.current!.game, motion: next };
+    setMotion(next);
+  }, []);
+  const arrivalAt = motion?.stage === 'choice' ? motion.startedAt + motion.duration : null;
   useEffect(() => {
-    if (motion?.stage !== 'choice') return;
-    const timer = window.setTimeout(() => setChoiceReady(true), motion.duration);
+    if (arrivalAt === null) return;
+    const timer = window.setTimeout(
+      () => setChoiceReady(true),
+      Math.max(0, arrivalAt - performance.now()),
+    );
     return () => window.clearTimeout(timer);
-  }, [motion]);
+  }, [arrivalAt]);
+
   useLayoutEffect(() => {
     if (game === settled) return;
     const next = createMotion(settled, game, performance.now(), reduced);
@@ -42,6 +66,9 @@ export function usePlayback(game: GameState, reduced = false) {
       staged.current?.game === settled &&
       staged.current.motion.action.piece.id === next.action.piece.id
     ) {
+      const previous = staged.current.motion;
+      const now = performance.now();
+      next.resolveFrom = sampleMotion(previous, progress(previous, now), now);
       next.stage = 'resolve';
       next.duration = reduced ? 180 : hasTransformation(next) ? 1150 : 620;
     }
@@ -64,6 +91,7 @@ export function usePlayback(game: GameState, reduced = false) {
     resolving: game !== settled,
     choiceReady,
     presentChoice,
+    previewChoice,
     settled,
   };
 }
