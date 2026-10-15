@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useMemo, useRef } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { Html, OrbitControls, RoundedBox } from '@react-three/drei';
 import { Vector3 } from 'three';
@@ -42,9 +42,9 @@ function Camera({
     const side = human === 'south' ? 1 : -1;
     const scale = Math.max(1, size.height / size.width);
     camera.position.set(
-      view === 'top' ? 0 : 5 * side * scale,
-      (view === 'top' ? 14.6 : 13.5) * scale,
-      view === 'top' ? 0.01 * side : 10 * side * scale,
+      view === 'top' ? 0 : 7.5 * side * scale,
+      (view === 'top' ? 14.6 : 15.5) * scale,
+      view === 'top' ? 0.01 * side : 13 * side * scale,
     );
     camera.lookAt(new Vector3(0, 0, 0));
     if (controls.current) {
@@ -100,7 +100,7 @@ function IceWorld() {
         shadow-normalBias={0.035}
       />
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.66, 0]} receiveShadow>
-        <circleGeometry args={[12, 96]} />
+        <circleGeometry args={[7.7, 96]} />
         <meshStandardMaterial color="#e6f2f6" roughness={0.95} />
       </mesh>
       {[
@@ -130,7 +130,7 @@ function IceWorld() {
     </>
   );
 }
-function BoardContents(props: BoardProps) {
+function BoardContents(props: BoardProps & { htmlPortal: RefObject<HTMLDivElement> }) {
   const {
     game,
     selectedId,
@@ -161,12 +161,12 @@ function BoardContents(props: BoardProps) {
           : extra
             ? '#f0c184'
             : available
-              ? '#d0e8da'
+              ? '#b4dfc5'
               : lastCells.has(key)
                 ? '#d4e9ed'
                 : (cell.x + cell.y) % 2 === 0
-                  ? '#e6f2f5'
-                  : '#c5dce6';
+                  ? '#eef7fb'
+                  : '#b2d3e2';
         return (
           <group key={key} position={world(cell)}>
             <mesh
@@ -189,8 +189,8 @@ function BoardContents(props: BoardProps) {
             </mesh>
             {available && !target && (
               <mesh position={[0, 0.045, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-                <circleGeometry args={[0.075, 24]} />
-                <meshBasicMaterial color="#64a99a" transparent opacity={0.75} />
+                <circleGeometry args={[0.095, 24]} />
+                <meshBasicMaterial color="#268568" transparent opacity={0.75} />
               </mesh>
             )}
           </group>
@@ -202,7 +202,8 @@ function BoardContents(props: BoardProps) {
             position={[i - 4.5, 0.04, 5.32]}
             center
             className="board-coordinate"
-            zIndexRange={[1, 0]}
+            portal={props.htmlPortal}
+            zIndexRange={[5, 4]}
           >
             {String.fromCharCode(65 + i)}
           </Html>
@@ -210,7 +211,8 @@ function BoardContents(props: BoardProps) {
             position={[-5.32, 0.04, i - 4.5]}
             center
             className="board-coordinate"
-            zIndexRange={[1, 0]}
+            portal={props.htmlPortal}
+            zIndexRange={[5, 4]}
           >
             {10 - i}
           </Html>
@@ -219,6 +221,7 @@ function BoardContents(props: BoardProps) {
       {game.pieces.map((piece) => (
         <BoardAnimal
           key={piece.id}
+          htmlPortal={props.htmlPortal}
           piece={piece}
           selected={selectedId === piece.id}
           captured={capturedIds.has(piece.id)}
@@ -257,6 +260,7 @@ function BoardContents(props: BoardProps) {
   );
 }
 function BoardAnimal({
+  htmlPortal,
   piece,
   selected,
   captured,
@@ -266,6 +270,7 @@ function BoardAnimal({
   onHover,
   onThreat,
 }: {
+  htmlPortal: RefObject<HTMLDivElement>;
   piece: Piece;
   selected: boolean;
   captured: boolean;
@@ -292,6 +297,7 @@ function BoardAnimal({
       position={world(piece.at, w, h)}
       onClick={(e) => {
         e.stopPropagation();
+        if (e.delta > 5) return;
         onClick({
           x: Math.max(0, Math.min(9, Math.floor(e.point.x + 5))),
           y: Math.max(0, Math.min(9, Math.floor(e.point.z + 5))),
@@ -341,6 +347,7 @@ function BoardAnimal({
           position={[w / 2 - 0.12, piece.kind === 'walrus' ? 1.5 : 1.2, 0]}
           center
           zIndexRange={[20, 10]}
+          portal={htmlPortal}
         >
           <button
             className="threat-badge"
@@ -358,17 +365,24 @@ function BoardAnimal({
   );
 }
 export function BoardScene(props: BoardProps) {
+  const [labelHost, setLabelHost] = useState<HTMLDivElement | null>(null);
+  const htmlPortal = useMemo(() => (labelHost ? { current: labelHost } : null), [labelHost]);
   return (
-    <Suspense fallback={<div className="canvas-loading">氷の盤面を準備しています…</div>}>
-      <Canvas
-        shadows
-        dpr={[1, 1.7]}
-        camera={{ position: [7.8, 12.8, 11.8], fov: 43 }}
-        gl={{ antialias: true, alpha: false }}
-        onPointerMissed={() => props.onHover(null)}
-      >
-        <BoardContents {...props} />
-      </Canvas>
-    </Suspense>
+    <div className="scene-root">
+      <div className="scene-labels" ref={setLabelHost} />
+      <Suspense fallback={<div className="canvas-loading">氷の盤面を準備しています…</div>}>
+        {htmlPortal && (
+          <Canvas
+            shadows
+            dpr={[1, 1.7]}
+            camera={{ position: [7.8, 12.8, 11.8], fov: 43 }}
+            gl={{ antialias: true, alpha: false }}
+            onPointerMissed={() => props.onHover(null)}
+          >
+            <BoardContents {...props} htmlPortal={htmlPortal} />
+          </Canvas>
+        )}
+      </Suspense>
+    </div>
   );
 }

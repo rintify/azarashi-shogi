@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { CaptureDetails } from './CaptureDetails';
 import { ArrowRight, Check, ChevronLeft, ChevronRight, Info, X } from 'lucide-react';
 import type { ActionPreview, GameState } from '../game/types';
 import { DEFINITIONS, dimensions, KINDS, pieceName } from '../game/pieces';
@@ -29,6 +31,7 @@ export function ActionDock({ game, settings, interaction, onHelp }: Props) {
     threat,
     chooseOption,
   } = interaction;
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const status = statusCopy(game, settings.human, interaction);
   const option = pending?.[optionIndex];
   const ownKing = option?.captured.some((p) => p.kind === 'walrus' && p.owner === settings.human);
@@ -50,7 +53,14 @@ export function ActionDock({ game, settings, interaction, onHelp }: Props) {
               <span className="step-label">移動の確認</span>
               <h2>{pending.length > 1 ? '捕食して、変身する？' : 'この駒を捕食します'}</h2>
             </div>
-            <button className="icon-button" aria-label="移動を取り消す" onClick={clearChoice}>
+            <button
+              className="icon-button"
+              aria-label="移動を取り消す"
+              onClick={() => {
+                setDetailsOpen(false);
+                clearChoice();
+              }}
+            >
               <X size={20} />
             </button>
           </div>
@@ -98,16 +108,32 @@ export function ActionDock({ game, settings, interaction, onHelp }: Props) {
               </button>
             ))}
           </div>
-          <p
-            className={`capture-summary ${ownKing ? 'danger' : ''}`}
-            role={ownKing ? 'alert' : undefined}
-          >
-            {ownKing
-              ? bothKings
-                ? '両方の王を捕食 → 引き分け'
-                : '自分の王を捕食 → 敗北'
-              : `捕食：${option.captured.map((p) => `${p.owner === settings.human ? '味方' : '相手'}の${DEFINITIONS[p.kind].short}`).join('、')}`}
-          </p>
+          <div className="capture-line">
+            <p
+              className={`capture-summary ${ownKing ? 'danger' : ''}`}
+              role={ownKing ? 'alert' : undefined}
+            >
+              {ownKing
+                ? bothKings
+                  ? '両方の王を捕食 → 引き分け'
+                  : '自分の王を捕食 → 敗北'
+                : `相手 ${option.captured.filter((p) => p.owner !== settings.human).length}体・味方 ${option.captured.filter((p) => p.owner === settings.human).length}体を捕食`}
+            </p>
+            <button
+              className="capture-detail-button"
+              aria-label="捕食する駒の内訳"
+              onClick={() => setDetailsOpen(true)}
+            >
+              内訳 <Info size={13} />
+            </button>
+          </div>
+          {detailsOpen && (
+            <CaptureDetails
+              pieces={option.captured}
+              human={settings.human}
+              close={() => setDetailsOpen(false)}
+            />
+          )}
           <button className="primary-button full confirm-move" onClick={() => chooseOption(option)}>
             この手を指す <ArrowRight size={18} />
           </button>
@@ -131,7 +157,9 @@ export function ActionDock({ game, settings, interaction, onHelp }: Props) {
               <Info size={20} />
             </button>
           </div>
-          <p className="turn-instruction">{status.text}</p>
+          <p className={`turn-instruction ${dangerSources ? 'danger' : ''}`}>
+            {dangerSources ? `${dangerSources}に捕食される危険があります。` : status.text}
+          </p>
           <div className="reserve-grid" aria-label="あなたのストック">
             {KINDS.map((kind) => (
               <button

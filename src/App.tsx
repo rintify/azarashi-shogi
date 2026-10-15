@@ -22,7 +22,7 @@ export default function App() {
   const [rulesOpen, setRulesOpen] = useState(false);
   const [newGameOpen, setNewGameOpen] = useState(false);
   const [view, setView] = useState<'perspective' | 'top'>(() =>
-    window.matchMedia('(max-width: 760px)').matches ? 'top' : 'perspective',
+    window.matchMedia('(max-width: 760px), (max-height: 520px)').matches ? 'top' : 'perspective',
   );
   const [cameraReset, setCameraReset] = useState(0);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
@@ -79,7 +79,7 @@ export default function App() {
           </button>
         </nav>
       </header>
-      <main className="match-layout">
+      <main className={`match-layout ${interaction.pending ? 'capture-pending' : ''}`}>
         <OpponentBar
           game={game}
           human={settings.human}
@@ -196,7 +196,8 @@ export default function App() {
             </span>
           ) : (
             <span>
-              あなたは{settings.human === 'south' ? '先手' : '後手'} · 青い台座があなたの仲間
+              あなたは{settings.human === 'south' ? '先手' : '後手'} ·{' '}
+              {settings.human === 'south' ? '青' : 'オレンジ'}の台座があなたの仲間
             </span>
           )}
         </div>
