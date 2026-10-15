@@ -1,6 +1,5 @@
 import { Suspense, useMemo, useState, useEffect, type RefObject } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { Html } from '@react-three/drei';
 import { ACESFilmicToneMapping, PCFSoftShadowMap } from 'three';
 import type { ActionPreview, Cell, GameState, Player, Threat } from '../game/types';
 import { cellKey } from '../game/types';
@@ -95,28 +94,6 @@ function BoardContents(props: BoardProps & { htmlPortal: RefObject<HTMLDivElemen
           </group>
         );
       })}
-      {Array.from({ length: 10 }, (_, i) => (
-        <group key={i}>
-          <Html
-            position={[i - 4.5, 0.18, 5.25]}
-            center
-            className="board-coordinate"
-            portal={props.htmlPortal}
-            zIndexRange={[5, 4]}
-          >
-            {String.fromCharCode(65 + i)}
-          </Html>
-          <Html
-            position={[-5.25, 0.18, i - 4.5]}
-            center
-            className="board-coordinate"
-            portal={props.htmlPortal}
-            zIndexRange={[5, 4]}
-          >
-            {10 - i}
-          </Html>
-        </group>
-      ))}
       {[
         ...game.pieces,
         ...(motion?.action.captured.filter(

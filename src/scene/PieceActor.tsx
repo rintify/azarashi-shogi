@@ -6,6 +6,7 @@ import type { Cell, Piece } from '../game/types';
 import { dimensions } from '../game/pieces';
 import { AnimatedPresence } from '../components/AnimatedUI';
 import { Animal } from './Animals';
+import { bodyDynamics } from '../presentation/movement';
 import {
   captureProgress,
   center,
@@ -89,6 +90,15 @@ export function PieceActor({
     root.current.scale.setScalar(Math.max(0.001, scale));
     root.current.visible = scale > 0.005;
     model.current.rotation.y = yaw;
+    const dynamics =
+      moving && motion ? bodyDynamics(motion, progress(motion, performance.now())) : null;
+    model.current.rotation.x = dynamics?.pitch ?? 0;
+    model.current.rotation.z = dynamics?.roll ?? 0;
+    model.current.scale.set(
+      modelScale * (dynamics?.stretch[0] ?? 1),
+      modelScale * (dynamics?.stretch[1] ?? 1),
+      modelScale * (dynamics?.stretch[2] ?? 1),
+    );
     if (beforeModel.current)
       beforeModel.current.visible =
         !moving || promoted === (motion?.before?.promoted ?? piece.promoted);

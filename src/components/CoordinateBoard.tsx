@@ -69,7 +69,7 @@ export function CoordinateBoard({
             }}
             onMouseEnter={() => onHover(cell)}
           >
-            {piece ? <AnimalIcon kind={piece.kind} promoted={piece.promoted} /> : coordinate(cell)}
+            {piece ? <AnimalIcon kind={piece.kind} promoted={piece.promoted} /> : null}
           </button>
         );
       })}

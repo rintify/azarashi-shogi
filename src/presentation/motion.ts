@@ -58,7 +58,9 @@ export function createMotion(
           ? 1850
           : action.captured.length
             ? 1100
-            : 760
+            : original?.kind === 'walrus'
+              ? 1050
+              : 760
         : 640,
   };
 }
@@ -148,7 +150,15 @@ function samplePath(motion: MoveMotion, t: number) {
     position[1] = HOVER_HEIGHT * move * (1 - descent);
   } else {
     const hop =
-      before.kind === 'bear' ? 1.65 : before.kind === 'penguin' && before.promoted ? 0.15 : 0.28;
+      before.kind === 'bear'
+        ? 1.65
+        : before.kind === 'orca'
+          ? 0.12
+          : before.kind === 'walrus'
+            ? 0.55
+            : before.kind === 'penguin' && before.promoted
+              ? 0.15
+              : 0.28;
     position[1] = Math.sin(move * Math.PI) * hop;
   }
   return {
@@ -158,8 +168,8 @@ function samplePath(motion: MoveMotion, t: number) {
     promoted: change > 0.5 ? after.promoted : before.promoted,
   };
 }
-export function captureProgress(motion: MoveMotion, victim: Piece, t: number) {
-  if (motion.stage === 'choice' || motion.stage === 'return') return 0;
+export function captureMoment(motion: MoveMotion, victim: Piece) {
+  if (motion.stage === 'choice' || motion.stage === 'return') return Infinity;
   let at = landingMoment(motion);
   if (motion.before && motion.action.action.type === 'move') {
     const landing = footprint({ ...motion.before, at: motion.action.action.to });
@@ -168,8 +178,12 @@ export function captureProgress(motion: MoveMotion, victim: Piece, t: number) {
     );
     if (!immediate) at = hasTransformation(motion) || motion.stage === 'resolve' ? 0.86 : 0.83;
   }
+  return motion.reduced ? 0 : at;
+}
+export function captureProgress(motion: MoveMotion, victim: Piece, t: number) {
+  if (motion.stage === 'choice' || motion.stage === 'return') return 0;
   return smooth(
-    (t - (motion.reduced ? 0 : at)) /
+    (t - captureMoment(motion, victim)) /
       (hasTransformation(motion) || motion.stage === 'resolve' ? 0.12 : 0.16),
   );
 }

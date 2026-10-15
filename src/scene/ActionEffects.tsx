@@ -1,6 +1,8 @@
 import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import type { Group, Mesh, MeshBasicMaterial } from 'three';
+import { TravelEffects } from './TravelEffects';
+import { SnowImpact } from './SnowImpact';
 import {
   center,
   progress,
@@ -59,6 +61,8 @@ export function ActionEffects({ motion }: { motion: MoveMotion }) {
   });
   return (
     <>
+      <TravelEffects motion={motion} />
+      {motion.action.piece.kind === 'walrus' && <SnowImpact motion={motion} />}
       <group ref={glints} visible={false}>
         {Array.from({ length: 14 }, (_, i) => (
           <mesh key={i}>

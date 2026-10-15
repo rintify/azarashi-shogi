@@ -12,6 +12,7 @@ import {
   VolumeX,
   Snowflake,
   X,
+  Film,
 } from 'lucide-react';
 import { AnimalIcon } from './components/AnimalIcon';
 import { aiDifficulty, isSpectator, playerLabel } from './match/record';
@@ -34,12 +35,24 @@ import { coordinate } from './components/coordinates';
 import { usePlayback } from './presentation/usePlayback';
 import { usePlayArea } from './presentation/usePlayArea';
 import { useGameAudio } from './presentation/useGameAudio';
+import { useReplayLibrary } from './match/useReplayLibrary';
+import { useReplay } from './match/useReplay';
+import { ReplayLibraryDialog } from './components/ReplayLibraryDialog';
+import { ReplayDock } from './components/ReplayDock';
 const BoardScene = lazy(() =>
   import('./scene/BoardScene').then((m) => ({ default: m.BoardScene })),
 );
 
 export default function App() {
-  const { game, settings, warning, submit, restart } = useMatch();
+  const match = useMatch();
+  const library = useReplayLibrary(match.record);
+  const replay = useReplay();
+  const game = replay.game ?? match.game;
+  const settings = replay.record?.settings ?? match.settings;
+  const { submit, restart } = match;
+  const warning = match.warning ?? library.warning;
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [libraryVisible, setLibraryVisible] = useState(false);
   const watching = isSpectator(settings);
   const [paused, setPaused] = useState(false);
   const [stepRequested, setStepRequested] = useState(false);
@@ -62,13 +75,13 @@ export default function App() {
     media.addEventListener('change', update);
     return () => media.removeEventListener('change', update);
   }, []);
-  const playback = usePlayback(game, reduced),
+  const playback = usePlayback(game, reduced, replay.epoch, replay.active ? replay.speed : 1),
     audio = useGameAudio(playback.motion);
   const interaction = useBoardInteraction(
     game,
     settings.human,
     submit,
-    sceneReady && !playback.resolving && !watching,
+    sceneReady && !playback.resolving && !watching && !replay.active && !libraryOpen,
     playback.presentChoice,
   );
   useEffect(() => {
@@ -80,9 +93,9 @@ export default function App() {
     error: aiError,
     retry: retryNpc,
   } = useNpc(
-    game,
-    watching ? null : settings.human,
-    aiDifficulty(settings, game.turn),
+    match.game,
+    isSpectator(match.settings) ? null : match.settings.human,
+    aiDifficulty(match.settings, match.game.turn),
     submit,
     sceneReady &&
       !playback.busy &&
@@ -90,8 +103,46 @@ export default function App() {
       !newGameOpen &&
       !rulesVisible &&
       !settingsVisible &&
+      !libraryOpen &&
+      !libraryVisible &&
+      !replay.active &&
       (!watching || !paused || stepRequested),
+    match.record.seed,
   );
+  useEffect(() => {
+    if (
+      !replay.active ||
+      !replay.playing ||
+      playback.busy ||
+      libraryVisible ||
+      rulesOpen ||
+      rulesVisible ||
+      newGameOpen ||
+      settingsVisible ||
+      !sceneReady
+    )
+      return;
+    if (replay.cursor === replay.total) {
+      replay.pause();
+      return;
+    }
+    const timer = window.setTimeout(replay.advance, 340 / replay.speed);
+    return () => window.clearTimeout(timer);
+  }, [
+    replay.active,
+    replay.playing,
+    replay.cursor,
+    replay.total,
+    replay.speed,
+    replay.advance,
+    playback.busy,
+    libraryVisible,
+    rulesOpen,
+    rulesVisible,
+    newGameOpen,
+    settingsVisible,
+    sceneReady,
+  ]);
   const status = statusCopy(game, settings.human, interaction);
   const resultTitle = watching
     ? game.result?.winner
@@ -113,10 +164,11 @@ export default function App() {
   const king = game.pieces.find((p) => p.kind === 'walrus' && p.owner === settings.human);
   const kingDanger =
     !watching &&
+    !replay.active &&
     !!king &&
     interaction.threats.some((t) => t.targetId === king.id) &&
     !playback.busy;
-  const ended = game.phase === 'finished' && !playback.busy;
+  const ended = game.phase === 'finished' && !playback.busy && !replay.active;
   const last = game.lastAction;
   return (
     <main
@@ -184,6 +236,17 @@ export default function App() {
             <BookOpen size={18} />
           </button>
           <button
+            className="hud-button replay-menu"
+            aria-label="保存したリプレイ"
+            onClick={() => {
+              replay.pause();
+              interaction.clearSelection();
+              setLibraryOpen(true);
+            }}
+          >
+            <Film size={18} />
+          </button>
+          <button
             className="hud-button"
             aria-label="新しい対局"
             onClick={() => setNewGameOpen(true)}
@@ -228,7 +291,15 @@ export default function App() {
         <AnimatedValue
           valueKey={`${game.revision}:${playback.motion?.stage}:${playback.busy}:${kingDanger}:${paused}:${status.title}`}
         >
-          {!sceneReady ? (
+          {replay.active ? (
+            <>
+              {' '}
+              <Film size={14} /> リプレイ{' '}
+              <small>
+                {replay.cursor} / {replay.total}手
+              </small>
+            </>
+          ) : !sceneReady ? (
             '氷原を準備しています'
           ) : playback.busy ? (
             <>
@@ -285,9 +356,13 @@ export default function App() {
           />
         </section>
       </AnimatedPresence>
-      <AnimatedPresence show={!ended && !(interaction.pending && interaction.pending.length > 1)}>
+      <AnimatedPresence
+        show={replay.active || (!ended && !(interaction.pending && interaction.pending.length > 1))}
+      >
         <div className="bottom-hud">
-          {watching ? (
+          {replay.active ? (
+            <ReplayDock replay={replay} busy={playback.busy} />
+          ) : watching ? (
             <SpectatorDock
               game={game}
               settings={settings}
@@ -373,9 +448,10 @@ export default function App() {
       </AnimatedPresence>
       <AnimatedPresence show={newGameOpen} onPresenceChange={setSettingsVisible}>
         <NewGameDialog
-          current={settings}
+          current={match.settings}
           close={() => setNewGameOpen(false)}
           start={(s) => {
+            replay.close();
             setResultDismissed(false);
             setPaused(false);
             setStepRequested(false);
@@ -383,6 +459,20 @@ export default function App() {
             setNewGameOpen(false);
             interaction.clearSelection();
             setKeyboardOpen(false);
+          }}
+        />
+      </AnimatedPresence>
+      <AnimatedPresence show={libraryOpen} onPresenceChange={setLibraryVisible}>
+        <ReplayLibraryDialog
+          items={library.items}
+          currentId={match.record.id}
+          warning={library.warning}
+          close={() => setLibraryOpen(false)}
+          importRecord={library.importRecord}
+          watch={(record) => {
+            setKeyboardOpen(false);
+            setLibraryOpen(false);
+            replay.open(record);
           }}
         />
       </AnimatedPresence>

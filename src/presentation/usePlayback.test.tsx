@@ -9,6 +9,21 @@ afterEach(() => {
   cleanup();
   vi.useRealTimers();
 });
+it('seeks to adjacent replay frames without animating stale actions, and scales forward playback speed', () => {
+  const initial = createGame();
+  const placed = applyAction(initial, { type: 'place', kind: 'seal', at: { x: 4, y: 7 } });
+  const hook = renderHook(({ game, epoch, speed }) => usePlayback(game, false, epoch, speed), {
+    initialProps: { game: initial, epoch: 0, speed: 1 },
+  });
+  hook.rerender({ game: placed, epoch: 1, speed: 1 });
+  expect(hook.result.current.busy).toBe(false);
+  expect(hook.result.current.motion).toBeNull();
+  hook.rerender({ game: initial, epoch: 2, speed: 2 });
+  hook.rerender({ game: placed, epoch: 2, speed: 2 });
+  expect(hook.result.current.motion?.duration).toBe(320);
+  act(() => vi.advanceTimersByTime(320));
+  expect(hook.result.current.busy).toBe(false);
+});
 it('blocks the next turn until the visible action finishes and cancels on restart', () => {
   const initial = createGame();
   const hook = renderHook(({ game }) => usePlayback(game), { initialProps: { game: initial } });

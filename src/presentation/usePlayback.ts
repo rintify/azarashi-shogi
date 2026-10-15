@@ -3,11 +3,12 @@ import type { ActionPreview, GameState } from '../game/types';
 import { createMotion, hasTransformation, progress, sampleMotion, type MoveMotion } from './motion';
 
 /** Choice flights are transient; canonical state changes only after confirmation. */
-export function usePlayback(game: GameState, reduced = false) {
+export function usePlayback(game: GameState, reduced = false, resetToken = 0, speed = 1) {
   const [settled, setSettled] = useState(game);
   const [motion, setMotion] = useState<MoveMotion | null>(null);
   const [choiceReady, setChoiceReady] = useState(false);
   const staged = useRef<{ game: GameState; motion: MoveMotion } | null>(null);
+  const previousReset = useRef(resetToken);
   const presentChoice = useCallback(
     (action: ActionPreview | null) => {
       setChoiceReady(false);
@@ -83,6 +84,14 @@ export function usePlayback(game: GameState, reduced = false) {
   }, [motion]);
 
   useLayoutEffect(() => {
+    if (previousReset.current !== resetToken) {
+      previousReset.current = resetToken;
+      staged.current = null;
+      setChoiceReady(false);
+      setMotion(null);
+      setSettled(game);
+      return;
+    }
     if (game === settled) return;
     const next = createMotion(settled, game, performance.now(), reduced);
     if (
@@ -98,6 +107,7 @@ export function usePlayback(game: GameState, reduced = false) {
     }
     staged.current = null;
     setChoiceReady(false);
+    if (next) next.duration /= speed;
     setMotion(next);
     if (!next) {
       setSettled(game);
@@ -108,7 +118,7 @@ export function usePlayback(game: GameState, reduced = false) {
       setSettled(game);
     }, next.duration);
     return () => window.clearTimeout(timer);
-  }, [game, settled, reduced]);
+  }, [game, settled, reduced, resetToken, speed]);
   return {
     motion,
     busy: game !== settled || motion?.stage === 'choice' || motion?.stage === 'return',

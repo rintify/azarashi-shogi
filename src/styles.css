@@ -1660,3 +1660,166 @@ button:not(:disabled):focus-visible {
     0 5px 0 var(--danger-color),
     0 8px 16px #a51d3733;
 }
+
+/* Replay controls float over the world; entering replay never changes the board framing. */
+.replay-menu {
+  background: #dff6ff;
+  color: #397b9c;
+}
+.replay-dock {
+  border: 2px solid white;
+  border-radius: 26px;
+  padding: 4px 12px 5px;
+  background: #f3fcfff5;
+  color: var(--game-ink);
+  box-shadow:
+    0 4px 0 #74a2bb,
+    0 8px 20px #236a9630;
+  animation: ui-enter 260ms var(--ui-spring) both;
+}
+.replay-dock input {
+  display: block;
+  width: 100%;
+  height: 18px;
+  margin: 0;
+  accent-color: #2c9fc5;
+  cursor: pointer;
+  touch-action: pan-x;
+}
+.replay-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2px;
+}
+.replay-controls button {
+  display: grid;
+  place-items: center;
+  background: transparent;
+  width: 40px;
+  height: 38px;
+  padding: 0;
+  border-radius: 50%;
+}
+.replay-controls button:not(:disabled):hover {
+  background: #d5f1fa;
+}
+.replay-controls button:disabled {
+  opacity: 0.3;
+}
+.replay-controls .replay-play {
+  background: #ffe39b;
+  color: #806439;
+  border: 2px solid white;
+  box-shadow: 0 3px 0 #d6ae63;
+}
+.replay-controls .replay-speed {
+  font-size: 12px;
+  font-weight: 800;
+}
+.replay-list {
+  display: grid;
+  gap: 12px;
+  margin: 18px 0;
+}
+.replay-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 10px;
+  background: #e6f3f7;
+  border: 2px solid white;
+  border-radius: 22px;
+  box-shadow: 0 3px 0 #c3e0e9;
+}
+.replay-card-copy {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+.replay-card-copy strong {
+  font-size: 12px;
+}
+.replay-card-copy span,
+.replay-card-copy small {
+  font-size: 10px;
+  color: #668294;
+}
+.replay-card .animal-icon {
+  width: 32px;
+  height: 32px;
+}
+.replay-card .icon-button {
+  width: 32px;
+  min-width: 32px;
+  height: 44px;
+  color: #5d8799;
+  background: transparent;
+}
+.replay-watch,
+.replay-import {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  background: #64bad1;
+  color: white;
+  border: 2px solid white;
+  border-radius: 17px;
+  box-shadow: 0 3px 0 #4793b0;
+  font-weight: 800;
+  padding: 8px 12px;
+  font-size: 12px;
+}
+.replay-import {
+  width: 100%;
+  background: #f9e7ac;
+  color: #82663e;
+  box-shadow: 0 3px 0 #cfb57a;
+}
+.replay-empty {
+  text-align: center;
+  padding: 30px 0;
+  color: #6a899b;
+  font-size: 12px;
+}
+.replay-empty .animal-icon {
+  width: 65px;
+  height: 65px;
+  margin: 0 auto 12px;
+}
+.replay-warning {
+  margin-top: 12px;
+  color: #b04458;
+  font-size: 12px;
+  line-height: 1.6;
+}
+@media (max-width: 760px) {
+  .game-header nav,
+  .view-controls {
+    gap: 3px;
+  }
+  .hud-button {
+    width: 34px;
+    height: 38px;
+  }
+  .replay-library {
+    padding: 16px;
+  }
+  .replay-card {
+    gap: 6px;
+    padding: 12px 8px;
+  }
+}
+@media (max-width: 350px) {
+  .game-brand h1 {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .replay-dock {
+    animation: none;
+  }
+}
