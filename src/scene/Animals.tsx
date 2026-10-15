@@ -333,7 +333,7 @@ export function Animal({
 /** A small body badge replaces team-colored plinths without obscuring the animal. */
 function OwnerBadge({ kind, promoted, owner }: { kind: Kind; promoted: boolean; owner: Player }) {
   const sites: Record<Kind, Vec3> = {
-    seal: [0, 0.72, 0.12],
+    seal: [0, 0.65, -0.22],
     penguin: [0, 0.51, 0.298],
     bear: [0, 0.78, -0.1],
     orca: [0, 0.82, 0.03],
