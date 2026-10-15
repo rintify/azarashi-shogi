@@ -1,4 +1,5 @@
 import { applyAction, createGame } from '../game/engine';
+import { RULES_VERSION } from '../game/types';
 import type { GameAction, GameState, Player } from '../game/types';
 export type Difficulty = 1 | 2 | 3 | 4 | 5;
 export interface MatchSettings {
@@ -9,12 +10,12 @@ export interface MatchSettings {
 }
 export interface GameRecord {
   version: 1;
-  rulesVersion: 2;
+  rulesVersion: typeof RULES_VERSION;
   settings: MatchSettings;
   actions: GameAction[];
 }
 export const DEFAULT_SETTINGS: MatchSettings = { human: 'south', difficulty: 3 };
-export const STORAGE_KEY = 'azarashi-shogi.match.v2';
+export const STORAGE_KEY = `azarashi-shogi.match.v${RULES_VERSION}`;
 export const LEGACY_STORAGE_KEY = 'azarashi-shogi.match.v1';
 export const isSpectator = (settings: MatchSettings) => settings.mode === 'ai-vs-ai';
 export const playerLabel = (settings: MatchSettings, player: Player) =>
@@ -28,7 +29,7 @@ export const playerLabel = (settings: MatchSettings, player: Player) =>
 export const aiDifficulty = (settings: MatchSettings, player: Player) =>
   settings.aiLevels?.[player] ?? settings.difficulty;
 export function newRecord(settings = DEFAULT_SETTINGS): GameRecord {
-  return { version: 1, rulesVersion: 2, settings: { ...settings }, actions: [] };
+  return { version: 1, rulesVersion: RULES_VERSION, settings: { ...settings }, actions: [] };
 }
 export function replayRecord(record: GameRecord): GameState {
   return record.actions.reduce((state, action) => applyAction(state, action), createGame());
@@ -37,7 +38,7 @@ export function decodeRecord(text: string): { record: GameRecord; game: GameStat
   const record = JSON.parse(text) as GameRecord;
   if (
     record.version !== 1 ||
-    record.rulesVersion !== 2 ||
+    record.rulesVersion !== RULES_VERSION ||
     !validSettings(record.settings) ||
     !Array.isArray(record.actions)
   )

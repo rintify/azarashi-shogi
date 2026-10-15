@@ -121,3 +121,18 @@ it('previews each orca footprint in the air and resolves from the preview withou
     expect(sampleMotion(keeping, 1).promoted).toBe(false);
   }
 });
+it('returns from the current airborne preview to the source without consuming victims', () => {
+  const options = moveOptions(state, orca, food.at);
+  const flight = {
+    ...createMotion(state, applyAction(state, options[0].action), 0)!,
+    stage: 'choice' as const,
+  };
+  const from = sampleMotion(flight, 1);
+  const returning = { ...flight, stage: 'return' as const, resolveFrom: from, duration: 500 };
+  expect(sampleMotion(returning, 0)).toEqual(from);
+  center(orca).forEach((value, index) =>
+    expect(sampleMotion(returning, 1).position[index]).toBeCloseTo(value),
+  );
+  expect(sampleMotion(returning, 1).promoted).toBe(orca.promoted);
+  expect(captureProgress(returning, food, 1)).toBe(0);
+});

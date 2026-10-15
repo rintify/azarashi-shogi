@@ -229,6 +229,8 @@ export default function App() {
               {actorLabel(playback.motion?.action.piece.owner ?? last?.piece.owner)}：
               {playback.motion?.stage === 'choice' ? (
                 '好きな姿をえらぼう！'
+              ) : playback.motion?.stage === 'return' ? (
+                'もとの場所へ戻ります'
               ) : (
                 <>
                   {last && pieceName(last.piece)}を{last?.from ? '移動' : '配置'}

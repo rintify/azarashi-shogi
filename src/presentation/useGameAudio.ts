@@ -28,7 +28,7 @@ export function useGameAudio(motion: MoveMotion | null) {
   }, [enabled]);
   useEffect(() => {
     const ctx = context.current;
-    if (!ctx || !motion || !enabled || ctx.state !== 'running') return;
+    if (!ctx || !motion || motion.stage === 'return' || !enabled || ctx.state !== 'running') return;
     const nodes: OscillatorNode[] = [];
     function tone(delay: number, frequency: number, length: number, volume: number) {
       const oscillator = ctx!.createOscillator(),

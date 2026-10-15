@@ -1,3 +1,5 @@
+export const RULES_VERSION = 2 as const;
+
 /** Serializable contracts shared by the UI, worker, and a future match server. */
 export type Player = 'south' | 'north';
 export type Kind = 'seal' | 'penguin' | 'bear' | 'orca' | 'walrus';
@@ -16,7 +18,7 @@ export interface Piece {
 export type Stock = Record<Kind, number>;
 export type Phase = 'playing' | 'finished';
 export interface GameState {
-  rulesVersion: 2;
+  rulesVersion: typeof RULES_VERSION;
   revision: number;
   phase: Phase;
   turn: Player;

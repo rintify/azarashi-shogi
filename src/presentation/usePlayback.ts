@@ -12,8 +12,20 @@ export function usePlayback(game: GameState, reduced = false) {
     (action: ActionPreview | null) => {
       setChoiceReady(false);
       if (!action) {
+        const previous = staged.current?.motion;
         staged.current = null;
-        setMotion((current) => (current?.stage === 'choice' ? null : current));
+        if (previous?.before) {
+          const now = performance.now();
+          setMotion({
+            ...previous,
+            stage: 'return',
+            startedAt: now,
+            duration: reduced ? 1 : 500,
+            choicePreview: undefined,
+            resolveFrom: sampleMotion(previous, progress(previous, now), now),
+            action: { ...previous.action, captured: [] },
+          });
+        }
         return;
       }
       const next: MoveMotion = {
@@ -64,6 +76,12 @@ export function usePlayback(game: GameState, reduced = false) {
     return () => window.clearTimeout(timer);
   }, [arrivalAt]);
 
+  useEffect(() => {
+    if (motion?.stage !== 'return') return;
+    const timer = window.setTimeout(() => setMotion(null), motion.duration);
+    return () => window.clearTimeout(timer);
+  }, [motion]);
+
   useLayoutEffect(() => {
     if (game === settled) return;
     const next = createMotion(settled, game, performance.now(), reduced);
@@ -93,8 +111,8 @@ export function usePlayback(game: GameState, reduced = false) {
   }, [game, settled, reduced]);
   return {
     motion,
-    busy: game !== settled || motion?.stage === 'choice',
-    resolving: game !== settled,
+    busy: game !== settled || motion?.stage === 'choice' || motion?.stage === 'return',
+    resolving: game !== settled || motion?.stage === 'return',
     choiceReady,
     presentChoice,
     previewChoice,

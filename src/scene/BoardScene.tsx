@@ -38,8 +38,9 @@ function BoardContents(props: BoardProps & { htmlPortal: RefObject<HTMLDivElemen
   const legal = useMemo(() => new Set(props.legalCells.map(cellKey)), [props.legalCells]);
   const reachable = new Set(props.reachableCells.map(cellKey));
   const unsafe = new Set(props.unsafeCells.map(cellKey));
-  const target = new Set((preview ?? motion?.action)?.footprint.map(cellKey));
-  const extra = new Set((preview ?? motion?.action)?.captureCells.map(cellKey));
+  const shownAction = preview ?? (motion?.stage === 'return' ? null : motion?.action);
+  const target = new Set(shownAction?.footprint.map(cellKey));
+  const extra = new Set(shownAction?.captureCells.map(cellKey));
   const captured = new Set(preview?.captured.map((p) => p.id));
   const last = new Set(game.lastAction?.footprint.map(cellKey));
   return (
@@ -144,7 +145,7 @@ function BoardContents(props: BoardProps & { htmlPortal: RefObject<HTMLDivElemen
         piece={preview?.action.type === 'place' && !busy ? preview.piece : null}
         reduced={props.reduced}
       />
-      {motion && <ActionEffects key={game.revision} motion={motion} />}
+      {motion && motion.stage !== 'return' && <ActionEffects key={game.revision} motion={motion} />}
       <SceneCamera
         area={props.area}
         view={props.view}

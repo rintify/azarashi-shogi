@@ -128,8 +128,12 @@ it('cancels an airborne choice and discards its arrival timer on restart', () =>
   });
   act(() => hook.result.current.presentChoice(preview));
   act(() => hook.result.current.presentChoice(null));
+  expect(hook.result.current.motion?.stage).toBe('return');
+  expect(hook.result.current.busy).toBe(true);
+  expect(hook.result.current.resolving).toBe(true);
+  act(() => vi.advanceTimersByTime(500));
   expect(hook.result.current.motion).toBeNull();
-  expect(hook.result.current.busy).toBe(false);
+  expect(hook.result.current.settled).toBe(before);
   act(() => hook.result.current.presentChoice(preview));
   hook.rerender({ game: createGame() });
   act(() => vi.runAllTimers());

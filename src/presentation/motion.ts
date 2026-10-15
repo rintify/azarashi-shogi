@@ -10,7 +10,7 @@ export interface MotionPose {
 export interface MoveMotion {
   choicePreview?: { target: ActionPreview; from: MotionPose; startedAt: number };
   resolveFrom?: MotionPose;
-  stage?: 'choice' | 'resolve';
+  stage?: 'choice' | 'resolve' | 'return';
   before: Piece | null;
   action: ActionPreview;
   startedAt: number;
@@ -159,7 +159,7 @@ function samplePath(motion: MoveMotion, t: number) {
   };
 }
 export function captureProgress(motion: MoveMotion, victim: Piece, t: number) {
-  if (motion.stage === 'choice') return 0;
+  if (motion.stage === 'choice' || motion.stage === 'return') return 0;
   let at = landingMoment(motion);
   if (motion.before && motion.action.action.type === 'move') {
     const landing = footprint({ ...motion.before, at: motion.action.action.to });
@@ -180,6 +180,21 @@ export function sampleMotion(
   t: number,
   now = motion.startedAt + t * motion.duration,
 ): MotionPose {
+  if (motion.stage === 'return' && motion.before && motion.resolveFrom) {
+    const blend = motion.reduced ? 1 : smooth(t);
+    const returned = blendPose(
+      motion.resolveFrom,
+      {
+        position: center(motion.before),
+        yaw: facing(motion.before),
+        scale: 1,
+        promoted: motion.before.promoted,
+      },
+      blend,
+    );
+    if (!motion.reduced) returned.position[1] += Math.sin(Math.PI * t) * 0.18;
+    return returned;
+  }
   const pose: MotionPose = samplePath(motion, t);
   if (motion.stage === 'choice' && motion.choicePreview && now >= motion.choicePreview.startedAt) {
     const preview = motion.choicePreview;

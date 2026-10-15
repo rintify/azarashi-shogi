@@ -1,5 +1,13 @@
-import { BOARD_SIZE, canTransform, fits, footprint, initialStock, KINDS } from './pieces';
-import { cellKey, otherPlayer, sameCell } from './types';
+import {
+  BOARD_SIZE,
+  canTransform,
+  dimensions,
+  fits,
+  footprint,
+  initialStock,
+  KINDS,
+} from './pieces';
+import { cellKey, otherPlayer, RULES_VERSION, sameCell } from './types';
 import type {
   ActionPreview,
   Cell,
@@ -13,15 +21,19 @@ import type {
 } from './types';
 
 export function createGame(): GameState {
+  const [width, height] = dimensions({ kind: 'walrus', promoted: false });
   return {
-    rulesVersion: 2,
+    rulesVersion: RULES_VERSION,
     revision: 0,
     phase: 'playing',
     turn: 'south',
-    pieces: [
-      { id: 'king-south', kind: 'walrus', owner: 'south', at: { x: 4, y: 8 }, promoted: false },
-      { id: 'king-north', kind: 'walrus', owner: 'north', at: { x: 4, y: 0 }, promoted: false },
-    ],
+    pieces: (['south', 'north'] as const).map((owner) => ({
+      id: `king-${owner}`,
+      kind: 'walrus',
+      owner,
+      at: { x: (BOARD_SIZE - width) / 2, y: owner === 'south' ? BOARD_SIZE - height : 0 },
+      promoted: false,
+    })),
     stocks: { south: { ...initialStock(), walrus: 0 }, north: { ...initialStock(), walrus: 0 } },
     result: null,
     lastAction: null,
