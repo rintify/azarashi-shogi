@@ -82,7 +82,7 @@ function Eyes({
   );
 }
 function Seal({ black }: { black: boolean }) {
-  const color = black ? '#514b46' : '#eaf1ec';
+  const color = black ? '#4e4b49' : '#eaf1ec';
   const furRoughness = 0.68;
   return (
     <group>
