@@ -9,7 +9,7 @@ function Blob({
   scale = [1, 1, 1],
   color,
   rotation = [0, 0, 0],
-  roughness = 0.42,
+  roughness = 0.3,
 }: {
   at?: Vec3;
   scale?: Vec3;
@@ -20,7 +20,13 @@ function Blob({
   return (
     <mesh position={at} scale={scale} rotation={rotation} castShadow receiveShadow>
       <sphereGeometry args={[1, 24, 18]} />
-      <meshStandardMaterial color={color} roughness={roughness} />
+      <meshPhysicalMaterial
+        color={color}
+        roughness={roughness}
+        envMapIntensity={0.35}
+        clearcoat={0.45}
+        clearcoatRoughness={0.3}
+      />
     </mesh>
   );
 }
@@ -55,7 +61,7 @@ function Eyes({
   );
 }
 function Seal({ black }: { black: boolean }) {
-  const color = black ? '#344958' : '#fffdf3';
+  const color = black ? '#344958' : '#eaf1ec';
   return (
     <group>
       <Blob at={[0, 0.35, -0.1]} scale={[0.35, 0.29, 0.5]} color={color} />
@@ -77,7 +83,7 @@ function Seal({ black }: { black: boolean }) {
           <Blob
             at={[s * 0.19, 0.41, 0.467]}
             scale={[0.065, 0.04, 0.025]}
-            color={black ? '#6b8894' : '#f7c8be'}
+            color={black ? '#6b8894' : '#b8cbc8'}
           />
           {[0, 1].map((i) => (
             <mesh
@@ -131,24 +137,28 @@ function Penguin({ jet }: { jet: boolean }) {
 function Bear() {
   return (
     <group>
-      <Blob at={[0, 0.38, -0.03]} scale={[0.33, 0.35, 0.28]} color="#fffdf4" />
-      <Blob at={[0, 0.76, 0.025]} scale={[0.3, 0.28, 0.27]} color="#fffdf4" />
-      {[-1, 1].map((s) => (
-        <group key={s}>
-          <Blob at={[s * 0.225, 0.96, 0.005]} scale={[0.105, 0.11, 0.08]} color="#fffdf4" />
-          <Blob at={[s * 0.225, 0.96, 0.065]} scale={[0.057, 0.06, 0.025]} color="#e6dcd0" />
+      <Blob at={[0, 0.48, -0.08]} scale={[0.3, 0.3, 0.44]} color="#e6ece7" />
+      <Blob at={[0, 0.64, 0.29]} scale={[0.26, 0.26, 0.26]} color="#f0f1e7" />
+      <Blob at={[0, 0.54, 0.51]} scale={[0.16, 0.12, 0.2]} color="#e2e8df" />
+      <Blob at={[0, 0.59, 0.68]} scale={[0.08, 0.048, 0.04]} color="#182f3a" />
+      {[-1, 1].flatMap((side) =>
+        [-1, 1].map((front) => (
           <Blob
-            at={[s * 0.27, 0.41, 0.1]}
-            scale={[0.13, 0.23, 0.14]}
-            rotation={[0, 0, s * -0.25]}
-            color="#f4f2e8"
+            key={`${side}:${front}`}
+            at={[side * 0.23, 0.22, front * 0.27]}
+            scale={[0.115, 0.22, 0.15]}
+            color="#dce5df"
           />
-          <Blob at={[s * 0.18, 0.13, 0.16]} scale={[0.17, 0.105, 0.2]} color="#fffdf4" />
+        )),
+      )}
+      {[-1, 1].map((side) => (
+        <group key={side}>
+          <Blob at={[side * 0.2, 0.82, 0.25]} scale={[0.08, 0.09, 0.055]} color="#edf1e9" />
+          <Blob at={[side * 0.2, 0.82, 0.298]} scale={[0.043, 0.05, 0.015]} color="#a1b4b3" />
         </group>
       ))}
-      <Eyes y={0.79} z={0.267} spread={0.135} />
-      <Blob at={[0, 0.677, 0.27]} scale={[0.15, 0.105, 0.12]} color="#f0ecdf" />
-      <Blob at={[0, 0.713, 0.378]} scale={[0.068, 0.045, 0.04]} color="#2c4050" />
+      <Eyes y={0.67} z={0.487} spread={0.15} size={0.034} />
+      <Blob at={[0, 0.51, -0.49]} scale={[0.09, 0.085, 0.1]} color="#e6ece7" />
     </group>
   );
 }
@@ -252,8 +262,8 @@ export function Animal({
 }) {
   const group = useRef<Group>(null);
   useFrame(({ clock }) => {
-    if (group.current && animate)
-      group.current.position.y = Math.sin(clock.elapsedTime * 2.2) * 0.025;
+    if (group.current)
+      group.current.position.y = animate ? Math.sin(clock.elapsedTime * 2.2) * 0.018 : 0;
   });
   return (
     <group ref={group}>

@@ -14,10 +14,11 @@ interface Props {
   settings: MatchSettings;
   interaction: BoardInteraction;
   onHelp: () => void;
+  busy?: boolean;
 }
 
 /** A fixed-size turn control surface: stock and selection give way to capture confirmation. */
-export function ActionDock({ game, settings, interaction, onHelp }: Props) {
+export function ActionDock({ game, settings, interaction, onHelp, busy = false }: Props) {
   const {
     activeKind,
     humanTurn,
@@ -27,6 +28,7 @@ export function ActionDock({ game, settings, interaction, onHelp }: Props) {
     optionIndex,
     setOptionIndex,
     clearChoice,
+    clearSelection,
     portrait,
     threat,
     chooseOption,
@@ -51,7 +53,7 @@ export function ActionDock({ game, settings, interaction, onHelp }: Props) {
           <div className="dock-heading">
             <div>
               <span className="step-label">移動の確認</span>
-              <h2>{pending.length > 1 ? '捕食して、変身する？' : 'この駒を捕食します'}</h2>
+              <h2>{pending.length > 1 ? '変身を選択' : '自分の王を捕食します'}</h2>
             </div>
             <button
               className="icon-button"
@@ -64,50 +66,54 @@ export function ActionDock({ game, settings, interaction, onHelp }: Props) {
               <X size={20} />
             </button>
           </div>
-          <div className="choice-selector" aria-label="変身の候補">
-            <button
-              className="icon-button"
-              aria-label="前の変身候補"
-              disabled={pending.length === 1}
-              onClick={() => setOptionIndex((optionIndex + pending.length - 1) % pending.length)}
-            >
-              <ChevronLeft size={22} />
-            </button>
-            <div className="choice-description" aria-live="polite">
-              <AnimalIcon kind={option.piece.kind} promoted={option.piece.promoted} />
-              <div>
-                <strong>{transformationLabel(option, pending[0], optionIndex)}</strong>
-                <span>
-                  {dimensions(option.piece).join(' × ')}マス · {option.captured.length}体を捕食
-                </span>
-              </div>
-            </div>
-            <button
-              className="icon-button"
-              aria-label="次の変身候補"
-              disabled={pending.length === 1}
-              onClick={() => setOptionIndex((optionIndex + 1) % pending.length)}
-            >
-              <ChevronRight size={22} />
-            </button>
-          </div>
-          <div className="choice-tabs" aria-label="変身を選択">
-            {pending.map((p, i) => (
+          {pending.length > 1 && (
+            <div className="choice-selector" aria-label="変身の候補">
               <button
-                key={i}
-                aria-label={transformationLabel(p, pending[0], i)}
-                aria-pressed={optionIndex === i}
-                className={optionIndex === i ? 'active' : ''}
-                onClick={() => setOptionIndex(i)}
+                className="icon-button"
+                aria-label="前の変身候補"
+                disabled={pending.length === 1}
+                onClick={() => setOptionIndex((optionIndex + pending.length - 1) % pending.length)}
               >
-                {i === 0
-                  ? 'そのまま'
-                  : p.action.type === 'move' && p.action.transformation?.type === 'rotate'
-                    ? `回転 ${i}`
-                    : '変身'}
+                <ChevronLeft size={22} />
               </button>
-            ))}
-          </div>
+              <div className="choice-description" aria-live="polite">
+                <AnimalIcon kind={option.piece.kind} promoted={option.piece.promoted} />
+                <div>
+                  <strong>{transformationLabel(option, pending[0], optionIndex)}</strong>
+                  <span>
+                    {dimensions(option.piece).join(' × ')}マス · {option.captured.length}体を捕食
+                  </span>
+                </div>
+              </div>
+              <button
+                className="icon-button"
+                aria-label="次の変身候補"
+                disabled={pending.length === 1}
+                onClick={() => setOptionIndex((optionIndex + 1) % pending.length)}
+              >
+                <ChevronRight size={22} />
+              </button>
+            </div>
+          )}
+          {pending.length > 1 && (
+            <div className="choice-tabs" aria-label="変身を選択">
+              {pending.map((p, i) => (
+                <button
+                  key={i}
+                  aria-label={transformationLabel(p, pending[0], i)}
+                  aria-pressed={optionIndex === i}
+                  className={optionIndex === i ? 'active' : ''}
+                  onClick={() => setOptionIndex(i)}
+                >
+                  {i === 0
+                    ? 'そのまま'
+                    : p.action.type === 'move' && p.action.transformation?.type === 'rotate'
+                      ? `回転 ${i}`
+                      : '変身'}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="capture-line">
             <p
               className={`capture-summary ${ownKing ? 'danger' : ''}`}
@@ -143,25 +149,45 @@ export function ActionDock({ game, settings, interaction, onHelp }: Props) {
           <div className="dock-heading">
             <div className="turn-copy" aria-live="polite">
               <span className="step-label">
-                {setup
-                  ? 'まずは王を配置'
-                  : humanTurn
-                    ? 'あなたの手番'
-                    : game.phase === 'finished'
-                      ? '対局終了'
-                      : '相手の手番'}
+                {busy
+                  ? '移動中'
+                  : setup
+                    ? 'まずは王を配置'
+                    : humanTurn
+                      ? 'あなたの手番'
+                      : game.phase === 'finished'
+                        ? '対局終了'
+                        : '相手の手番'}
               </span>
-              <h2>{status.title}</h2>
+              <h2>
+                {busy
+                  ? `${game.lastAction?.piece.owner === settings.human ? 'あなた' : 'NPC'}の一手`
+                  : status.title}
+              </h2>
             </div>
-            <button className="icon-button" aria-label="駒の動かし方" onClick={onHelp}>
-              <Info size={20} />
-            </button>
+            <div className="dock-actions">
+              {(interaction.selected || (activeKind && !setup)) && !busy && (
+                <button className="icon-button" aria-label="選択を解除" onClick={clearSelection}>
+                  <X size={19} />
+                </button>
+              )}
+              <button className="icon-button" aria-label="駒の動かし方" onClick={onHelp}>
+                <Info size={18} />
+              </button>
+            </div>
           </div>
           <p className={`turn-instruction ${dangerSources ? 'danger' : ''}`}>
-            {dangerSources ? `${dangerSources}に捕食される危険があります。` : status.text}
+            {busy
+              ? '移動が終わるまでお待ちください'
+              : dangerSources
+                ? `${dangerSources}に捕食される危険があります。`
+                : status.text}
           </p>
-          <div className="reserve-grid" aria-label="あなたのストック">
-            {KINDS.map((kind) => (
+          <div
+            className={`reserve-grid ${setup ? 'setup-reserve' : ''}`}
+            aria-label="あなたのストック"
+          >
+            {KINDS.filter((kind) => kind !== 'walrus' || setup).map((kind) => (
               <button
                 key={kind}
                 disabled={!humanTurn || setup || game.stocks[settings.human][kind] === 0}

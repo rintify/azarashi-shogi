@@ -7,12 +7,13 @@ export function useNpc(
   human: Player,
   difficulty: Difficulty,
   submit: (action: GameAction, revision: number) => void,
+  enabled = true,
 ) {
   const [status, setStatus] = useState({ thinking: false, depth: 0, nodes: 0 });
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
-    if (game.turn === human || game.phase === 'finished') {
+    if (!enabled || game.turn === human || game.phase === 'finished') {
       setStatus((s) => (s.thinking ? { ...s, thinking: false } : s));
       setError(null);
       return;
@@ -52,6 +53,6 @@ export function useNpc(
       active = false;
       worker.terminate();
     };
-  }, [game, human, difficulty, submit, attempt]);
+  }, [game, human, difficulty, submit, attempt, enabled]);
   return { status, error, retry: () => setAttempt((n) => n + 1) };
 }

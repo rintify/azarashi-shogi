@@ -23,5 +23,7 @@ export function statusCopy(game: GameState, human: Player, interaction: BoardInt
   if (interaction.pending) text = '捕食する駒と変身後の形を確認し、「この手を指す」で決定。';
   else if (interaction.portrait)
     text = `${pieceName(interaction.portrait)}を${interaction.selected ? '動かす' : '配置する'}場所を選んでください。`;
+  if (interaction.selected?.kind === 'walrus' && interaction.unsafeCells.length)
+    text = '橙のマスは、移動後に王が捕食される危険があります。';
   return { title: 'あなたの番です', text };
 }

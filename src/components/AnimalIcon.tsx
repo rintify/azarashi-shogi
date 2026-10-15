@@ -1,5 +1,14 @@
 import type { Kind } from '../game/types';
-/** Small UI portraits; the board itself uses real 3D animal meshes. */
+/** Hand-drawn silhouette vocabulary shared by every inventory and dialog. */
+const silhouettes: Record<Kind, string> = {
+  seal: 'M7 44c3-9 10-10 18-9 3-10 8-17 18-17 10 0 15 10 11 18-3 7-12 10-21 10l-8 8-6-3 3-7-11 3-8-5 4-6Z',
+  penguin:
+    'M23 22c-1-7 3-13 9-13s10 6 9 13c8 7 9 19 6 27l8 7-13 1-10-4-10 4-13-1 8-7c-3-8-2-20 6-27Zm-2 7-12 13 3 5 9-6m22-12 12 13-3 5-9-6',
+  bear: 'M9 30c1-10 12-12 22-9l8-7 8 1 3 7 9 6-2 9-10 2-3 14-7 0-2-15-13 0-3 15-7 0 1-16-4-7Z',
+  orca: 'M6 36c4-9 13-15 26-14l5-14 8 15c6 2 10 6 13 10l-2 12-9-2-9 9-7-3 5-8c-11 4-20 3-27 1l-6 9-2-12 5-3Z',
+  walrus:
+    'M8 35c0-13 9-22 24-22s24 9 24 22c0 9-5 15-14 17l-3-20-5 0-2 24-2-24-5 0-3 20C13 50 8 44 8 35Z',
+};
 export function AnimalIcon({
   kind,
   promoted = false,
@@ -9,86 +18,22 @@ export function AnimalIcon({
   promoted?: boolean;
   className?: string;
 }) {
-  const dark = '#2e4654',
-    white = '#fffdf6';
   return (
-    <svg className={`animal-icon ${className}`} viewBox="0 0 64 64" fill="none" aria-hidden="true">
-      {kind === 'seal' && (
-        <>
-          <ellipse cx="31" cy="40" rx="24" ry="15" fill={promoted ? dark : white} />
-          <ellipse cx="31" cy="29" rx="19" ry="18" fill={promoted ? dark : white} />
-          <path d="m10 44-7 8 15-3m35-5 8 8-15-3" fill={promoted ? dark : white} />
-          <ellipse cx="20" cy="36" rx="4" ry="2.5" fill="#efbdb1" />
-          <ellipse cx="42" cy="36" rx="4" ry="2.5" fill="#efbdb1" />
-          <circle cx="24" cy="28" r="2.4" fill={promoted ? white : dark} />
-          <circle cx="38" cy="28" r="2.4" fill={promoted ? white : dark} />
-          <path
-            d="m28 34 3 3 3-3"
-            stroke={promoted ? white : dark}
-            strokeWidth="2"
-            strokeLinecap="round"
-          />
-        </>
-      )}
+    <svg
+      className={`animal-icon ${className}`}
+      viewBox="0 0 64 64"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path d={silhouettes[kind]} stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+      {kind === 'seal' && <circle cx="45" cy="25" r="2" fill="var(--icon-cutout,#123346)" />}
       {kind === 'penguin' && (
-        <>
-          <ellipse cx="32" cy="36" rx="18" ry="24" fill={dark} />
-          <path d="m17 29-9 14 8 1m31-15 9 14-8 1" fill={dark} />
-          <ellipse cx="32" cy="40" rx="12" ry="16" fill={white} />
-          <ellipse cx="26" cy="26" rx="7" ry="8" fill={white} />
-          <ellipse cx="38" cy="26" rx="7" ry="8" fill={white} />
-          <circle cx="26" cy="26" r="2" fill={dark} />
-          <circle cx="38" cy="26" r="2" fill={dark} />
-          <path d="m27 32 5 5 5-5Z" fill="#efb65e" />
-          <ellipse cx="22" cy="57" rx="8" ry="3" fill="#efb65e" />
-          <ellipse cx="42" cy="57" rx="8" ry="3" fill="#efb65e" />
-          {promoted && <path d="m51 11-6 11h6l-3 9 12-15h-7l3-5Z" fill="#e6a646" />}
-        </>
-      )}
-      {kind === 'bear' && (
-        <>
-          <circle cx="17" cy="17" r="9" fill={white} />
-          <circle cx="47" cy="17" r="9" fill={white} />
-          <circle cx="17" cy="17" r="4" fill="#d9d8cd" />
-          <circle cx="47" cy="17" r="4" fill="#d9d8cd" />
-          <ellipse cx="32" cy="35" rx="25" ry="23" fill={white} />
-          <circle cx="23" cy="31" r="2.4" fill={dark} />
-          <circle cx="41" cy="31" r="2.4" fill={dark} />
-          <ellipse cx="32" cy="42" rx="12" ry="9" fill="#efecdf" />
-          <ellipse cx="32" cy="39" rx="5" ry="3.5" fill={dark} />
-          <path d="M32 42v5m-5-1q5 5 10 0" stroke={dark} strokeWidth="1.5" strokeLinecap="round" />
-        </>
+        <ellipse cx="32" cy="36" rx="8" ry="12" fill="var(--icon-cutout,#123346)" />
       )}
       {kind === 'orca' && (
-        <>
-          <path
-            d="M8 40C8 24 23 17 41 25l10-8-1 15c12 15 4 25-18 25C18 57 8 52 8 40Z"
-            fill={dark}
-          />
-          <path d="m24 26 5-17 10 17" fill={dark} />
-          <path d="M12 45c12-5 27-4 41 2-3 13-31 15-41-2Z" fill={white} />
-          <ellipse cx="20" cy="34" rx="6" ry="3.5" transform="rotate(-20 20 34)" fill={white} />
-          <circle cx="13" cy="39" r="2" fill="#142c3b" />
-        </>
+        <ellipse cx="17" cy="32" rx="5" ry="2.7" fill="var(--icon-cutout,#123346)" />
       )}
-      {kind === 'walrus' && (
-        <>
-          <ellipse cx="32" cy="38" rx="25" ry="21" fill="#b28e73" />
-          <circle cx="22" cy="32" r="2.5" fill={dark} />
-          <circle cx="42" cy="32" r="2.5" fill={dark} />
-          <ellipse cx="25" cy="41" rx="9" ry="6" fill="#d1b49c" />
-          <ellipse cx="39" cy="41" rx="9" ry="6" fill="#d1b49c" />
-          <path d="m22 44 3 17 4-17m8 0 3 17 4-17" fill="#fff7df" />
-          <ellipse cx="32" cy="37" rx="5" ry="3" fill="#5e5146" />
-          <path d="m20 18-2-11 9 5 5-9 5 9 9-5-2 11Z" fill="#e6ba67" />
-          <path
-            d="m11 39 10 2m-11 5 11-2m32-5-10 2m11 5-11-2"
-            stroke="#806951"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-          />
-        </>
-      )}
+      {promoted && <path d="m50 5-7 12h7l-3 9L60 11h-8l3-6Z" fill="#f6bf6a" />}
     </svg>
   );
 }

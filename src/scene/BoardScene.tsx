@@ -1,196 +1,103 @@
-import { Suspense, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
-import { Canvas, useThree } from '@react-three/fiber';
-import { Html, OrbitControls, RoundedBox } from '@react-three/drei';
-import { Vector3 } from 'three';
-import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
-import type { ActionPreview, Cell, GameState, Piece, Player, Threat } from '../game/types';
+import { Suspense, useMemo, useState, type RefObject } from 'react';
+import { Canvas } from '@react-three/fiber';
+import { Html, RoundedBox } from '@react-three/drei';
+import { ACESFilmicToneMapping, PCFSoftShadowMap } from 'three';
+import type { ActionPreview, Cell, GameState, Player, Threat } from '../game/types';
 import { cellKey } from '../game/types';
 import { dimensions } from '../game/pieces';
 import { Animal } from './Animals';
-
+import { center, facing, type MoveMotion } from '../presentation/motion';
+import type { PlayArea } from '../presentation/usePlayArea';
+import { SceneCamera } from './SceneCamera';
+import { IceWorld } from './IceWorld';
+import { PieceActor } from './PieceActor';
+import { ActionEffects } from './ActionEffects';
 export interface BoardProps {
   game: GameState;
   human: Player;
   selectedId: string | null;
   legalCells: Cell[];
+  unsafeCells: Cell[];
   preview: ActionPreview | null;
   threats: Threat[];
   threatSources: string[];
   view: 'perspective' | 'top';
-  cameraReset: number;
+  area: PlayArea | null;
+  motion: MoveMotion | null;
+  busy: boolean;
+  reduced: boolean;
   onCell: (cell: Cell) => void;
   onHover: (cell: Cell | null) => void;
   onThreat: (id: string) => void;
 }
-const world = (cell: Cell, width = 1, height = 1): [number, number, number] => [
-  cell.x - 5 + width / 2,
-  0,
-  cell.y - 5 + height / 2,
-];
-function Camera({
-  view,
-  reset,
-  human,
-}: {
-  view: BoardProps['view'];
-  reset: number;
-  human: Player;
-}) {
-  const controls = useRef<OrbitControlsImpl>(null);
-  const { camera, size } = useThree();
-  useEffect(() => {
-    const side = human === 'south' ? 1 : -1;
-    const scale = Math.max(1, size.height / size.width);
-    camera.position.set(
-      view === 'top' ? 0 : 7.5 * side * scale,
-      (view === 'top' ? 14.6 : 15.5) * scale,
-      view === 'top' ? 0.01 * side : 13 * side * scale,
-    );
-    camera.lookAt(new Vector3(0, 0, 0));
-    if (controls.current) {
-      controls.current.target.set(0, 0, 0);
-      controls.current.update();
-    }
-  }, [camera, view, reset, human, size.width, size.height]);
-  return (
-    <OrbitControls
-      ref={controls}
-      makeDefault
-      enablePan={false}
-      enableZoom={view !== 'top'}
-      minDistance={10}
-      maxDistance={34}
-      minPolarAngle={0.02}
-      maxPolarAngle={Math.PI / 2.65}
-      enableRotate={view !== 'top'}
-    />
-  );
-}
-function IceWorld() {
-  return (
-    <>
-      <color attach="background" args={['#9ed6ed']} />
-      <group position={[-10, 4, -14]}>
-        {[-1, 0, 1].map((i) => (
-          <mesh key={i} position={[i * 1.4, i === 0 ? 0.35 : 0, 0]} scale={[1.5, 0.6, 0.75]}>
-            <sphereGeometry args={[1, 20, 12]} />
-            <meshBasicMaterial color="#f4fbff" />
-          </mesh>
-        ))}
-      </group>
-      <group position={[7, 4.5, -16]}>
-        {[-1, 0, 1].map((i) => (
-          <mesh key={i} position={[i * 1.3, i === 0 ? 0.25 : 0, 0]} scale={[1.4, 0.5, 0.65]}>
-            <sphereGeometry args={[1, 20, 12]} />
-            <meshBasicMaterial color="#f4fbff" />
-          </mesh>
-        ))}
-      </group>
-      <fog attach="fog" args={['#c8e7f3', 32, 80]} />
-      <hemisphereLight args={['#f1fbff', '#a5b9c1', 1.5]} />
-      <directionalLight
-        position={[-8, 18, 8]}
-        intensity={2.1}
-        castShadow
-        shadow-mapSize={[2048, 2048]}
-        shadow-camera-left={-10}
-        shadow-camera-right={10}
-        shadow-camera-top={10}
-        shadow-camera-bottom={-10}
-        shadow-normalBias={0.035}
-      />
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.66, 0]} receiveShadow>
-        <circleGeometry args={[7.7, 96]} />
-        <meshStandardMaterial color="#e6f2f6" roughness={0.95} />
-      </mesh>
-      {[
-        [-12, -9, 2.4],
-        [9, -12, 3],
-        [-4, -14, 2],
-        [13, -4, 1.8],
-        [-13, 3, 1.2],
-      ].map(([x, z, size], i) => (
-        <mesh key={i} position={[x, -0.2, z]} rotation={[0, i * 0.7, 0]} receiveShadow>
-          <coneGeometry args={[size, size * 0.8, 5]} />
-          <meshStandardMaterial color={i % 2 ? '#eaf5f8' : '#f6fbfc'} flatShading />
-        </mesh>
-      ))}
-      <RoundedBox
-        args={[10.6, 0.55, 10.6]}
-        radius={0.16}
-        position={[0, -0.32, 0]}
-        receiveShadow
-        castShadow
-      >
-        <meshStandardMaterial color="#9fc9d5" roughness={0.35} />
-      </RoundedBox>
-      <RoundedBox args={[10.4, 0.12, 10.4]} radius={0.05} position={[0, -0.04, 0]} receiveShadow>
-        <meshStandardMaterial color="#f8fcfc" roughness={0.6} />
-      </RoundedBox>
-    </>
-  );
-}
 function BoardContents(props: BoardProps & { htmlPortal: RefObject<HTMLDivElement> }) {
-  const {
-    game,
-    selectedId,
-    legalCells,
-    preview,
-    threats,
-    threatSources,
-    onCell,
-    onHover,
-    onThreat,
-  } = props;
-  const legal = useMemo(() => new Set(legalCells.map(cellKey)), [legalCells]);
-  const capturedIds = new Set(preview?.captured.map((p) => p.id));
-  const targetCells = new Set(preview?.footprint.map(cellKey));
-  const captureCells = new Set(preview?.captureCells.map(cellKey));
-  const lastCells = new Set(game.lastAction?.footprint.map(cellKey));
+  const { game, selectedId, preview, motion, busy } = props;
+  const legal = useMemo(() => new Set(props.legalCells.map(cellKey)), [props.legalCells]);
+  const unsafe = new Set(props.unsafeCells.map(cellKey));
+  const target = new Set(preview?.footprint.map(cellKey));
+  const extra = new Set(preview?.captureCells.map(cellKey));
+  const captured = new Set(preview?.captured.map((p) => p.id));
+  const last = new Set(game.lastAction?.footprint.map(cellKey));
   return (
     <>
       <IceWorld />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.151, 0]} receiveShadow>
+        <planeGeometry args={[10.04, 10.04]} />
+        <meshStandardMaterial color="#74a7bd" roughness={0.85} envMapIntensity={0.15} />
+      </mesh>
       {Array.from({ length: 100 }, (_, i) => {
         const cell = { x: i % 10, y: Math.floor(i / 10) },
           key = cellKey(cell);
-        const available = legal.has(key),
-          target = targetCells.has(key),
-          extra = captureCells.has(key) && !target;
-        const color = target
-          ? '#80d3bd'
-          : extra
-            ? '#f0c184'
-            : available
-              ? '#b4dfc5'
-              : lastCells.has(key)
-                ? '#d4e9ed'
-                : (cell.x + cell.y) % 2 === 0
-                  ? '#eef7fb'
-                  : '#b2d3e2';
+        const active = target.has(key),
+          additional = extra.has(key) && !active;
         return (
-          <group key={key} position={world(cell)}>
+          <group key={key} position={[cell.x - 4.5, 0.16, cell.y - 4.5]}>
             <mesh
-              position={[0, 0.032, 0]}
               rotation={[-Math.PI / 2, 0, 0]}
               receiveShadow
               onClick={(e) => {
                 e.stopPropagation();
-                if (e.delta > 5) return;
-                onCell(cell);
+                if (!busy && e.delta < 6) props.onCell(cell);
               }}
               onPointerMove={(e) => {
                 e.stopPropagation();
-                onHover(cell);
+                if (!busy) props.onHover(cell);
               }}
-              onPointerOut={() => onHover(null)}
+              onPointerOut={() => props.onHover(null)}
             >
-              <planeGeometry args={[0.974, 0.974]} />
-              <meshStandardMaterial color={color} roughness={0.65} />
+              <planeGeometry args={[0.98, 0.98]} />
+              <meshStandardMaterial
+                envMapIntensity={0.2}
+                color={
+                  active
+                    ? '#9bdde5'
+                    : additional
+                      ? '#fbc78f'
+                      : (cell.x + cell.y) % 2
+                        ? '#b9d4e0'
+                        : '#e3f0f5'
+                }
+                roughness={0.82}
+              />
             </mesh>
-            {available && !target && (
-              <mesh position={[0, 0.045, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-                <circleGeometry args={[0.095, 24]} />
-                <meshBasicMaterial color="#268568" transparent opacity={0.75} />
+            {legal.has(key) && !busy && (
+              <mesh position={[0, 0.008, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+                <circleGeometry args={[0.105, 32]} />
+                <meshBasicMaterial
+                  color={unsafe.has(key) ? '#d8782c' : '#087b9f'}
+                  transparent
+                  opacity={0.8}
+                />
+              </mesh>
+            )}
+            {(active || additional || last.has(key)) && (
+              <mesh position={[0, 0.009, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+                <ringGeometry args={[0.43, 0.46, 4, 1, Math.PI / 4]} />
+                <meshBasicMaterial
+                  color={active ? '#098bba' : additional ? '#e8893d' : '#6fa9be'}
+                  transparent
+                  opacity={active || additional ? 0.9 : 0.45}
+                />
               </mesh>
             )}
           </group>
@@ -199,7 +106,7 @@ function BoardContents(props: BoardProps & { htmlPortal: RefObject<HTMLDivElemen
       {Array.from({ length: 10 }, (_, i) => (
         <group key={i}>
           <Html
-            position={[i - 4.5, 0.04, 5.32]}
+            position={[i - 4.5, 0.18, 5.25]}
             center
             className="board-coordinate"
             portal={props.htmlPortal}
@@ -208,7 +115,7 @@ function BoardContents(props: BoardProps & { htmlPortal: RefObject<HTMLDivElemen
             {String.fromCharCode(65 + i)}
           </Html>
           <Html
-            position={[-5.32, 0.04, i - 4.5]}
+            position={[-5.25, 0.18, i - 4.5]}
             center
             className="board-coordinate"
             portal={props.htmlPortal}
@@ -218,150 +125,45 @@ function BoardContents(props: BoardProps & { htmlPortal: RefObject<HTMLDivElemen
           </Html>
         </group>
       ))}
-      {game.pieces.map((piece) => (
-        <BoardAnimal
+      {[...game.pieces, ...(motion?.action.captured ?? [])].map((piece) => (
+        <PieceActor
           key={piece.id}
-          htmlPortal={props.htmlPortal}
           piece={piece}
+          motion={motion}
+          victim={!!motion?.action.captured.some((p) => p.id === piece.id)}
           selected={selectedId === piece.id}
-          captured={capturedIds.has(piece.id)}
-          source={threatSources.includes(piece.id)}
-          threatened={threats.some((t) => t.targetId === piece.id)}
-          onClick={onCell}
-          onHover={onHover}
-          onThreat={() => onThreat(piece.id)}
+          targeted={captured.has(piece.id)}
+          source={props.threatSources.includes(piece.id)}
+          threatened={props.threats.some((t) => t.targetId === piece.id)}
+          disabled={busy}
+          htmlPortal={props.htmlPortal}
+          onCell={props.onCell}
+          onHover={props.onHover}
+          onThreat={() => props.onThreat(piece.id)}
         />
       ))}
-      {preview && (
-        <group position={world(preview.piece.at, ...dimensions(preview.piece))}>
-          {preview.footprint.map((c) => (
-            <mesh
-              key={cellKey(c)}
-              position={[
-                c.x - preview.piece.at.x - (dimensions(preview.piece)[0] - 1) / 2,
-                0.08,
-                c.y - preview.piece.at.y - (dimensions(preview.piece)[1] - 1) / 2,
-              ]}
-              rotation={[-Math.PI / 2, 0, 0]}
-            >
-              <ringGeometry args={[0.39, 0.44, 4, 1, Math.PI / 4]} />
-              <meshBasicMaterial color="#2c9c81" transparent opacity={0.9} />
-            </mesh>
-          ))}
-          {preview.action.type === 'place' && (
-            <group position={[0, 0.13, 0]} scale={0.85}>
-              <Animal kind={preview.piece.kind} />
-            </group>
-          )}
+      {preview?.action.type === 'place' && !busy && (
+        <group position={center(preview.piece)}>
+          <RoundedBox
+            args={[dimensions(preview.piece)[0] - 0.1, 0.06, dimensions(preview.piece)[1] - 0.1]}
+            position={[0, 0.25, 0]}
+            radius={0.02}
+          >
+            <meshBasicMaterial color="#18afd2" transparent opacity={0.3} />
+          </RoundedBox>
+          <group position={[0, 0.33, 0]} rotation={[0, facing(preview.piece), 0]} scale={0.82}>
+            <Animal kind={preview.piece.kind} />
+          </group>
         </group>
       )}
-      <Camera view={props.view} reset={props.cameraReset} human={props.human} />
+      {motion && <ActionEffects key={game.revision} motion={motion} />}
+      <SceneCamera
+        area={props.area}
+        view={props.view}
+        human={props.human}
+        reduced={props.reduced}
+      />
     </>
-  );
-}
-function BoardAnimal({
-  htmlPortal,
-  piece,
-  selected,
-  captured,
-  source,
-  threatened,
-  onClick,
-  onHover,
-  onThreat,
-}: {
-  htmlPortal: RefObject<HTMLDivElement>;
-  piece: Piece;
-  selected: boolean;
-  captured: boolean;
-  source: boolean;
-  threatened: boolean;
-  onClick: (cell: Cell) => void;
-  onHover: BoardProps['onHover'];
-  onThreat: () => void;
-}) {
-  const [w, h] = dimensions(piece);
-  const rotation =
-    piece.kind === 'orca' && piece.promoted ? Math.PI / 2 : piece.owner === 'north' ? Math.PI : 0;
-  const color = captured
-    ? '#e79571'
-    : source
-      ? '#edb85c'
-      : selected
-        ? '#52b59d'
-        : piece.owner === 'south'
-          ? '#78b6c7'
-          : '#e8b095';
-  return (
-    <group
-      position={world(piece.at, w, h)}
-      onClick={(e) => {
-        e.stopPropagation();
-        if (e.delta > 5) return;
-        onClick({
-          x: Math.max(0, Math.min(9, Math.floor(e.point.x + 5))),
-          y: Math.max(0, Math.min(9, Math.floor(e.point.z + 5))),
-        });
-      }}
-      onPointerMove={(e) => {
-        e.stopPropagation();
-        onHover({
-          x: Math.max(0, Math.min(9, Math.floor(e.point.x + 5))),
-          y: Math.max(0, Math.min(9, Math.floor(e.point.z + 5))),
-        });
-      }}
-      onPointerOut={() => onHover(null)}
-    >
-      <RoundedBox args={[w - 0.14, 0.09, h - 0.14]} radius={0.06} position={[0, 0.1, 0]} castShadow>
-        <meshStandardMaterial
-          color={color}
-          roughness={0.4}
-          transparent
-          opacity={captured ? 0.6 : 1}
-        />
-      </RoundedBox>
-      <RoundedBox
-        args={[w - 0.22, 0.055, h - 0.22]}
-        radius={0.04}
-        position={[0, 0.165, 0]}
-        receiveShadow
-      >
-        <meshStandardMaterial color={selected ? '#e4f5eb' : '#f2f5ed'} />
-      </RoundedBox>
-      <group
-        position={[0, 0.21, 0]}
-        rotation={[0, rotation, 0]}
-        scale={piece.kind === 'orca' ? 0.88 : piece.kind === 'walrus' ? 1 : 0.86}
-      >
-        <Animal kind={piece.kind} promoted={piece.promoted} animate={selected} />
-      </group>
-      <mesh
-        position={[0, 0.202, (h / 2 - 0.19) * (piece.owner === 'south' ? -1 : 1)]}
-        rotation={[-Math.PI / 2, 0, piece.owner === 'south' ? 0 : Math.PI]}
-      >
-        <circleGeometry args={[0.068, 3]} />
-        <meshBasicMaterial color={color} />
-      </mesh>
-      {threatened && (
-        <Html
-          position={[w / 2 - 0.12, piece.kind === 'walrus' ? 1.5 : 1.2, 0]}
-          center
-          zIndexRange={[20, 10]}
-          portal={htmlPortal}
-        >
-          <button
-            className="threat-badge"
-            aria-label="この駒を捕食できる相手を表示"
-            onClick={(e) => {
-              e.stopPropagation();
-              onThreat();
-            }}
-          >
-            !
-          </button>
-        </Html>
-      )}
-    </group>
   );
 }
 export function BoardScene(props: BoardProps) {
@@ -370,14 +172,18 @@ export function BoardScene(props: BoardProps) {
   return (
     <div className="scene-root">
       <div className="scene-labels" ref={setLabelHost} />
-      <Suspense fallback={<div className="canvas-loading">氷の盤面を準備しています…</div>}>
+      <Suspense fallback={<div className="canvas-loading">氷原に向かっています…</div>}>
         {htmlPortal && (
           <Canvas
-            shadows
-            dpr={[1, 1.7]}
-            camera={{ position: [7.8, 12.8, 11.8], fov: 43 }}
-            gl={{ antialias: true, alpha: false }}
-            onPointerMissed={() => props.onHover(null)}
+            shadows={{ type: PCFSoftShadowMap }}
+            dpr={[1, 1.8]}
+            camera={{ position: [0, 20, 10], fov: 38, near: 0.1, far: 160 }}
+            gl={{
+              antialias: true,
+              alpha: false,
+              toneMapping: ACESFilmicToneMapping,
+              toneMappingExposure: 0.95,
+            }}
           >
             <BoardContents {...props} htmlPortal={htmlPortal} />
           </Canvas>

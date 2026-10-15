@@ -87,3 +87,18 @@ describe('NPC worker lifecycle', () => {
     expect(hook.result.current.error).toBeNull();
   });
 });
+
+it('does not start the NPC until playback releases the next turn', () => {
+  const game = createGame(),
+    submit = vi.fn();
+  const hook = renderHook(({ enabled }) => useNpc(game, 'north', 3, submit, enabled), {
+    initialProps: { enabled: false },
+  });
+  expect(FakeWorker.instances).toHaveLength(0);
+  hook.rerender({ enabled: true });
+  expect(FakeWorker.instances).toHaveLength(1);
+  hook.rerender({ enabled: false });
+  expect(FakeWorker.instances[0].terminate).toHaveBeenCalledOnce();
+  act(() => FakeWorker.instances[0].send({ type: 'result', revision: 0, result }));
+  expect(submit).not.toHaveBeenCalled();
+});

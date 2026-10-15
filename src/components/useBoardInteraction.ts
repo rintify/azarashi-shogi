@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  applyPreview,
   getThreats,
   moveCells,
   moveOptions,
@@ -22,6 +23,7 @@ export function useBoardInteraction(
   game: GameState,
   human: Player,
   submit: (action: GameAction, revision: number) => void,
+  enabled = true,
 ) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [stockKind, setStockKind] = useState<Kind | null>(null);
@@ -29,7 +31,7 @@ export function useBoardInteraction(
   const [pending, setPending] = useState<ActionPreview[] | null>(null);
   const [optionIndex, setOptionIndex] = useState(0);
   const [inspectedThreat, setInspectedThreat] = useState<string | null>(null);
-  const humanTurn = game.turn === human && game.phase !== 'finished';
+  const humanTurn = enabled && game.turn === human && game.phase !== 'finished';
   const setup = game.phase.startsWith('setup');
   const selected = game.pieces.find((p) => p.id === selectedId) ?? null;
   const activeKind = setup ? 'walrus' : stockKind;
@@ -38,6 +40,18 @@ export function useBoardInteraction(
     if (selected) return moveCells(game, selected);
     return activeKind ? placementCells(game, activeKind) : [];
   }, [game, humanTurn, pending, selected, activeKind]);
+  // Amber destinations remain legal; the rules never prohibit moving into danger.
+  const unsafeCells = useMemo(() => {
+    if (!selected || selected.kind !== 'walrus' || !humanTurn || pending) return [];
+    return legalCells.filter((to) => {
+      const candidate = moveOptions(game, selected, to)[0];
+      if (!candidate) return false;
+      const next = applyPreview(game, candidate);
+      return (
+        next.phase === 'playing' && getThreats(next, human).some((t) => t.targetId === selected.id)
+      );
+    });
+  }, [selected, humanTurn, pending, legalCells, game, human]);
   const threats = useMemo(() => getThreats(game, human), [game, human]);
   const threat = threats.find((t) => t.targetId === (inspectedThreat ?? selectedId));
   const preview = useMemo(() => {
@@ -64,6 +78,12 @@ export function useBoardInteraction(
     setInspectedThreat(null);
     setOptionIndex(0);
   }, [game.revision, human]);
+  function clearSelection() {
+    clearChoice();
+    setSelectedId(null);
+    setStockKind(null);
+    setInspectedThreat(null);
+  }
   function selectStock(kind: Kind) {
     if (!humanTurn || setup || game.stocks[human][kind] === 0) return;
     clearChoice();
@@ -76,7 +96,10 @@ export function useBoardInteraction(
     if (legalCells.some((c) => sameCell(c, cell))) {
       if (selected) {
         const options = moveOptions(game, selected, cell);
-        if (options.length > 1 || options[0]?.captured.length) {
+        if (
+          options.length > 1 ||
+          options[0]?.captured.some((p) => p.kind === 'walrus' && p.owner === human)
+        ) {
           setPending(options);
           setOptionIndex(0);
         } else if (options[0]) submit(options[0].action, game.revision);
@@ -103,7 +126,7 @@ export function useBoardInteraction(
     }
   }
   function chooseOption(preview: ActionPreview) {
-    submit(preview.action, game.revision);
+    if (enabled) submit(preview.action, game.revision);
   }
   return {
     selectedId,
@@ -114,6 +137,7 @@ export function useBoardInteraction(
     humanTurn,
     setup,
     legalCells,
+    unsafeCells,
     threats,
     threat,
     preview,
@@ -122,6 +146,7 @@ export function useBoardInteraction(
     clickCell,
     inspectThreat,
     clearChoice,
+    clearSelection,
     chooseOption,
     setOptionIndex,
     setHover,

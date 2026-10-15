@@ -42,3 +42,34 @@ describe('guided board interaction', () => {
     expect(submit).not.toHaveBeenCalled();
   });
 });
+
+it('executes a capture with no transformation choice immediately', () => {
+  const submit = vi.fn();
+  const bear: Piece = { ...penguin, kind: 'bear', at: { x: 4, y: 5 } };
+  const target: Piece = { ...food, at: { x: 4, y: 3 } };
+  const game = { ...createGame(), phase: 'playing' as const, pieces: [bear, target] };
+  const hook = renderHook(() => useBoardInteraction(game, 'south', submit));
+  act(() => hook.result.current.clickCell(bear.at));
+  act(() => hook.result.current.clickCell(target.at));
+  expect(hook.result.current.pending).toBeNull();
+  expect(submit).toHaveBeenCalledWith({ type: 'move', pieceId: 'p', to: target.at }, 0);
+});
+it('blocks board and stock input during animation, and supports explicit selection cancellation', () => {
+  const submit = vi.fn(),
+    game = { ...createGame(), phase: 'playing' as const, pieces: [penguin, food] };
+  const hook = renderHook(({ enabled }) => useBoardInteraction(game, 'south', submit, enabled), {
+    initialProps: { enabled: false },
+  });
+  act(() => {
+    hook.result.current.clickCell(penguin.at);
+    hook.result.current.selectStock('seal');
+  });
+  expect(hook.result.current.selected).toBeNull();
+  expect(hook.result.current.activeKind).toBeNull();
+  hook.rerender({ enabled: true });
+  act(() => hook.result.current.clickCell(penguin.at));
+  expect(hook.result.current.selected).not.toBeNull();
+  act(() => hook.result.current.clearSelection());
+  expect(hook.result.current.selected).toBeNull();
+  expect(submit).not.toHaveBeenCalled();
+});

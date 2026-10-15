@@ -299,3 +299,36 @@ describe('state integrity and record replay', () => {
     ).toThrow();
   });
 });
+
+describe('check is a warning, not a terminal rule', () => {
+  it('keeps both kings alive and allows play after moving into capture range', () => {
+    const own = p('own', 'walrus', 4, 8),
+      enemy = p('enemy', 'walrus', 4, 2, 'north');
+    const next = applyAction(board(own, enemy), {
+      type: 'move',
+      pieceId: 'own',
+      to: { x: 4, y: 6 },
+    });
+    expect(next.phase).toBe('playing');
+    expect(next.result).toBeNull();
+    expect(next.pieces.filter((piece) => piece.kind === 'walrus')).toHaveLength(2);
+    // Enemy king can reach y=4, whose second row still doesn't touch y=6.
+    const threatened = applyAction(
+      { ...next, turn: 'south' },
+      { type: 'move', pieceId: 'own', to: { x: 4, y: 5 } },
+    );
+    expect(getThreats(threatened, 'south')).toContainEqual({
+      targetId: 'own',
+      attackerIds: ['enemy'],
+    });
+    expect(threatened.phase).toBe('playing');
+    expect(threatened.result).toBeNull();
+    const captured = applyAction(threatened, {
+      type: 'move',
+      pieceId: 'enemy',
+      to: { x: 4, y: 4 },
+    });
+    expect(captured.phase).toBe('finished');
+    expect(captured.lastAction?.captured.map((p) => p.id)).toContain('own');
+  });
+});
