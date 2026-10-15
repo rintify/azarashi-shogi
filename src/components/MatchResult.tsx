@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { GameDialog } from './AnimatedUI';
 import { AnimalIcon } from './AnimalIcon';
 
 /** Native modality keeps keyboard focus on the result until the board is reopened. */
@@ -13,16 +13,12 @@ export function MatchResult({
   onNewGame: () => void;
   onInspect: () => void;
 }) {
-  const ref = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    ref.current?.showModal();
-  }, []);
   return (
-    <dialog
-      ref={ref}
+    <GameDialog
       className="result-overlay"
       aria-labelledby="result-title"
-      onCancel={onInspect}
+      onDismiss={onInspect}
+      dismissOnBackdrop={false}
     >
       <section>
         <AnimalIcon kind="walrus" className="result-mascot" />
@@ -36,6 +32,6 @@ export function MatchResult({
           盤面を見る
         </button>
       </section>
-    </dialog>
+    </GameDialog>
   );
 }

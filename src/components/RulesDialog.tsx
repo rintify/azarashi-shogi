@@ -1,22 +1,10 @@
+import { GameDialog } from './AnimatedUI';
 import { X } from 'lucide-react';
-import { useEffect, useRef } from 'react';
 import { DEFINITIONS, KINDS } from '../game/pieces';
 import { AnimalIcon } from './AnimalIcon';
 export function RulesDialog({ close }: { close: () => void }) {
-  const ref = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    ref.current?.showModal();
-  }, []);
   return (
-    <dialog
-      ref={ref}
-      aria-labelledby="rules-title"
-      className="dialog rules-dialog"
-      onCancel={close}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) close();
-      }}
-    >
+    <GameDialog aria-labelledby="rules-title" className="dialog rules-dialog" onDismiss={close}>
       <header>
         <div>
           <h2 id="rules-title">あそびかた</h2>
@@ -44,8 +32,10 @@ export function RulesDialog({ close }: { close: () => void }) {
       </div>
       <ol className="rule-steps">
         <li>
-          <strong>王の配置</strong>
-          <p>先手から、自分側の半分に2×2のセイウチを配置。両者の王が揃ったら先手からスタート。</p>
+          <strong>王は最初から手前中央に</strong>
+          <p>
+            2×2のセイウチは両者の手前中央に配置済み。先手からすぐに移動・持ち駒の配置を始められます。
+          </p>
         </li>
         <li>
           <strong>移動と配置</strong>
@@ -62,7 +52,7 @@ export function RulesDialog({ close }: { close: () => void }) {
         <li>
           <strong>捕食後の変身</strong>
           <p>
-            捕食した手で1回だけ、成るか選べます。白アザラシ以外は捕食時に元へ戻れます。シャチは軸と回転方向を選び、変形前後のL字3マスを捕食できます。
+            捕食した手で1回だけ、成るか選べます。白アザラシ以外は捕食時に元へ戻れます。シャチは、最初の着地点で捕食したマスを回転後も最低1つ踏む向きだけ選べます。変形前後のL字3マスで追加の捕食もできます。
           </p>
         </li>
         <li>
@@ -78,6 +68,6 @@ export function RulesDialog({ close }: { close: () => void }) {
       <button className="primary-button full" onClick={close}>
         盤面に戻る
       </button>
-    </dialog>
+    </GameDialog>
   );
 }

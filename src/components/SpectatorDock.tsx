@@ -1,3 +1,4 @@
+import { AnimatedValue } from './AnimatedUI';
 import { Pause, Play, StepForward } from 'lucide-react';
 import type { GameState } from '../game/types';
 import { aiDifficulty, playerLabel, type MatchSettings } from '../match/record';
@@ -41,7 +42,9 @@ export function SpectatorDock({
           aria-label={paused ? '観戦を再開' : '観戦を一時停止'}
           title={paused ? '観戦を再開' : '観戦を一時停止'}
         >
-          {paused ? <Play size={16} /> : <Pause size={16} />}
+          <AnimatedValue valueKey={String(paused)}>
+            {paused ? <Play size={16} /> : <Pause size={16} />}
+          </AnimatedValue>
         </button>
         <button
           className="spectator-control"

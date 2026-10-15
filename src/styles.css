@@ -44,7 +44,7 @@ input:focus-visible {
   outline-offset: 2px;
 }
 button:not(:disabled):active {
-  transform: scale(0.96);
+  scale: 0.94;
 }
 h1,
 h2,
@@ -173,7 +173,7 @@ svg {
   display: flex;
   gap: 6px;
 }
-.view-controls span {
+.view-controls > button > span:not(.ui-swap) {
   display: none;
 }
 .opponent-hud {
@@ -1421,5 +1421,223 @@ svg {
   }
   .promotion-button {
     min-height: 50px;
+  }
+}
+
+/* UI motion uses independent translate/scale, preserving each HUD's positioning transform. */
+:root {
+  --ui-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ui-spring: cubic-bezier(0.22, 1.3, 0.35, 1);
+}
+button,
+.hud-button,
+.reserve-grid button,
+.promotion-button,
+.rotation-choice,
+.side-options button {
+  transition:
+    color 180ms,
+    background-color 180ms,
+    border-color 180ms,
+    box-shadow 180ms,
+    opacity 180ms,
+    transform 180ms var(--ui-spring),
+    translate 180ms var(--ui-spring),
+    scale 180ms var(--ui-spring);
+}
+button:not(:disabled):active {
+  scale: 0.94;
+}
+button:not(:disabled):focus-visible {
+  transition-duration: 90ms;
+}
+.ui-presence {
+  display: contents;
+}
+.ui-presence > * {
+  animation: ui-enter 260ms var(--ui-spring) both;
+}
+.ui-presence[data-state='exit'] > * {
+  animation: ui-exit var(--ui-exit-duration) var(--ui-ease) both;
+  pointer-events: none;
+}
+.ui-presence dialog::backdrop {
+  animation: backdrop-enter 240ms var(--ui-ease) both;
+}
+.ui-presence[data-state='exit'] dialog::backdrop {
+  animation: backdrop-exit var(--ui-exit-duration) var(--ui-ease) both;
+}
+.ui-swap {
+  display: inline-grid;
+  position: relative;
+  align-items: center;
+  vertical-align: middle;
+}
+.ui-swap-current {
+  grid-area: 1 / 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  animation: value-enter 220ms var(--ui-ease) both;
+}
+.ui-swap-old {
+  position: absolute;
+  inset: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  animation: value-exit var(--ui-exit-duration) var(--ui-ease) both;
+  pointer-events: none;
+}
+.opponent-stock .ui-swap-current,
+.opponent-stock .ui-swap-old {
+  gap: 0;
+}
+.hud-button .ui-swap-current,
+.hud-button .ui-swap-old {
+  gap: 0;
+}
+.ui-size {
+  transition: height 280ms var(--ui-ease);
+  overflow: clip;
+}
+.ui-size > div {
+  display: flow-root;
+}
+.settings-group {
+  animation: value-enter 260ms var(--ui-ease) both;
+}
+.side-options button,
+.rotation-choice {
+  transition-timing-function: var(--ui-spring);
+}
+.ui-presence[data-state='enter'] .reserve-grid button,
+.ui-presence[data-state='enter'] .rotation-choice,
+.ui-presence[data-state='enter'] .promotion-actions button {
+  animation: control-enter 300ms var(--ui-spring) both;
+}
+.ui-presence[data-state='enter'] .reserve-grid button:nth-child(2),
+.ui-presence[data-state='enter'] .rotation-choice:nth-child(2),
+.ui-presence[data-state='enter'] .promotion-actions button:nth-child(2) {
+  animation-delay: 35ms;
+}
+.ui-presence[data-state='enter'] .reserve-grid button:nth-child(3),
+.ui-presence[data-state='enter'] .rotation-choice:nth-child(3),
+.ui-presence[data-state='enter'] .promotion-actions button:nth-child(3) {
+  animation-delay: 70ms;
+}
+.ui-presence[data-state='enter'] .reserve-grid button:nth-child(4),
+.ui-presence[data-state='enter'] .rotation-choice:nth-child(4) {
+  animation-delay: 105ms;
+}
+.reserve-clear {
+  animation: control-enter 220ms var(--ui-spring) both;
+}
+.promotion-warning {
+  animation: value-enter 220ms var(--ui-ease) both;
+}
+.game-header {
+  animation: hud-enter 420ms var(--ui-spring) both;
+}
+.opponent-hud {
+  animation: hud-enter 420ms 70ms var(--ui-spring) both;
+}
+.presence-dot,
+.status-pulse {
+  transition:
+    background-color 240ms,
+    box-shadow 240ms;
+}
+.coordinate-board button {
+  transition:
+    background-color 180ms,
+    color 180ms,
+    box-shadow 180ms;
+}
+.coordinate-board .animal-icon {
+  animation: control-enter 220ms var(--ui-spring) both;
+}
+@keyframes ui-enter {
+  from {
+    opacity: 0;
+    translate: 0 12px;
+    scale: 0.96;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+    scale: 1;
+  }
+}
+@keyframes ui-exit {
+  from {
+    opacity: 1;
+    translate: 0 0;
+    scale: 1;
+  }
+  to {
+    opacity: 0;
+    translate: 0 9px;
+    scale: 0.96;
+  }
+}
+@keyframes value-enter {
+  from {
+    opacity: 0;
+    translate: 0 6px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+@keyframes value-exit {
+  from {
+    opacity: 1;
+    translate: 0 0;
+  }
+  to {
+    opacity: 0;
+    translate: 0 -6px;
+  }
+}
+@keyframes control-enter {
+  from {
+    opacity: 0;
+    translate: 0 8px;
+    scale: 0.86;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+    scale: 1;
+  }
+}
+@keyframes hud-enter {
+  from {
+    opacity: 0;
+    translate: 0 -8px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+@keyframes backdrop-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes backdrop-exit {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
   }
 }

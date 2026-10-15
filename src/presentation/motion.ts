@@ -6,7 +6,6 @@ export interface MotionPose {
   scale: number;
   yaw: number;
   promoted: boolean;
-  baseYaw: number;
 }
 export interface MoveMotion {
   choicePreview?: { target: ActionPreview; from: MotionPose; startedAt: number };
@@ -181,27 +180,16 @@ export function sampleMotion(
   t: number,
   now = motion.startedAt + t * motion.duration,
 ): MotionPose {
-  const path = samplePath(motion, t);
-  const action = motion.action.action;
-  const baseYaw =
-    action.type === 'move' && action.transformation?.type === 'rotate'
-      ? ((-action.transformation.direction * Math.PI) / 2) * transformationProgress(motion, t)
-      : 0;
-  const pose: MotionPose = { ...path, baseYaw };
+  const pose: MotionPose = samplePath(motion, t);
   if (motion.stage === 'choice' && motion.choicePreview && now >= motion.choicePreview.startedAt) {
     const preview = motion.choicePreview;
     const target = preview.target;
-    const rotation =
-      target.action.type === 'move' && target.action.transformation?.type === 'rotate'
-        ? (-target.action.transformation.direction * Math.PI) / 2
-        : 0;
     const blend = motion.reduced ? 1 : smooth((now - preview.startedAt) / 280);
     return blendPose(
       preview.from,
       {
         position: [center(target.piece)[0], HOVER_HEIGHT, center(target.piece)[2]],
         yaw: facing(target.piece),
-        baseYaw: rotation,
         scale: 1,
         promoted: target.piece.promoted,
       },
@@ -214,10 +202,6 @@ export function sampleMotion(
       ...pose,
       position: [center(motion.action.piece)[0], pose.position[1], center(motion.action.piece)[2]],
       yaw: facing(motion.action.piece),
-      baseYaw:
-        action.type === 'move' && action.transformation?.type === 'rotate'
-          ? (-action.transformation.direction * Math.PI) / 2
-          : 0,
     };
     const result = blendPose(motion.resolveFrom, target, blend);
     result.position[1] = pose.position[1];
@@ -234,7 +218,6 @@ function blendPose(from: MotionPose, to: MotionPose, t: number): MotionPose {
   return {
     position: from.position.map((v, i) => v + (to.position[i] - v) * t) as Vec3,
     yaw: from.yaw + (to.yaw - from.yaw) * t,
-    baseYaw: from.baseYaw + (to.baseYaw - from.baseYaw) * t,
     scale: from.scale + (to.scale - from.scale) * t,
     promoted: t > 0.5 ? to.promoted : from.promoted,
   };

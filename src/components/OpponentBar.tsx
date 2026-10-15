@@ -1,3 +1,4 @@
+import { AnimatedValue } from './AnimatedUI';
 import { AnimalIcon } from './AnimalIcon';
 import { DEFINITIONS, KINDS } from '../game/pieces';
 import { otherPlayer, type GameState, type Kind, type Player } from '../game/types';
@@ -32,7 +33,7 @@ export function OpponentBar({
 export function StockItems({
   game,
   player,
-  includeKing = true,
+  includeKing = false,
   activeKind,
 }: {
   game: GameState;
@@ -49,7 +50,9 @@ export function StockItems({
           aria-label={`${DEFINITIONS[kind].name} ${game.stocks[player][kind]}体`}
         >
           <AnimalIcon kind={kind} />
-          <span>{game.stocks[player][kind]}</span>
+          <AnimatedValue valueKey={game.stocks[player][kind]}>
+            {game.stocks[player][kind]}
+          </AnimatedValue>
         </span>
       ))}
     </span>

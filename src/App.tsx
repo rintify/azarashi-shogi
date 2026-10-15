@@ -1,3 +1,4 @@
+import { AnimatedPresence, AnimatedValue } from './components/AnimatedUI';
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import {
   BookOpen,
@@ -45,6 +46,8 @@ export default function App() {
   const markReady = useCallback(() => setSceneReady(true), []);
   const [rulesOpen, setRulesOpen] = useState(false),
     [newGameOpen, setNewGameOpen] = useState(false);
+  const [rulesVisible, setRulesVisible] = useState(false);
+  const [settingsVisible, setSettingsVisible] = useState(false);
   const [view, setView] = useState<'perspective' | 'top'>('perspective');
   const [resultDismissed, setResultDismissed] = useState(false);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
@@ -83,6 +86,8 @@ export default function App() {
       !playback.busy &&
       !rulesOpen &&
       !newGameOpen &&
+      !rulesVisible &&
+      !settingsVisible &&
       (!watching || !paused || stepRequested),
   );
   const status = statusCopy(game, settings.human, interaction);
@@ -164,7 +169,9 @@ export default function App() {
             aria-pressed={audio.enabled}
             onClick={audio.toggle}
           >
-            {audio.enabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
+            <AnimatedValue valueKey={String(audio.enabled)}>
+              {audio.enabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
+            </AnimatedValue>
           </button>
           <button className="hud-button" aria-label="あそびかた" onClick={() => setRulesOpen(true)}>
             <BookOpen size={18} />
@@ -183,7 +190,9 @@ export default function App() {
               aria-pressed={view === 'top'}
               onClick={() => setView((v) => (v === 'top' ? 'perspective' : 'top'))}
             >
-              {view === 'top' ? <Box size={18} /> : <Maximize2 size={18} />}
+              <AnimatedValue valueKey={view}>
+                {view === 'top' ? <Box size={18} /> : <Maximize2 size={18} />}
+              </AnimatedValue>
               <span>{view === 'top' ? '3D' : '真上'}</span>
             </button>
             <button
@@ -192,7 +201,9 @@ export default function App() {
               aria-pressed={keyboardOpen}
               onClick={() => setKeyboardOpen((v) => !v)}
             >
-              {keyboardOpen ? <X size={18} /> : <Grid2X2 size={18} />}
+              <AnimatedValue valueKey={String(keyboardOpen)}>
+                {keyboardOpen ? <X size={18} /> : <Grid2X2 size={18} />}
+              </AnimatedValue>
             </button>
           </div>
         </nav>
@@ -207,40 +218,46 @@ export default function App() {
         />
       </div>
       <div className={`turn-banner ${kingDanger ? 'king-danger' : ''}`} role="status">
-        {playback.busy ? (
-          <>
-            <span className="status-pulse" />{' '}
-            {actorLabel(playback.motion?.action.piece.owner ?? last?.piece.owner)}：
-            {playback.motion?.stage === 'choice' ? (
-              '好きな姿をえらぼう！'
-            ) : (
-              <>
-                {last && pieceName(last.piece)}を{last?.from ? '移動' : '配置'}
-              </>
-            )}
-          </>
-        ) : ended ? (
-          resultTitle
-        ) : kingDanger ? (
-          <>
-            <b>!</b> 王が狙われています <small>捕食されると敗北</small>
-          </>
-        ) : (
-          <>
-            <span className={`status-pulse ${interaction.humanTurn ? 'human' : ''}`} />
-            {watching
-              ? `${actorLabel()}${paused && !stepRequested ? ' · 一時停止' : 'の手番'}`
-              : interaction.humanTurn
-                ? interaction.portrait
-                  ? status.title
-                  : 'あなたの手番'
-                : 'NPCの手番'}
-            <small>{`${game.revision + 1}手目`}</small>
-          </>
-        )}
+        <AnimatedValue
+          valueKey={`${game.revision}:${playback.motion?.stage}:${playback.busy}:${kingDanger}:${paused}:${status.title}`}
+        >
+          {!sceneReady ? (
+            '氷原を準備しています'
+          ) : playback.busy ? (
+            <>
+              <span className="status-pulse" />{' '}
+              {actorLabel(playback.motion?.action.piece.owner ?? last?.piece.owner)}：
+              {playback.motion?.stage === 'choice' ? (
+                '好きな姿をえらぼう！'
+              ) : (
+                <>
+                  {last && pieceName(last.piece)}を{last?.from ? '移動' : '配置'}
+                </>
+              )}
+            </>
+          ) : ended ? (
+            resultTitle
+          ) : kingDanger ? (
+            <>
+              <b>!</b> 王が狙われています <small>捕食されると敗北</small>
+            </>
+          ) : (
+            <>
+              <span className={`status-pulse ${interaction.humanTurn ? 'human' : ''}`} />
+              {watching
+                ? `${actorLabel()}${paused && !stepRequested ? ' · 一時停止' : 'の手番'}`
+                : interaction.humanTurn
+                  ? interaction.portrait
+                    ? status.title
+                    : 'あなたの手番'
+                  : 'NPCの手番'}
+              <small>{`${game.revision + 1}手目`}</small>
+            </>
+          )}
+        </AnimatedValue>
       </div>
       <div className="play-window" ref={playRef} aria-hidden="true" />
-      {keyboardOpen && (
+      <AnimatedPresence show={keyboardOpen}>
         <section
           className="coordinate-overlay"
           aria-label="座標で操作"
@@ -258,8 +275,8 @@ export default function App() {
             onHover={interaction.setHover}
           />
         </section>
-      )}
-      {!ended && !(interaction.pending && interaction.pending.length > 1) && (
+      </AnimatedPresence>
+      <AnimatedPresence show={!ended && !(interaction.pending && interaction.pending.length > 1)}>
         <div className="bottom-hud">
           {watching ? (
             <SpectatorDock
@@ -279,37 +296,41 @@ export default function App() {
               game={game}
               settings={settings}
               interaction={interaction}
-              busy={playback.busy}
+              busy={playback.busy || !sceneReady}
               onHelp={() => setRulesOpen(true)}
             />
           )}
         </div>
-      )}
+      </AnimatedPresence>
       <div className="match-message" aria-live="polite">
-        {playback.motion?.stage === 'choice' ? null : aiError ? (
-          <span role="alert">
-            {aiError} <button onClick={retryNpc}>再試行</button>
-          </span>
-        ) : warning ? (
-          <span role="alert">{warning}</span>
-        ) : last && !playback.busy ? (
-          <span>
-            {actorLabel(last.piece.owner)} · {pieceName(last.piece)}{' '}
-            {last.from ? `${coordinate(last.from)} → ` : ''}
-            {coordinate(last.piece.at)}
-            {last.captured.length ? ` · ${last.captured.map(pieceName).join('・')}を捕食` : ''}
-          </span>
-        ) : (
-          <span>
-            {playback.busy
-              ? '一手を再生中'
-              : watching
-                ? '先手AI・青 / 後手AI・橙'
-                : `あなたは${settings.human === 'south' ? '先手・青' : '後手・橙'}`}
-          </span>
-        )}
+        <AnimatedValue
+          valueKey={`${game.revision}:${playback.busy}:${playback.motion?.stage}:${warning}:${aiError}`}
+        >
+          {playback.motion?.stage === 'choice' ? null : aiError ? (
+            <span role="alert">
+              {aiError} <button onClick={retryNpc}>再試行</button>
+            </span>
+          ) : warning ? (
+            <span role="alert">{warning}</span>
+          ) : last && !playback.busy ? (
+            <span>
+              {actorLabel(last.piece.owner)} · {pieceName(last.piece)}{' '}
+              {last.from ? `${coordinate(last.from)} → ` : ''}
+              {coordinate(last.piece.at)}
+              {last.captured.length ? ` · ${last.captured.map(pieceName).join('・')}を捕食` : ''}
+            </span>
+          ) : (
+            <span>
+              {playback.busy
+                ? '一手を再生中'
+                : watching
+                  ? '先手AI・青 / 後手AI・橙'
+                  : `あなたは${settings.human === 'south' ? '先手・青' : '後手・橙'}`}
+            </span>
+          )}
+        </AnimatedValue>
       </div>
-      {ended && !resultDismissed && (
+      <AnimatedPresence show={ended && !resultDismissed}>
         <MatchResult
           title={resultTitle}
           detail={
@@ -320,8 +341,8 @@ export default function App() {
           onNewGame={() => setNewGameOpen(true)}
           onInspect={() => setResultDismissed(true)}
         />
-      )}
-      {ended && resultDismissed && (
+      </AnimatedPresence>
+      <AnimatedPresence show={ended && resultDismissed}>
         <div className="bottom-hud">
           <div className="result-actions">
             <button className="primary-button" onClick={() => setResultDismissed(false)}>
@@ -332,12 +353,16 @@ export default function App() {
             </button>
           </div>
         </div>
-      )}
-      {interaction.pending && interaction.pending.length > 1 && playback.choiceReady && (
+      </AnimatedPresence>
+      <AnimatedPresence
+        show={!!interaction.pending && interaction.pending.length > 1 && playback.choiceReady}
+      >
         <TransformationDialog human={settings.human} interaction={interaction} />
-      )}
-      {rulesOpen && <RulesDialog close={() => setRulesOpen(false)} />}
-      {newGameOpen && (
+      </AnimatedPresence>
+      <AnimatedPresence show={rulesOpen} onPresenceChange={setRulesVisible}>
+        <RulesDialog close={() => setRulesOpen(false)} />
+      </AnimatedPresence>
+      <AnimatedPresence show={newGameOpen} onPresenceChange={setSettingsVisible}>
         <NewGameDialog
           current={settings}
           close={() => setNewGameOpen(false)}
@@ -351,7 +376,7 @@ export default function App() {
             setKeyboardOpen(false);
           }}
         />
-      )}
+      </AnimatedPresence>
     </main>
   );
 }

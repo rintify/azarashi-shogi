@@ -20,6 +20,7 @@ export function useMatch() {
       try {
         return {
           ...current,
+          warning: null,
           game: applyAction(current.game, action, revision),
           record: { ...current.record, actions: [...current.record.actions, action] },
         };

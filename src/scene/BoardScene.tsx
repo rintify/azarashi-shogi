@@ -1,22 +1,16 @@
 import { Suspense, useMemo, useState, useEffect, type RefObject } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { Html, RoundedBox } from '@react-three/drei';
+import { Html } from '@react-three/drei';
 import { ACESFilmicToneMapping, PCFSoftShadowMap } from 'three';
 import type { ActionPreview, Cell, GameState, Player, Threat } from '../game/types';
 import { cellKey } from '../game/types';
-import { dimensions } from '../game/pieces';
-import { Animal } from './Animals';
-import {
-  center,
-  facing,
-  hasTransformation,
-  HOVER_HEIGHT,
-  type MoveMotion,
-} from '../presentation/motion';
+import { hasTransformation, HOVER_HEIGHT, type MoveMotion } from '../presentation/motion';
 import type { PlayArea } from '../presentation/usePlayArea';
 import { SceneCamera } from './SceneCamera';
 import { IceWorld } from './IceWorld';
 import { PieceActor } from './PieceActor';
+import { CellGuide } from './CellGuide';
+import { PlacementGhost } from './PlacementGhost';
 import { ActionEffects } from './ActionEffects';
 export interface BoardProps {
   onReady: () => void;
@@ -86,37 +80,15 @@ function BoardContents(props: BoardProps & { htmlPortal: RefObject<HTMLDivElemen
                 roughness={0.82}
               />
             </mesh>
-            {(active || additional || reachable.has(key) || last.has(key)) && (
-              <mesh position={[0, 0.005, 0]} rotation={[-Math.PI / 2, 0, 0]} raycast={() => null}>
-                <planeGeometry args={[0.98, 0.98]} />
-                <meshBasicMaterial
-                  color="#42b9d8"
-                  transparent
-                  opacity={active || additional ? 0.36 : reachable.has(key) ? 0.2 : 0.1}
-                  depthWrite={false}
-                />
-              </mesh>
-            )}
-            {legal.has(key) && !busy && (
-              <mesh position={[0, 0.008, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-                <circleGeometry args={[0.105, 32]} />
-                <meshBasicMaterial
-                  color={unsafe.has(key) ? '#d8782c' : '#087b9f'}
-                  transparent
-                  opacity={0.8}
-                />
-              </mesh>
-            )}
-            {(active || additional || last.has(key)) && (
-              <mesh position={[0, 0.009, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-                <ringGeometry args={[0.43, 0.46, 4, 1, Math.PI / 4]} />
-                <meshBasicMaterial
-                  color={active || additional ? '#098bba' : '#6fa9be'}
-                  transparent
-                  opacity={active || additional ? 0.9 : 0.45}
-                />
-              </mesh>
-            )}
+            <CellGuide
+              active={active}
+              additional={additional}
+              reachable={reachable.has(key)}
+              last={last.has(key)}
+              legal={legal.has(key) && !busy}
+              unsafe={unsafe.has(key)}
+              reduced={props.reduced}
+            />
           </group>
         );
       })}
@@ -160,26 +132,18 @@ function BoardContents(props: BoardProps & { htmlPortal: RefObject<HTMLDivElemen
           source={props.threatSources.includes(piece.id)}
           threatened={props.threats.some((t) => t.targetId === piece.id)}
           disabled={busy}
+          reduced={props.reduced}
+          intro={game.revision === 0}
           htmlPortal={props.htmlPortal}
           onCell={props.onCell}
           onHover={props.onHover}
           onThreat={() => props.onThreat(piece.id)}
         />
       ))}
-      {preview?.action.type === 'place' && !busy && (
-        <group position={center(preview.piece)}>
-          <RoundedBox
-            args={[dimensions(preview.piece)[0] - 0.1, 0.06, dimensions(preview.piece)[1] - 0.1]}
-            position={[0, 0.25, 0]}
-            radius={0.02}
-          >
-            <meshBasicMaterial color="#18afd2" transparent opacity={0.3} />
-          </RoundedBox>
-          <group position={[0, 0.33, 0]} rotation={[0, facing(preview.piece), 0]} scale={0.82}>
-            <Animal kind={preview.piece.kind} />
-          </group>
-        </group>
-      )}
+      <PlacementGhost
+        piece={preview?.action.type === 'place' && !busy ? preview.piece : null}
+        reduced={props.reduced}
+      />
       {motion && <ActionEffects key={game.revision} motion={motion} />}
       <SceneCamera
         area={props.area}

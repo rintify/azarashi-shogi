@@ -1,7 +1,8 @@
 import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { MeshPhysicalMaterial, SphereGeometry, type Group } from 'three';
-import type { Kind } from '../game/types';
+import { JET_POSE } from './animalPoses';
+import type { Kind, Player } from '../game/types';
 
 // Every animal part shares geometry; the fixed palette also shares GPU materials.
 const sphere = new SphereGeometry(1, 24, 18);
@@ -121,8 +122,9 @@ function Seal({ black }: { black: boolean }) {
   );
 }
 function Penguin({ jet }: { jet: boolean }) {
+  if (jet) return <JetPenguin />;
   return (
-    <group rotation={[jet ? 0.65 : 0, 0, 0]} position={[0, jet ? 0.16 : 0, 0]}>
+    <group>
       <Blob at={[0, 0.43, 0]} scale={[0.29, 0.4, 0.26]} color="#263c4b" />
       <Blob at={[0, 0.4, 0.175]} scale={[0.235, 0.3, 0.13]} color="#fffdf2" />
       <Blob at={[0, 0.76, 0.015]} scale={[0.245, 0.25, 0.23]} color="#263c4b" />
@@ -132,7 +134,7 @@ function Penguin({ jet }: { jet: boolean }) {
           <Blob
             at={[s * 0.29, 0.43, -0.01]}
             scale={[0.07, 0.25, 0.12]}
-            rotation={[0, 0, s * (jet ? -1.1 : 0.25)]}
+            rotation={[0, 0, s * 0.25]}
             color="#263c4b"
           />
           <Blob at={[s * 0.15, 0.1, 0.13]} scale={[0.12, 0.055, 0.17]} color="#f3b455" />
@@ -140,18 +142,38 @@ function Penguin({ jet }: { jet: boolean }) {
       ))}
       <Eyes y={0.79} z={0.238} spread={0.1} size={0.038} />
       <Blob at={[0, 0.687, 0.26]} scale={[0.085, 0.055, 0.115]} color="#f3b455" />
-      {jet && (
-        <>
-          <Blob at={[0, 0.32, -0.31]} scale={[0.16, 0.2, 0.15]} color="#70c1c5" />
-          <mesh position={[0, 0.06, -0.36]} rotation={[Math.PI, 0, 0]}>
-            <coneGeometry args={[0.1, 0.34, 16]} />
-            <meshStandardMaterial color="#ffbd65" emissive="#e59a36" emissiveIntensity={0.4} />
-          </mesh>
-        </>
-      )}
     </group>
   );
 }
+function JetPenguin() {
+  return (
+    <group>
+      <Blob at={JET_POSE.body} scale={JET_POSE.bodyScale} color="#263c4b" />
+      <Blob at={[0, 0.13, 0.02]} scale={[0.225, 0.1, 0.35]} color="#fffdf2" />
+      <Blob at={JET_POSE.head} scale={[0.225, 0.22, 0.23]} color="#263c4b" />
+      {[-1, 1].map((side) => (
+        <group key={side}>
+          <Blob at={[side * 0.108, 0.32, 0.473]} scale={[0.098, 0.115, 0.042]} color="#fffdf2" />
+          <Blob
+            at={[side * 0.33, 0.2, -0.06]}
+            scale={[0.25, 0.05, 0.13]}
+            rotation={[0, side * -0.25, 0]}
+            color="#263c4b"
+          />
+          <Blob at={[side * 0.14, 0.14, -0.49]} scale={[0.115, 0.05, 0.12]} color="#f3b455" />
+        </group>
+      ))}
+      <Eyes y={JET_POSE.eyes.y} z={JET_POSE.eyes.z} spread={0.1} size={0.036} />
+      <Blob at={JET_POSE.beak} scale={[0.08, 0.05, 0.115]} color="#f3b455" />
+      <Blob at={[0, 0.48, -0.15]} scale={[0.12, 0.115, 0.23]} color="#70c1c5" />
+      <mesh position={[0, 0.48, -0.49]} rotation={[-Math.PI / 2, 0, 0]}>
+        <coneGeometry args={[0.085, 0.25, 16]} />
+        <meshStandardMaterial color="#ffbd65" emissive="#e59a36" emissiveIntensity={0.4} />
+      </mesh>
+    </group>
+  );
+}
+
 function Bear() {
   return (
     <group>
@@ -273,10 +295,12 @@ export function Animal({
   kind,
   promoted = false,
   animate = false,
+  owner,
 }: {
   kind: Kind;
   promoted?: boolean;
   animate?: boolean;
+  owner?: Player;
 }) {
   const group = useRef<Group>(null);
   useFrame(({ clock }) => {
@@ -296,6 +320,34 @@ export function Animal({
       ) : (
         <Walrus />
       )}
+      {owner && <OwnerBadge kind={kind} promoted={promoted} owner={owner} />}
+    </group>
+  );
+}
+
+/** A small body badge replaces team-colored plinths without obscuring the animal. */
+function OwnerBadge({ kind, promoted, owner }: { kind: Kind; promoted: boolean; owner: Player }) {
+  const sites: Record<Kind, Vec3> = {
+    seal: [0, 0.72, 0.12],
+    penguin: [0, 0.51, 0.298],
+    bear: [0, 0.78, -0.1],
+    orca: [0, 0.82, 0.03],
+    walrus: [0, 0.89, -0.17],
+  };
+  const upright = kind === 'penguin' && !promoted;
+  return (
+    <group
+      position={kind === 'penguin' && promoted ? [0, 0.44, 0.04] : sites[kind]}
+      rotation={[upright ? 0 : -Math.PI / 2, 0, 0]}
+    >
+      <mesh>
+        <circleGeometry args={[0.09, 20]} />
+        <meshStandardMaterial color="#fffaf0" />
+      </mesh>
+      <mesh position={[0, 0, 0.002]}>
+        <circleGeometry args={[0.066, 20]} />
+        <meshStandardMaterial color={owner === 'south' ? '#279ed3' : '#f09a58'} />
+      </mesh>
     </group>
   );
 }

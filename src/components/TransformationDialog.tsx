@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { GameDialog } from './AnimatedUI';
 import type { Player } from '../game/types';
 import type { BoardInteraction } from './useBoardInteraction';
 import { CaptureChoice } from './CaptureChoice';
@@ -11,18 +11,14 @@ export function TransformationDialog({
   human: Player;
   interaction: BoardInteraction;
 }) {
-  const ref = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    ref.current?.showModal();
-  }, []);
   return (
-    <dialog
-      ref={ref}
+    <GameDialog
       className="transformation-dialog"
       aria-label="空中で変身を選択"
-      onCancel={interaction.clearChoice}
+      onDismiss={interaction.clearChoice}
+      dismissOnBackdrop={false}
     >
       <CaptureChoice human={human} interaction={interaction} />
-    </dialog>
+    </GameDialog>
   );
 }

@@ -107,7 +107,7 @@ it('previews each orca footprint in the air and resolves from the preview withou
       resolveFrom: preview,
     };
     expect(sampleMotion(resolving, 0).position).toEqual(preview.position);
-    expect(sampleMotion(resolving, 0).baseYaw).toBeCloseTo(preview.baseYaw);
+    expect(sampleMotion(resolving, 0).yaw).toBeCloseTo(preview.yaw);
     expect(sampleMotion(resolving, 1).position).toEqual(center(target.piece));
     // Keeping the original footprint smoothly rotates back before landing.
     const keeping = {
@@ -117,7 +117,7 @@ it('previews each orca footprint in the air and resolves from the preview withou
     };
     expect(sampleMotion(keeping, 0).position).toEqual(preview.position);
     expect(sampleMotion(keeping, 1).position).toEqual(center(options[0].piece));
-    expect(sampleMotion(keeping, 1).baseYaw).toBe(0);
+    expect(sampleMotion(keeping, 1).yaw).toBeCloseTo(facing(options[0].piece));
     expect(sampleMotion(keeping, 1).promoted).toBe(false);
   }
 });

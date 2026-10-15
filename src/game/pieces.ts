@@ -31,7 +31,8 @@ export const DEFINITIONS: Record<
     count: 2,
     value: 470,
     short: 'シャチ',
-    description: '縦は横1・縦2、横は横2・縦1まで。捕食後の回転でL字3マスを捕食。',
+    description:
+      '縦は横1・縦2、横は横2・縦1まで。捕食後、食べたマスを1つ以上踏む向きへ回転。L字3マスを捕食。',
   },
   walrus: {
     name: 'セイウチ',

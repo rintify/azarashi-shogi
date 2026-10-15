@@ -1,3 +1,4 @@
+import { AnimatedPresence } from './AnimatedUI';
 import { useEffect, useId, useRef, useState } from 'react';
 import { CaptureChoice } from './CaptureChoice';
 import { ChevronUp, Info, X } from 'lucide-react';
@@ -64,7 +65,7 @@ export function ActionDock({ game, settings, interaction, onHelp, busy = false }
           <X size={17} />
         </button>
       )}
-      {expanded && (
+      <AnimatedPresence show={expanded}>
         <section className="reserve-tray action-dock" id={trayId} aria-label="配置する持ち駒">
           <div className="dock-heading">
             <h2>配置する駒を選択</h2>
@@ -112,7 +113,7 @@ export function ActionDock({ game, settings, interaction, onHelp, busy = false }
             ))}
           </div>
         </section>
-      )}
+      </AnimatedPresence>
     </aside>
   );
 }
