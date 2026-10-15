@@ -118,5 +118,6 @@ it('previews each orca footprint in the air and resolves from the preview withou
     expect(sampleMotion(keeping, 0).position).toEqual(preview.position);
     expect(sampleMotion(keeping, 1).position).toEqual(center(options[0].piece));
     expect(sampleMotion(keeping, 1).baseYaw).toBe(0);
+    expect(sampleMotion(keeping, 1).promoted).toBe(false);
   }
 });

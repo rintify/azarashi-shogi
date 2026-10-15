@@ -132,3 +132,35 @@ it('dismisses the tray without clearing the chosen stock or consuming a board ta
   expect(screen.queryByRole('region', { name: '配置する持ち駒' })).toBeNull();
   expect(submit).toHaveBeenCalledWith({ type: 'place', kind: 'penguin', at: { x: 5, y: 6 } }, 0);
 });
+
+it('commits the penguin decision directly with only two primary choices', () => {
+  const submit = vi.fn();
+  const penguin: Piece = { ...orca, kind: 'penguin' };
+  const target: Piece = { ...food, at: { x: 4, y: 5 } };
+  function PenguinFixture() {
+    const game = { ...createGame(), phase: 'playing' as const, pieces: [penguin, target] };
+    const interaction = useBoardInteraction(game, 'south', submit);
+    return (
+      <>
+        <button onClick={() => interaction.clickCell(penguin.at)}>ペンギンを選ぶ</button>
+        <button onClick={() => interaction.clickCell(target.at)}>捕食する</button>
+        <ActionDock
+          game={game}
+          settings={{ human: 'south', difficulty: 1 }}
+          interaction={interaction}
+          onHelp={() => {}}
+        />
+      </>
+    );
+  }
+  render(<PenguinFixture />);
+  fireEvent.click(screen.getByText('ペンギンを選ぶ'));
+  fireEvent.click(screen.getByText('捕食する'));
+  expect(screen.queryByRole('group', { name: 'シャチの向きを選択' })).toBeNull();
+  expect(screen.getByRole('button', { name: 'そのまま' })).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: '成る' }));
+  expect(submit).toHaveBeenCalledExactlyOnceWith(
+    { type: 'move', pieceId: 'o', to: target.at, transformation: { type: 'promote' } },
+    0,
+  );
+});

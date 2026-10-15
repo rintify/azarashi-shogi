@@ -31,7 +31,13 @@ export function usePlayback(game: GameState, reduced = false) {
   );
   const previewChoice = useCallback((target: ActionPreview | null) => {
     const current = staged.current?.motion;
-    if (!current || !target || target.piece.kind !== 'orca') return;
+    if (
+      !current ||
+      !target ||
+      target.piece.kind !== 'orca' ||
+      target.piece.id !== current.action.piece.id
+    )
+      return;
     if (current.choicePreview?.target === target) return;
     const now = performance.now();
     const next: MoveMotion = {

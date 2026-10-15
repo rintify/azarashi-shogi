@@ -294,7 +294,7 @@ export default function App() {
         </div>
       )}
       <div className="match-message" aria-live="polite">
-        {aiError ? (
+        {playback.motion?.stage === 'choice' ? null : aiError ? (
           <span role="alert">
             {aiError} <button onClick={retryNpc}>再試行</button>
           </span>

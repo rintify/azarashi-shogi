@@ -1219,6 +1219,7 @@ svg {
 .promotion-button {
   min-height: 56px;
   min-width: 108px;
+  white-space: nowrap;
   padding: 10px 22px;
   display: flex;
   align-items: center;
@@ -1394,4 +1395,31 @@ svg {
   width: 90px;
   height: 90px;
   margin: 0 auto;
+}
+
+@media (max-width: 360px) {
+  .promotion-button {
+    font-size: 16px;
+    padding-inline: 16px;
+  }
+}
+
+@media (max-height: 670px) and (max-width: 499px) {
+  .transformation-dialog {
+    bottom: max(18px, calc(env(safe-area-inset-bottom) + 10px));
+  }
+  .promotion-controls {
+    gap: 12px;
+  }
+  .rotation-choice {
+    width: 54px;
+    height: 48px;
+    border-radius: 17px;
+  }
+  .rotation-choices {
+    gap: 10px;
+  }
+  .promotion-button {
+    min-height: 50px;
+  }
 }

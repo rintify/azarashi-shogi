@@ -223,7 +223,7 @@ export function sampleMotion(
     result.position[1] = pose.position[1];
     result.scale = pose.scale;
     result.promoted =
-      transformationProgress(motion, t) > 0.5
+      (hasTransformation(motion) ? transformationProgress(motion, t) : blend) > 0.5
         ? motion.action.piece.promoted
         : motion.resolveFrom.promoted;
     return result;
