@@ -19,6 +19,21 @@ const board = (...pieces: Piece[]): GameState => ({
   },
 });
 describe('fair NPC search', () => {
+  it('varies equivalent openings with the match seed and remains reproducible with an explicit seed', () => {
+    const state = createGame();
+    const think = (seed: number) =>
+      searchBestAction(state, { difficulty: 1, seed, now: () => 0 }).action;
+    expect(think(123)).toEqual(think(123));
+    expect(
+      new Set([1, 2, 3, 4, 5, 6].map((seed) => JSON.stringify(think(seed)))).size,
+    ).toBeGreaterThan(1);
+    // Highest difficulty has no evaluation noise, but equal-priority timeout fallbacks vary.
+    const fallbacks = [1, 2, 3, 4].map(
+      (seed) => searchBestAction(state, { difficulty: 5, seed, budgetMs: 0, now: () => 0 }).action,
+    );
+    expect(new Set(fallbacks.map((a) => JSON.stringify(a))).size).toBeGreaterThan(1);
+    expect(fallbacks.every((a) => a && previewAction(state, a))).toBe(true);
+  });
   it('uses the specified five time budgets', () =>
     expect(Object.values(THINKING_MS)).toEqual([100, 300, 1000, 3000, 10000]));
   it('finds an immediate royal capture', () => {

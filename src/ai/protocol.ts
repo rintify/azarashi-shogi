@@ -2,6 +2,7 @@ import type { GameState } from '../game/types';
 import type { Difficulty } from '../match/record';
 import type { SearchProgress, SearchResult } from './search';
 export interface ThinkRequest {
+  seed: number;
   state: GameState;
   difficulty: Difficulty;
   revision: number;

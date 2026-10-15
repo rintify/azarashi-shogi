@@ -1,6 +1,7 @@
 import { applyAction, createGame } from '../game/engine';
 import { RULES_VERSION } from '../game/types';
 import type { GameAction, GameState, Player } from '../game/types';
+import { randomSeed } from '../shared/random';
 export type Difficulty = 1 | 2 | 3 | 4 | 5;
 export interface MatchSettings {
   mode?: 'human-vs-ai' | 'ai-vs-ai';
@@ -9,6 +10,9 @@ export interface MatchSettings {
   difficulty: Difficulty;
 }
 export interface GameRecord {
+  id: string;
+  createdAt: string;
+  seed: number;
   version: 1;
   rulesVersion: typeof RULES_VERSION;
   settings: MatchSettings;
@@ -29,7 +33,16 @@ export const playerLabel = (settings: MatchSettings, player: Player) =>
 export const aiDifficulty = (settings: MatchSettings, player: Player) =>
   settings.aiLevels?.[player] ?? settings.difficulty;
 export function newRecord(settings = DEFAULT_SETTINGS): GameRecord {
-  return { version: 1, rulesVersion: RULES_VERSION, settings: { ...settings }, actions: [] };
+  const seed = randomSeed();
+  return {
+    id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${seed.toString(16)}`,
+    createdAt: new Date().toISOString(),
+    seed,
+    version: 1,
+    rulesVersion: RULES_VERSION,
+    settings: { ...settings },
+    actions: [],
+  };
 }
 export function replayRecord(record: GameRecord): GameState {
   return record.actions.reduce((state, action) => applyAction(state, action), createGame());
@@ -37,13 +50,31 @@ export function replayRecord(record: GameRecord): GameState {
 export function decodeRecord(text: string): { record: GameRecord; game: GameState } {
   const record = JSON.parse(text) as GameRecord;
   if (
+    !record ||
     record.version !== 1 ||
     record.rulesVersion !== RULES_VERSION ||
     !validSettings(record.settings) ||
     !Array.isArray(record.actions)
   )
     throw new Error('保存データの形式またはルールのバージョンが違います。');
-  return { record, game: replayRecord(record) };
+  const game = replayRecord(record);
+  // Existing v2 records predate replay metadata. Upgrade without changing their actions.
+  const defaults = newRecord(record.settings);
+  return {
+    record: {
+      ...record,
+      id: typeof record.id === 'string' && record.id.length > 0 ? record.id : defaults.id,
+      createdAt:
+        typeof record.createdAt === 'string' && Number.isFinite(Date.parse(record.createdAt))
+          ? record.createdAt
+          : defaults.createdAt,
+      seed:
+        Number.isInteger(record.seed) && record.seed >= 0 && record.seed <= 0xffffffff
+          ? record.seed
+          : defaults.seed,
+    },
+    game,
+  };
 }
 function validSettings(settings: MatchSettings): boolean {
   return (

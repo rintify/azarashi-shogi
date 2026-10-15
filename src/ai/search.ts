@@ -4,6 +4,7 @@ import { otherPlayer } from '../game/types';
 import type { ActionPreview, GameAction, GameState, Player } from '../game/types';
 import type { Difficulty } from '../match/record';
 import { LEVELS, THINKING_MS } from './levels';
+import { randomSeed, seededValue } from '../shared/random';
 export { THINKING_MS } from './levels';
 export interface SearchProgress {
   depth: number;
@@ -16,6 +17,7 @@ export interface SearchResult extends SearchProgress {
   timedOut: boolean;
 }
 export interface SearchOptions {
+  seed?: number;
   difficulty: Difficulty;
   budgetMs?: number;
   now?: () => number;
@@ -92,22 +94,23 @@ function priority(preview: ActionPreview, turn: Player): number {
   if (preview.action.type === 'place') score += 10 + DEFINITIONS[preview.piece.kind].value * 0.02;
   return score;
 }
-function noise(key: string, revision: number): number {
-  let hash = revision + 17;
-  for (let i = 0; i < key.length; i++) hash = Math.imul(hash ^ key.charCodeAt(i), 16777619);
-  return ((hash >>> 0) / 4294967295) * 2 - 1;
-}
 /** Iterative alpha-beta with a bounded capture extension; no rule shortcuts or hidden information. */
 export function searchBestAction(state: GameState, options: SearchOptions): SearchResult {
   const now = options.now ?? (() => performance.now());
   const start = now(),
     deadline = start + (options.budgetMs ?? THINKING_MS[options.difficulty]);
   const root = state.turn;
+  const seed = options.seed ?? randomSeed();
+  const variety = (move: ActionPreview) =>
+    seededValue(`${state.revision}:${actionKey(move.action)}`, seed);
   const table = new Map<string, Entry>();
   let nodes = 0,
     completedDepth = 0,
     timedOut = false;
-  let rootMoves = legalPreviews(state).sort((a, b) => priority(b, root) - priority(a, root));
+  // Vary equivalent move order even at Lv.5; its evaluation itself remains noise-free.
+  let rootMoves = legalPreviews(state).sort(
+    (a, b) => priority(b, root) - priority(a, root) || variety(b) - variety(a),
+  );
   let best: ActionPreview | null = rootMoves[0] ?? null;
   let bestScore = 0;
   function check() {
@@ -232,7 +235,7 @@ export function searchBestAction(state: GameState, options: SearchOptions): Sear
       for (const move of rootMoves) {
         check();
         const raw = visit(applyPreview(state, move), depth - 1, alpha - variation * 2, Infinity, 1);
-        const score = raw + noise(actionKey(move.action), state.revision) * variation;
+        const score = raw + (variety(move) * 2 - 1) * variation;
         scored.push({ move, score });
         if (score > iterationScore) {
           iterationScore = score;

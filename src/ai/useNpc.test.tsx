@@ -34,6 +34,28 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 describe('NPC worker lifecycle', () => {
+  it('passes match entropy to the worker and cancels it when opening a replay', () => {
+    const game = createGame(),
+      submit = vi.fn();
+    const hook = renderHook(({ enabled, seed }) => useNpc(game, null, 2, submit, enabled, seed), {
+      initialProps: { enabled: true, seed: 12345 },
+    });
+    const worker = FakeWorker.instances[0];
+    expect(worker.postMessage).toHaveBeenCalledWith({
+      state: game,
+      difficulty: 2,
+      revision: 0,
+      seed: 12345,
+    });
+    hook.rerender({ enabled: false, seed: 12345 });
+    expect(worker.terminate).toHaveBeenCalledOnce();
+    act(() => worker.send({ type: 'result', revision: 0, result }));
+    expect(submit).not.toHaveBeenCalled();
+    hook.rerender({ enabled: true, seed: 98765 });
+    expect(FakeWorker.instances[1].postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ seed: 98765 }),
+    );
+  });
   it('leaves the human turn on the main thread', () => {
     const game = createGame(),
       submit = vi.fn();
@@ -45,7 +67,12 @@ describe('NPC worker lifecycle', () => {
     const game = createGame();
     const hook = renderHook(() => useNpc(game, 'north', 3, submit));
     const worker = FakeWorker.instances[0];
-    expect(worker.postMessage).toHaveBeenCalledWith({ state: game, difficulty: 3, revision: 0 });
+    expect(worker.postMessage).toHaveBeenCalledWith({
+      state: game,
+      difficulty: 3,
+      revision: 0,
+      seed: 0,
+    });
     act(() =>
       worker.send({
         type: 'progress',
@@ -110,7 +137,12 @@ it('runs both armies in spectator mode and submits their ordinary placements in 
     initialProps: { game: initial, level: 2 as import('../match/record').Difficulty },
   });
   const first = FakeWorker.instances[0];
-  expect(first.postMessage).toHaveBeenCalledWith({ state: initial, difficulty: 2, revision: 0 });
+  expect(first.postMessage).toHaveBeenCalledWith({
+    state: initial,
+    difficulty: 2,
+    revision: 0,
+    seed: 0,
+  });
   act(() => first.send({ type: 'result', revision: 0, result }));
   expect(submit).toHaveBeenCalledWith(result.action, 0);
   const north = applyAction(initial, result.action);
@@ -120,6 +152,7 @@ it('runs both armies in spectator mode and submits their ordinary placements in 
     state: north,
     difficulty: 4,
     revision: 1,
+    seed: 0,
   });
   const reply = {
     ...result,

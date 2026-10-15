@@ -41,5 +41,6 @@ export function useMatch() {
     submit,
     restart,
     history: match.record.actions,
+    record: match.record,
   };
 }

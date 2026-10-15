@@ -8,6 +8,7 @@ export function useNpc(
   difficulty: Difficulty,
   submit: (action: GameAction, revision: number) => void,
   enabled = true,
+  seed = 0,
 ) {
   const [status, setStatus] = useState({ thinking: false, depth: 0, nodes: 0 });
   const [error, setError] = useState<string | null>(null);
@@ -47,12 +48,12 @@ export function useNpc(
         setStatus((s) => ({ ...s, thinking: false }));
       }
     };
-    const request: ThinkRequest = { state: game, difficulty, revision: game.revision };
+    const request: ThinkRequest = { state: game, difficulty, revision: game.revision, seed };
     worker.postMessage(request);
     return () => {
       active = false;
       worker.terminate();
     };
-  }, [game, human, difficulty, submit, attempt, enabled]);
+  }, [game, human, difficulty, submit, attempt, enabled, seed]);
   return { status, error, retry: () => setAttempt((n) => n + 1) };
 }

@@ -5,6 +5,7 @@ self.onmessage = ({ data }: MessageEvent<ThinkRequest>) => {
   try {
     const result = searchBestAction(data.state, {
       difficulty: data.difficulty,
+      seed: data.seed,
       onProgress: (progress) => respond({ type: 'progress', revision: data.revision, progress }),
     });
     respond({ type: 'result', revision: data.revision, result });
