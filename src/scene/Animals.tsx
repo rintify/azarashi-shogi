@@ -16,8 +16,10 @@ function surface(color: string, roughness: number) {
         color,
         roughness,
         envMapIntensity: 0.35,
-        clearcoat: 0.45,
-        clearcoatRoughness: 0.3,
+        // Keep seal fur soft and matte while preserving a gentle sheen on
+        // the smoother animals.
+        clearcoat: roughness >= 0.6 ? 0.08 : 0.45,
+        clearcoatRoughness: roughness >= 0.6 ? 0.72 : 0.3,
       }),
     );
   return materials.get(key)!;
@@ -80,11 +82,12 @@ function Eyes({
   );
 }
 function Seal({ black }: { black: boolean }) {
-  const color = black ? '#344958' : '#eaf1ec';
+  const color = black ? '#344958' : '#cec1b0';
+  const furRoughness = 0.68;
   return (
     <group>
-      <Blob at={[0, 0.35, -0.1]} scale={[0.35, 0.29, 0.5]} color={color} />
-      <Blob at={[0, 0.47, 0.23]} scale={[0.32, 0.31, 0.3]} color={color} />
+      <Blob at={[0, 0.35, -0.1]} scale={[0.35, 0.29, 0.5]} color={color} roughness={furRoughness} />
+      <Blob at={[0, 0.47, 0.23]} scale={[0.32, 0.31, 0.3]} color={color} roughness={furRoughness} />
       {[-1, 1].map((s) => (
         <group key={s}>
           <Blob
@@ -92,12 +95,14 @@ function Seal({ black }: { black: boolean }) {
             scale={[0.19, 0.065, 0.13]}
             rotation={[0, s * 0.55, 0]}
             color={color}
+            roughness={furRoughness}
           />
           <Blob
             at={[s * 0.12, 0.17, -0.52]}
             scale={[0.15, 0.07, 0.17]}
             rotation={[0, -s * 0.55, 0]}
             color={color}
+            roughness={furRoughness}
           />
           <Blob
             at={[s * 0.19, 0.41, 0.467]}
