@@ -1,11 +1,12 @@
+import { useEffect, useId, useRef, useState } from 'react';
 import { CaptureChoice } from './CaptureChoice';
-import { Info, X } from 'lucide-react';
+import { ChevronUp, Info, X } from 'lucide-react';
 import type { GameState } from '../game/types';
-import { DEFINITIONS, KINDS, pieceName } from '../game/pieces';
+import { DEFINITIONS, KINDS } from '../game/pieces';
 import type { MatchSettings } from '../match/record';
 import { AnimalIcon } from './AnimalIcon';
+import { StockItems } from './OpponentBar';
 import type { BoardInteraction } from './useBoardInteraction';
-import { statusCopy } from './statusCopy';
 
 interface Props {
   game: GameState;
@@ -15,73 +16,108 @@ interface Props {
   busy?: boolean;
 }
 
-/** A fixed-size turn control surface: stock and selection give way to capture confirmation. */
+/** The persistent stock strip never changes size; its chooser overlays the world. */
 export function ActionDock({ game, settings, interaction, onHelp, busy = false }: Props) {
-  const { activeKind, humanTurn, setup, selectStock, pending, clearSelection, threat } =
-    interaction;
-  const status = statusCopy(game, settings.human, interaction);
-  const dangerSources =
-    threat?.attackerIds.flatMap((id) => {
-      const p = game.pieces.find((p) => p.id === id);
-      return p ? [pieceName(p)] : [];
-    }) ?? [];
-  const dangerText =
-    dangerSources.length === 1
-      ? `${dangerSources[0]}に捕食される危険があります。`
-      : `相手${dangerSources.length}体に狙われています。橙の枠で相手を確認。`;
-
+  const { activeKind, humanTurn, setup, selectStock, pending, clearSelection } = interaction;
+  const [expanded, setExpanded] = useState(false);
+  const root = useRef<HTMLElement>(null);
+  const toggle = useRef<HTMLButtonElement>(null);
+  const trayId = useId();
+  useEffect(() => setExpanded(false), [game.revision, settings.human, busy]);
+  useEffect(() => {
+    if (!expanded) return;
+    function outside(event: PointerEvent) {
+      if (!root.current?.contains(event.target as Node)) setExpanded(false);
+    }
+    function escape(event: KeyboardEvent) {
+      if (event.key !== 'Escape' || document.querySelector('dialog[open]')) return;
+      event.stopPropagation();
+      setExpanded(false);
+      toggle.current?.focus({ preventScroll: true });
+    }
+    document.addEventListener('pointerdown', outside, true);
+    document.addEventListener('keydown', escape, true);
+    return () => {
+      document.removeEventListener('pointerdown', outside, true);
+      document.removeEventListener('keydown', escape, true);
+    };
+  }, [expanded]);
   if (pending) return <CaptureChoice human={settings.human} interaction={interaction} />;
+  const hasSelection = !setup && !!(interaction.selected || activeKind);
   return (
-    <aside className={`action-dock ${pending ? 'is-confirming' : ''}`} aria-label="対局の操作">
-      <div className="dock-heading">
-        <div className="turn-copy" aria-live="polite">
-          <span className="step-label">
-            {busy
-              ? '移動中'
-              : setup
-                ? 'まずは王を配置'
-                : humanTurn
-                  ? 'あなたの手番'
-                  : game.phase === 'finished'
-                    ? '対局終了'
-                    : '相手の手番'}
-          </span>
-          <h2>
-            {busy
-              ? `${game.lastAction?.piece.owner === settings.human ? 'あなた' : 'NPC'}の一手`
-              : status.title}
-          </h2>
-        </div>
-        <div className="dock-actions">
-          {(interaction.selected || (activeKind && !setup)) && !busy && (
-            <button className="icon-button" aria-label="選択を解除" onClick={clearSelection}>
-              <X size={19} />
-            </button>
-          )}
-          <button className="icon-button" aria-label="駒の動かし方" onClick={onHelp}>
-            <Info size={18} />
-          </button>
-        </div>
-      </div>
-      <p className={`turn-instruction ${dangerSources.length ? 'danger' : ''}`}>
-        {busy ? '移動が終わるまでお待ちください' : dangerSources.length ? dangerText : status.text}
-      </p>
-      <div className={`reserve-grid ${setup ? 'setup-reserve' : ''}`} aria-label="あなたのストック">
-        {KINDS.filter((kind) => kind !== 'walrus' || setup).map((kind) => (
-          <button
-            key={kind}
-            disabled={!humanTurn || setup || game.stocks[settings.human][kind] === 0}
-            className={activeKind === kind ? 'selected' : ''}
-            aria-pressed={activeKind === kind}
-            onClick={() => selectStock(kind)}
-            aria-label={`${DEFINITIONS[kind].name}を配置 残り${game.stocks[settings.human][kind]}体`}
-          >
-            <AnimalIcon kind={kind} />
-            <span className="stock-count">{game.stocks[settings.human][kind]}</span>
-            <span>{DEFINITIONS[kind].short}</span>
-          </button>
-        ))}
-      </div>
+    <aside ref={root} className="reserve-dock" aria-label="対局の操作">
+      <button
+        ref={toggle}
+        className="reserve-toggle"
+        disabled={setup || busy}
+        aria-label={expanded ? '持ち駒を閉じる' : '持ち駒を開く'}
+        aria-expanded={expanded}
+        aria-controls={trayId}
+        onClick={() => setExpanded((open) => !open)}
+      >
+        <span className="reserve-label">持ち駒</span>
+        <StockItems
+          game={game}
+          player={settings.human}
+          includeKing={setup}
+          activeKind={activeKind}
+        />
+        {!setup && <ChevronUp size={15} className={expanded ? 'is-open' : ''} />}
+      </button>
+      {hasSelection && !busy && (
+        <button className="reserve-clear" aria-label="選択を解除" onClick={clearSelection}>
+          <X size={17} />
+        </button>
+      )}
+      {expanded && (
+        <section className="reserve-tray action-dock" id={trayId} aria-label="配置する持ち駒">
+          <div className="dock-heading">
+            <h2>配置する駒を選択</h2>
+            <div className="dock-actions">
+              <button
+                className="icon-button"
+                aria-label="駒の動かし方"
+                onClick={() => {
+                  setExpanded(false);
+                  onHelp();
+                }}
+              >
+                <Info size={18} />
+              </button>
+              <button
+                className="icon-button"
+                aria-label="持ち駒の選択を閉じる"
+                onClick={() => {
+                  setExpanded(false);
+                  toggle.current?.focus({ preventScroll: true });
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+          </div>
+          <div className="reserve-grid" aria-label="あなたのストック">
+            {KINDS.filter((kind) => kind !== 'walrus').map((kind) => (
+              <button
+                key={kind}
+                disabled={!humanTurn || game.stocks[settings.human][kind] === 0}
+                className={activeKind === kind ? 'selected' : ''}
+                aria-pressed={activeKind === kind}
+                aria-label={`${DEFINITIONS[kind].name}を配置 残り${game.stocks[settings.human][kind]}体`}
+                onClick={() => {
+                  if (activeKind !== kind) selectStock(kind);
+                  setExpanded(false);
+                  toggle.current?.focus({ preventScroll: true });
+                }}
+              >
+                <AnimalIcon kind={kind} />
+                <span className="stock-count">{game.stocks[settings.human][kind]}</span>
+                <span>{DEFINITIONS[kind].short}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
     </aside>
   );
 }

@@ -66,7 +66,6 @@ svg {
   width: 100%;
   height: 100%;
   height: 100dvh;
-  --dock-space: 192px;
 }
 .world-layer,
 .scene-root {
@@ -216,7 +215,7 @@ svg {
   display: flex;
   gap: 14px;
 }
-.opponent-stock > div {
+.opponent-stock > span {
   display: flex;
   align-items: center;
   gap: 3px;
@@ -274,22 +273,91 @@ svg {
 }
 .play-window {
   position: absolute;
-  top: max(168px, calc(env(safe-area-inset-top) + 148px));
-  bottom: calc(var(--dock-space) + env(safe-area-inset-bottom));
-  left: max(32px, env(safe-area-inset-left));
-  right: max(32px, env(safe-area-inset-right));
+  top: max(144px, calc(env(safe-area-inset-top) + 124px));
+  bottom: max(74px, calc(env(safe-area-inset-bottom) + 64px));
+  left: max(8px, env(safe-area-inset-left));
+  right: max(8px, env(safe-area-inset-right));
   pointer-events: none;
-}
-.capture-pending {
-  --dock-space: 264px;
 }
 .bottom-hud {
   position: absolute;
-  bottom: max(30px, calc(env(safe-area-inset-bottom) + 24px));
+  bottom: max(20px, calc(env(safe-area-inset-bottom) + 10px));
   left: 50%;
   transform: translateX(-50%);
-  width: min(560px, calc(100% - 32px));
+  width: min(420px, calc(100% - 24px));
   z-index: 30;
+}
+.reserve-dock {
+  position: relative;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border-radius: 10px;
+  color: #d4edf6;
+  background: #0b2d40ed;
+  border: 1px solid #c6edff21;
+  box-shadow: 0 5px 20px #03273a26;
+}
+.reserve-toggle {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: inherit;
+  background: transparent;
+  border-radius: inherit;
+}
+.reserve-toggle:disabled {
+  cursor: default;
+  opacity: 0.8;
+}
+.reserve-label {
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.reserve-toggle .opponent-stock {
+  gap: 10px;
+}
+.reserve-toggle .opponent-stock > span {
+  gap: 2px;
+}
+.reserve-toggle .opponent-stock [data-active] {
+  color: #9befff;
+}
+.reserve-toggle .opponent-stock [data-active] .animal-icon {
+  color: #88edff;
+}
+.reserve-toggle > svg {
+  transition: transform 150ms;
+}
+.reserve-toggle > svg.is-open {
+  transform: rotate(180deg);
+}
+.reserve-clear {
+  align-self: stretch;
+  width: 34px;
+  display: grid;
+  place-items: center;
+  color: #b5d9e6;
+  border-left: 1px solid #a4d2df22;
+  background: transparent;
+  border-radius: 0 9px 9px 0;
+}
+.reserve-tray {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  animation: choice-pop 120ms ease-out;
+}
+.reserve-tray .dock-heading {
+  margin-bottom: 8px;
 }
 .action-dock {
   background: #092b3de8;
@@ -333,16 +401,6 @@ svg {
 .icon-button:disabled {
   opacity: 0.25;
 }
-.turn-instruction {
-  color: #a5c4d4;
-  font-size: 10px;
-  line-height: 1.5;
-  height: 20px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin: 0 0 8px;
-}
 .turn-instruction.danger {
   color: #ffc596;
 }
@@ -350,9 +408,6 @@ svg {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
-}
-.reserve-grid.setup-reserve {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 .reserve-grid button {
   position: relative;
@@ -813,12 +868,6 @@ svg {
   }
 }
 @media (max-width: 760px) {
-  .play-screen {
-    --dock-space: 196px;
-  }
-  .capture-pending {
-    --dock-space: 260px;
-  }
   .game-header {
     left: max(14px, env(safe-area-inset-left));
     right: max(14px, env(safe-area-inset-right));
@@ -866,9 +915,9 @@ svg {
     font-size: 9px;
   }
   .play-window {
-    left: max(6px, env(safe-area-inset-left));
-    right: max(6px, env(safe-area-inset-right));
-    top: max(144px, calc(env(safe-area-inset-top) + 132px));
+    left: env(safe-area-inset-left);
+    right: env(safe-area-inset-right);
+    top: max(132px, calc(env(safe-area-inset-top) + 120px));
   }
   .bottom-hud {
     width: calc(100% - 20px);
@@ -888,9 +937,6 @@ svg {
   }
   .dock-heading h2 {
     font-size: 12px;
-  }
-  .turn-instruction {
-    font-size: 10px;
   }
   .choice-description strong {
     font-size: 11px;
@@ -923,12 +969,6 @@ svg {
   }
 }
 @media (max-height: 670px) and (max-width: 760px) {
-  .play-screen {
-    --dock-space: 172px;
-  }
-  .capture-pending {
-    --dock-space: 244px;
-  }
   .opponent-hud {
     top: 54px;
   }
@@ -939,7 +979,7 @@ svg {
     top: 98px;
   }
   .play-window {
-    top: 122px;
+    top: 116px;
   }
   .bottom-hud {
     bottom: max(22px, calc(env(safe-area-inset-bottom) + 16px));
@@ -950,15 +990,12 @@ svg {
   .reserve-grid button {
     height: 58px;
   }
-  .turn-instruction {
-    margin-bottom: 4px;
-  }
   .reserve-grid .animal-icon {
     width: 29px;
     height: 29px;
   }
 }
-@media (max-height: 520px) and (min-width: 600px) {
+@media (max-height: 520px) and (min-width: 500px) {
   .game-header {
     top: 10px;
     left: max(16px, env(safe-area-inset-left));
@@ -976,7 +1013,7 @@ svg {
   }
   .opponent-hud {
     top: 54px;
-    width: 280px;
+    width: 240px;
     right: max(14px, env(safe-area-inset-right));
     left: auto;
     transform: none;
@@ -995,7 +1032,7 @@ svg {
   .turn-banner {
     top: 100px;
     right: max(14px, env(safe-area-inset-right));
-    width: 280px;
+    width: 240px;
     left: auto;
     transform: none;
     justify-content: center;
@@ -1004,13 +1041,13 @@ svg {
     top: 52px;
     bottom: 20px;
     left: max(14px, env(safe-area-inset-left));
-    right: 310px;
+    right: calc(246px + max(14px, env(safe-area-inset-right)));
   }
   .bottom-hud {
     left: auto;
     transform: none;
     right: max(14px, env(safe-area-inset-right));
-    width: 280px;
+    width: 240px;
     bottom: max(22px, env(safe-area-inset-bottom));
   }
   .action-dock {
@@ -1027,9 +1064,6 @@ svg {
     height: 30px;
   }
   .reserve-grid button > span:last-child {
-    font-size: 9px;
-  }
-  .turn-instruction {
     font-size: 9px;
   }
   .choice-description .animal-icon {
@@ -1068,53 +1102,56 @@ svg {
   justify-content: center;
   gap: 10px;
 }
-@media (max-height: 360px) and (min-width: 600px) {
-  .capture-pending .opponent-hud,
-  .capture-pending .turn-banner {
-    visibility: hidden;
-  }
-}
 
 .mode-options {
   margin-bottom: 18px;
 }
 .spectator-controls {
   display: flex;
-  gap: 6px;
+  gap: 2px;
 }
 .spectator-control {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  min-height: 40px;
-  padding: 6px 10px;
+  height: 36px;
+  width: 30px;
+  padding: 0;
   color: #daedf6;
-  border: 1px solid #80b8d044;
-  border-radius: 8px;
-  background: #ffffff08;
-  font-size: 11px;
+  border-radius: 6px;
+  background: transparent;
+}
+.spectator-control:hover {
+  background: #ffffff12;
 }
 .spectator-control:disabled {
   opacity: 0.35;
 }
-.spectator-stock {
-  display: flex;
-  align-items: center;
+.spectator-dock {
+  padding: 0 6px 0 10px;
   justify-content: space-between;
-  gap: 10px;
-  padding: 16px 0 4px;
-  font-size: 11px;
+  gap: 6px;
 }
-.spectator-stock small {
+.spectator-name {
+  font-size: 10px;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+.spectator-name small {
+  display: block;
+  font-size: 9px;
   color: #a5c4d4;
 }
-.spectator-stock .opponent-stock {
-  gap: 8px;
+.spectator-dock .opponent-stock {
+  gap: 4px;
 }
-.spectator-stock .animal-icon {
-  width: 20px;
-  height: 20px;
+.spectator-dock .opponent-stock .animal-icon {
+  width: 18px;
+  height: 18px;
+}
+.spectator-dock .opponent-stock > span {
+  font-size: 10px;
+  gap: 1px;
 }
 
 .transformation-dialog {
@@ -1149,12 +1186,78 @@ svg {
     translate: 0 0;
   }
 }
-@media (max-height: 520px) and (min-width: 600px) {
+@media (max-height: 520px) and (min-width: 500px) {
   .transformation-dialog {
     left: auto;
     right: max(14px, env(safe-area-inset-right));
     bottom: max(22px, env(safe-area-inset-bottom));
-    width: 280px;
+    width: 240px;
     transform: none;
+  }
+}
+
+@media (max-width: 360px) {
+  .reserve-toggle {
+    padding: 0 8px;
+    gap: 5px;
+  }
+  .reserve-toggle .opponent-stock {
+    gap: 5px;
+  }
+  .reserve-toggle .opponent-stock .animal-icon {
+    width: 20px;
+    height: 20px;
+  }
+  .reserve-toggle .opponent-stock > span {
+    font-size: 10px;
+  }
+}
+@media (max-height: 520px) and (min-width: 500px) {
+  .opponent-stock {
+    gap: 3px;
+  }
+  .opponent-stock > span {
+    font-size: 9px;
+    gap: 1px;
+  }
+  .opponent-stock .animal-icon {
+    width: 16px;
+    height: 16px;
+  }
+  .reserve-toggle {
+    padding: 0 8px;
+    gap: 5px;
+  }
+  .reserve-toggle .opponent-stock {
+    gap: 4px;
+  }
+  .reserve-toggle .opponent-stock .animal-icon {
+    width: 18px;
+    height: 18px;
+  }
+  .reserve-clear {
+    width: 28px;
+  }
+  .spectator-dock {
+    padding: 0 5px;
+    gap: 4px;
+  }
+  .spectator-dock .opponent-stock {
+    gap: 2px;
+  }
+  .spectator-dock .opponent-stock .animal-icon {
+    width: 15px;
+    height: 15px;
+  }
+  .spectator-control {
+    width: 26px;
+  }
+  .reserve-tray .reserve-grid button {
+    height: 58px;
+  }
+}
+@media (max-height: 520px) and (min-width: 840px) {
+  .play-window {
+    right: calc(100px + max(14px, env(safe-area-inset-right)));
   }
 }

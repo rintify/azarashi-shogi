@@ -108,10 +108,7 @@ export default function App() {
   const ended = game.phase === 'finished' && !playback.busy;
   const last = game.lastAction;
   return (
-    <main
-      className={`play-screen ${interaction.pending || playback.motion?.stage === 'resolve' ? 'capture-pending' : ''} ${ended ? 'match-ended' : ''}`}
-      onPointerDown={audio.unlock}
-    >
+    <main className={`play-screen ${ended ? 'match-ended' : ''}`} onPointerDown={audio.unlock}>
       <section className="world-layer" aria-label="対局盤" aria-busy={playback.busy}>
         <SceneBoundary
           onFallback={() => {
@@ -232,7 +229,9 @@ export default function App() {
               : interaction.setup
                 ? '王を配置'
                 : interaction.humanTurn
-                  ? 'あなたの手番'
+                  ? interaction.portrait
+                    ? status.title
+                    : 'あなたの手番'
                   : 'NPCの手番'}
             <small>
               {interaction.setup

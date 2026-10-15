@@ -35,9 +35,9 @@ export function SceneCamera({
     const inverse = temp.quaternion.clone().invert() as Quaternion;
     const tangent = Math.tan((camera.fov * Math.PI) / 360);
     let distance = 1;
-    for (const x of [-5.55, 5.55])
+    for (const x of [-5.4, 5.4])
       for (const y of [0, ceiling])
-        for (const z of [-5.55, 5.55]) {
+        for (const z of [-5.4, 5.4]) {
           const v = new Vector3(x, y, z).applyQuaternion(inverse);
           distance = Math.max(
             distance,
@@ -45,7 +45,7 @@ export function SceneCamera({
             Math.abs(v.y) / tangent + v.z,
           );
         }
-    destination.current.copy(direction.multiplyScalar(distance * 1.025));
+    destination.current.copy(direction.multiplyScalar(distance * 1.015));
     camera.setViewOffset(area.width, area.height, -area.x, -area.y, size.width, size.height);
     if (initial.current || reduced) {
       camera.position.copy(destination.current);

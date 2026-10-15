@@ -1,6 +1,6 @@
 import { AnimalIcon } from './AnimalIcon';
 import { DEFINITIONS, KINDS } from '../game/pieces';
-import { otherPlayer, type GameState, type Player } from '../game/types';
+import { otherPlayer, type GameState, type Kind, type Player } from '../game/types';
 import type { Difficulty } from '../match/record';
 
 export function OpponentBar({
@@ -29,15 +29,29 @@ export function OpponentBar({
     </section>
   );
 }
-export function StockItems({ game, player }: { game: GameState; player: Player }) {
+export function StockItems({
+  game,
+  player,
+  includeKing = true,
+  activeKind,
+}: {
+  game: GameState;
+  player: Player;
+  includeKing?: boolean;
+  activeKind?: Kind | null;
+}) {
   return (
-    <div className="opponent-stock">
-      {KINDS.map((kind) => (
-        <div key={kind} aria-label={`${DEFINITIONS[kind].name} ${game.stocks[player][kind]}体`}>
+    <span className="opponent-stock">
+      {KINDS.filter((kind) => includeKing || kind !== 'walrus').map((kind) => (
+        <span
+          key={kind}
+          data-active={activeKind === kind || undefined}
+          aria-label={`${DEFINITIONS[kind].name} ${game.stocks[player][kind]}体`}
+        >
           <AnimalIcon kind={kind} />
           <span>{game.stocks[player][kind]}</span>
-        </div>
+        </span>
       ))}
-    </div>
+    </span>
   );
 }
