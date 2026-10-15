@@ -1,38 +1,29 @@
 import { lazy, Suspense, useState } from 'react';
-import {
-  ArrowRight,
-  BookOpen,
-  Check,
-  Compass,
-  Flag,
-  Keyboard,
-  Maximize2,
-  RotateCcw,
-  Snowflake,
-  Swords,
-} from 'lucide-react';
-import { pieceAt } from './game/engine';
-import { pieceName } from './game/pieces';
-import { sameCell } from './game/types';
+import { BookOpen, Check, Flag, Grid2X2, Maximize2, RotateCcw, Box } from 'lucide-react';
 import { useMatch } from './match/useMatch';
 import { useNpc } from './ai/useNpc';
 import { AnimalIcon } from './components/AnimalIcon';
 import { RulesDialog } from './components/RulesDialog';
 import { NewGameDialog } from './components/NewGameDialog';
 import { SceneBoundary } from './components/SceneBoundary';
-import { Sidebar } from './components/Sidebar';
-import { coordinate } from './components/coordinates';
+import { ActionDock } from './components/ActionDock';
+import { OpponentBar } from './components/OpponentBar';
+import { CoordinateBoard } from './components/CoordinateBoard';
 import { statusCopy } from './components/statusCopy';
 import { useBoardInteraction } from './components/useBoardInteraction';
+import { pieceName } from './game/pieces';
+import { coordinate } from './components/coordinates';
 const BoardScene = lazy(() =>
   import('./scene/BoardScene').then((m) => ({ default: m.BoardScene })),
 );
 
 export default function App() {
-  const { game, settings, warning, submit, restart, history } = useMatch();
+  const { game, settings, warning, submit, restart } = useMatch();
   const [rulesOpen, setRulesOpen] = useState(false);
   const [newGameOpen, setNewGameOpen] = useState(false);
-  const [view, setView] = useState<'perspective' | 'top'>('perspective');
+  const [view, setView] = useState<'perspective' | 'top'>(() =>
+    window.matchMedia('(max-width: 760px)').matches ? 'top' : 'perspective',
+  );
   const [cameraReset, setCameraReset] = useState(0);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   const interaction = useBoardInteraction(game, settings.human, submit);
@@ -53,228 +44,163 @@ export default function App() {
     error: aiError,
     retry: retryNpc,
   } = useNpc(game, settings.human, settings.difficulty, submit);
-  const { title: statusTitle, text: statusText } = statusCopy(game, settings.human, interaction);
+  const status = statusCopy(game, settings.human, interaction);
+  const last = game.lastAction;
   return (
     <div className="app-shell">
       <header className="site-header">
-        <a className="brand" href="./" aria-label="アザラシ将棋 ホーム">
-          <div className="brand-mark">
-            <AnimalIcon kind="seal" />
-          </div>
+        <div className="brand">
+          <AnimalIcon kind="seal" />
           <div>
             <h1>
-              アザラシ将棋<span className="brand-dot">.</span>
+              アザラシ将棋<span>.</span>
             </h1>
-            <p>氷上の、小さな頭脳戦。</p>
+            <span className="brand-caption">ANTARCTIC CHESS CLUB</span>
           </div>
-        </a>
-        <nav>
-          <span className="local-pill">
-            <span />
-            LOCAL PLAY
+        </div>
+        <nav aria-label="対局メニュー">
+          <span className="save-indicator">
+            <Check size={13} />
+            自動保存
           </span>
           <button
-            className="quiet-button"
+            className="icon-button"
             aria-label="あそびかた"
             onClick={() => setRulesOpen(true)}
           >
-            <BookOpen size={17} />
-            <span>あそびかた</span>
+            <BookOpen size={19} />
           </button>
-          <button className="new-game-button" onClick={() => setNewGameOpen(true)}>
-            <RotateCcw size={16} />
-            <span>新しい対局</span>
+          <button
+            className="icon-button"
+            aria-label="新しい対局"
+            onClick={() => setNewGameOpen(true)}
+          >
+            <RotateCcw size={19} />
           </button>
         </nav>
       </header>
-      <main className="main-layout">
-        <section className="game-section" aria-label="対局盤">
-          <div className="game-heading">
-            <div className="heading-copy">
-              <span className="eyebrow">
-                <span className="live-dot" />
-                LET'S PLAY ON THE ICE
-              </span>
-              <h2>今日も、氷の上で一局。</h2>
-            </div>
-            <span className="match-chip">
-              <Swords size={14} />
-              あなた <span>vs</span> NPC
+      <main className="match-layout">
+        <OpponentBar
+          game={game}
+          human={settings.human}
+          difficulty={settings.difficulty}
+          thinking={aiStatus.thinking}
+        />
+        <section className="board-stage" aria-label="対局盤">
+          <div className="field-heading">
+            <span>
+              <i className={humanTurn ? 'your-turn-dot' : ''} />
+              {setup
+                ? '王の配置'
+                : game.phase === 'finished'
+                  ? '対局終了'
+                  : `${Math.max(1, game.revision - 1)}手目`}
             </span>
+            <small>10 × 10</small>
           </div>
-          <div className="board-card">
-            <div className="board-status">
-              <div className={`turn-avatar ${!humanTurn ? 'npc-avatar' : ''}`}>
-                <AnimalIcon kind={humanTurn ? 'seal' : 'penguin'} />
-              </div>
-              <div>
-                <div className="status-title">
-                  <strong>{statusTitle}</strong>
-                  {humanTurn && <span className="your-turn">YOUR TURN</span>}
-                </div>
-                <p>{statusText}</p>
-              </div>
-              <div className="turn-counter">
-                <span>{setup ? '準備' : 'TURN'}</span>
-                <strong>
-                  {setup
-                    ? game.phase === 'setup-south'
-                      ? '01'
-                      : '02'
-                    : String(
-                        Math.max(1, game.revision - (game.phase === 'finished' ? 2 : 1)),
-                      ).padStart(2, '0')}
-                </strong>
-              </div>
-            </div>
-            <div className="board-viewport">
-              <div className="board-top-label">
-                <Snowflake size={14} />
-                <span>ANTARCTIC FIELD</span>
-                <b>10 × 10</b>
-              </div>
-              <div className="view-controls">
-                <button
-                  className={view === 'top' ? 'active' : ''}
-                  title="真上から見る"
-                  aria-label="真上から見る"
-                  onClick={() => setView(view === 'top' ? 'perspective' : 'top')}
-                >
-                  <Maximize2 size={17} />
-                </button>
-                <button
-                  title="視点を戻す"
-                  aria-label="視点を戻す"
-                  onClick={() => {
-                    setView('perspective');
-                    setCameraReset((n) => n + 1);
-                  }}
-                >
-                  <Compass size={18} />
-                </button>
-              </div>
-              <SceneBoundary onFallback={() => setKeyboardOpen(true)}>
-                <Suspense
-                  fallback={<div className="canvas-loading">氷の盤面を準備しています…</div>}
-                >
-                  <BoardScene
-                    game={game}
-                    human={settings.human}
-                    selectedId={selectedId}
-                    legalCells={legalCells}
-                    preview={preview}
-                    threats={threats}
-                    threatSources={threat?.attackerIds ?? []}
-                    view={view}
-                    cameraReset={cameraReset}
-                    onCell={clickCell}
-                    onHover={setHover}
-                    onThreat={inspectThreat}
-                  />
-                </Suspense>
-              </SceneBoundary>
-              <div className="board-bottom-label">
-                <span className="snow-line" />
-                <span>南極の氷原</span>
-                <span className="board-latitude">78° S · 166° E</span>
-              </div>
-              {game.phase === 'finished' && (
-                <div className="result-overlay">
-                  <div>
-                    <Flag size={28} />
-                    <h2>{statusTitle}</h2>
-                    <p>
-                      {game.result?.reason === 'both-kings'
-                        ? '2体の王が、同じ一手で捕食されました。'
-                        : 'セイウチが捕食され、勝負が決まりました。'}
-                    </p>
-                    <button className="primary-button" onClick={() => setNewGameOpen(true)}>
-                      もう一局あそぶ <ArrowRight size={16} />
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-            <div className="board-toolbar">
-              <span>
-                <span className="legend-dot legal-dot" />
-                動けるマス
-              </span>
-              <span>
-                <span className="legend-dot capture-dot" />
-                捕食する駒
-              </span>
-              <span>
-                <b className="legend-alert">!</b>食べられるかも
-              </span>
-              <button
-                className={keyboardOpen ? 'active' : ''}
-                onClick={() => setKeyboardOpen(!keyboardOpen)}
-                aria-label="マス一覧で操作"
-                title="マス一覧で操作"
-              >
-                <Keyboard size={17} />
-              </button>
-            </div>
+          <div className="board-viewport">
+            <SceneBoundary onFallback={() => setKeyboardOpen(true)}>
+              <Suspense fallback={<div className="canvas-loading">氷の盤面を準備しています…</div>}>
+                <BoardScene
+                  game={game}
+                  human={settings.human}
+                  selectedId={selectedId}
+                  legalCells={legalCells}
+                  preview={preview}
+                  threats={threats}
+                  threatSources={threat?.attackerIds ?? []}
+                  view={view}
+                  cameraReset={cameraReset}
+                  onCell={clickCell}
+                  onHover={setHover}
+                  onThreat={inspectThreat}
+                />
+              </Suspense>
+            </SceneBoundary>
             {keyboardOpen && (
-              <div className="keyboard-board" aria-label="マス一覧で操作">
-                {Array.from({ length: 100 }, (_, i) => {
-                  const c = { x: i % 10, y: Math.floor(i / 10) },
-                    p = pieceAt(game, c),
-                    legal = legalCells.some((l) => sameCell(l, c));
-                  return (
-                    <button
-                      key={i}
-                      className={legal ? 'legal' : ''}
-                      aria-label={`${coordinate(c)}${p ? ` ${pieceName(p)}` : ''}${legal ? ' 選択可能' : ''}`}
-                      onClick={() => clickCell(c)}
-                      onFocus={() => setHover(c)}
-                      onMouseEnter={() => setHover(c)}
-                    >
-                      {p ? <AnimalIcon kind={p.kind} promoted={p.promoted} /> : coordinate(c)}
-                    </button>
-                  );
-                })}
+              <CoordinateBoard
+                game={game}
+                human={settings.human}
+                legalCells={legalCells}
+                onCell={clickCell}
+                onHover={setHover}
+              />
+            )}
+            {game.phase === 'finished' && (
+              <div className="result-overlay">
+                <div>
+                  <Flag size={28} />
+                  <h2>{status.title}</h2>
+                  <p>
+                    {game.result?.reason === 'both-kings'
+                      ? '両方の王が捕食されました。'
+                      : 'セイウチが捕食されました。'}
+                  </p>
+                  <button className="primary-button" onClick={() => setNewGameOpen(true)}>
+                    もう一局あそぶ
+                  </button>
+                </div>
               </div>
             )}
           </div>
-          <div className="below-board">
-            <span>
-              <Compass size={14} />
-              ドラッグで回転 · スクロールでズーム
-            </span>
-            <span>
-              <Check size={13} />
-              ブラウザーに自動保存
-            </span>
+          <div className="board-tools">
+            <div className="board-legend">
+              <span>
+                <i />
+                移動先
+              </span>
+              <span>
+                <b>!</b>捕食の危険
+              </span>
+            </div>
+            <div className="view-controls">
+              <button
+                aria-label={view === 'top' ? '立体で見る' : '真上から見る'}
+                aria-pressed={view === 'top'}
+                onClick={() => {
+                  setView(view === 'top' ? 'perspective' : 'top');
+                  setCameraReset((n) => n + 1);
+                }}
+              >
+                {view === 'top' ? <Box size={17} /> : <Maximize2 size={17} />}
+                <span>{view === 'top' ? '3D視点' : '真上'}</span>
+              </button>
+              <button
+                aria-label="マス一覧で操作"
+                aria-pressed={keyboardOpen}
+                onClick={() => setKeyboardOpen(!keyboardOpen)}
+              >
+                <Grid2X2 size={17} />
+              </button>
+            </div>
           </div>
-          {warning && (
-            <p className="error-message" role="alert">
-              {warning}
-            </p>
-          )}
         </section>
-        <Sidebar
+        <ActionDock
           game={game}
           settings={settings}
           interaction={interaction}
-          aiStatus={aiStatus}
-          aiError={aiError}
-          retryNpc={retryNpc}
-          actionCount={history.length}
-          onSettings={() => setNewGameOpen(true)}
           onHelp={() => setRulesOpen(true)}
         />
-      </main>
-      <footer className="site-footer">
-        <div>
-          <Snowflake size={13} />
-          <span>ゆっくり考える時間も、あそびのうち。</span>
+        <div className="match-message" aria-live="polite">
+          {aiError ? (
+            <span role="alert">
+              {aiError} <button onClick={retryNpc}>再試行</button>
+            </span>
+          ) : warning ? (
+            <span role="alert">{warning}</span>
+          ) : last ? (
+            <span>
+              {last.piece.owner === settings.human ? 'あなた' : 'NPC'}：{pieceName(last.piece)} →{' '}
+              {coordinate(last.piece.at)}
+              {last.captured.length ? ` · ${last.captured.length}体捕食` : ''}
+            </span>
+          ) : (
+            <span>
+              あなたは{settings.human === 'south' ? '先手' : '後手'} · 青い台座があなたの仲間
+            </span>
+          )}
         </div>
-        <span>
-          AZARASHI SHOGI <span className="footer-divider">/</span> MADE FOR A LITTLE WONDER
-        </span>
-      </footer>
+      </main>
       {rulesOpen && <RulesDialog close={() => setRulesOpen(false)} />}
       {newGameOpen && (
         <NewGameDialog

@@ -42,9 +42,9 @@ function Camera({
     const side = human === 'south' ? 1 : -1;
     const scale = Math.max(1, size.height / size.width);
     camera.position.set(
-      view === 'top' ? 0 : 7.5 * side * scale,
-      (view === 'top' ? 20 : 15.5) * scale,
-      view === 'top' ? 0.01 * side : 13 * side * scale,
+      view === 'top' ? 0 : 5 * side * scale,
+      (view === 'top' ? 14.6 : 13.5) * scale,
+      view === 'top' ? 0.01 * side : 10 * side * scale,
     );
     camera.lookAt(new Vector3(0, 0, 0));
     if (controls.current) {
@@ -57,6 +57,7 @@ function Camera({
       ref={controls}
       makeDefault
       enablePan={false}
+      enableZoom={view !== 'top'}
       minDistance={10}
       maxDistance={34}
       minPolarAngle={0.02}
@@ -174,6 +175,7 @@ function BoardContents(props: BoardProps) {
               receiveShadow
               onClick={(e) => {
                 e.stopPropagation();
+                if (e.delta > 5) return;
                 onCell(cell);
               }}
               onPointerMove={(e) => {
