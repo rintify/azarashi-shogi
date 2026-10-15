@@ -229,21 +229,13 @@ export default function App() {
           <>
             <span className={`status-pulse ${interaction.humanTurn ? 'human' : ''}`} />
             {watching
-              ? `${actorLabel()}${paused && !stepRequested ? ' · 一時停止' : interaction.setup ? 'が王を配置' : 'の手番'}`
-              : interaction.setup
-                ? '王を配置'
-                : interaction.humanTurn
-                  ? interaction.portrait
-                    ? status.title
-                    : 'あなたの手番'
-                  : 'NPCの手番'}
-            <small>
-              {interaction.setup
-                ? game.phase === 'setup-south'
-                  ? '1 / 2'
-                  : '2 / 2'
-                : `${game.revision - 1}手目`}
-            </small>
+              ? `${actorLabel()}${paused && !stepRequested ? ' · 一時停止' : 'の手番'}`
+              : interaction.humanTurn
+                ? interaction.portrait
+                  ? status.title
+                  : 'あなたの手番'
+                : 'NPCの手番'}
+            <small>{`${game.revision + 1}手目`}</small>
           </>
         )}
       </div>

@@ -18,7 +18,7 @@ class FakeWorker {
   }
 }
 const result = {
-  action: { type: 'place' as const, kind: 'walrus' as const, at: { x: 4, y: 8 } },
+  action: { type: 'place' as const, kind: 'penguin' as const, at: { x: 4, y: 7 } },
   depth: 2,
   nodes: 100,
   elapsedMs: 100,
@@ -103,7 +103,7 @@ it('does not start the NPC until playback releases the next turn', () => {
   expect(submit).not.toHaveBeenCalled();
 });
 
-it('runs both armies in spectator mode and submits their king placements in sequence', () => {
+it('runs both armies in spectator mode and submits their ordinary placements in sequence', () => {
   const initial = createGame(),
     submit = vi.fn();
   const hook = renderHook(({ game, level }) => useNpc(game, null, level, submit), {
@@ -123,7 +123,7 @@ it('runs both armies in spectator mode and submits their king placements in sequ
   });
   const reply = {
     ...result,
-    action: { type: 'place' as const, kind: 'walrus' as const, at: { x: 4, y: 0 } },
+    action: { type: 'place' as const, kind: 'penguin' as const, at: { x: 4, y: 2 } },
   };
   act(() => FakeWorker.instances[1].send({ type: 'result', revision: 1, result: reply }));
   expect(submit).toHaveBeenLastCalledWith(reply.action, 1);

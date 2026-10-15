@@ -14,9 +14,9 @@ export interface Piece {
   at: Cell;
 }
 export type Stock = Record<Kind, number>;
-export type Phase = 'setup-south' | 'setup-north' | 'playing' | 'finished';
+export type Phase = 'playing' | 'finished';
 export interface GameState {
-  rulesVersion: 1;
+  rulesVersion: 2;
   revision: number;
   phase: Phase;
   turn: Player;

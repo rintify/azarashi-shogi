@@ -11,16 +11,11 @@ export function statusCopy(game: GameState, human: Player, interaction: BoardInt
   }
   if (!interaction.humanTurn)
     return {
-      title: interaction.setup ? '相手が王を配置しています' : '相手が考えています',
+      title: '相手が考えています',
       text: 'NPCの手を待っています。',
     };
-  if (interaction.setup)
-    return {
-      title: '王の配置',
-      text: '手前半分の青い印を選び、2×2の王を配置します。',
-    };
   let text = '盤上の駒、または持ち駒を選択してください。';
-  if (interaction.pending) text = '捕食する駒と変身後の形を確認し、「この手を指す」で決定。';
+  if (interaction.pending) text = '空中の姿を確認し、「成る」「そのまま」で決定。';
   else if (interaction.portrait)
     text = `${pieceName(interaction.portrait)}を${interaction.selected ? '動かす' : '配置する'}場所を選んでください。`;
   if (interaction.selected?.kind === 'walrus' && interaction.unsafeCells.length)

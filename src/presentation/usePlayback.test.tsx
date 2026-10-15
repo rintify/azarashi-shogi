@@ -12,7 +12,7 @@ afterEach(() => {
 it('blocks the next turn until the visible action finishes and cancels on restart', () => {
   const initial = createGame();
   const hook = renderHook(({ game }) => usePlayback(game), { initialProps: { game: initial } });
-  const placed = applyAction(initial, { type: 'place', kind: 'walrus', at: { x: 4, y: 8 } });
+  const placed = applyAction(initial, { type: 'place', kind: 'seal', at: { x: 4, y: 7 } });
   hook.rerender({ game: placed });
   expect(hook.result.current.busy).toBe(true);
   expect(hook.result.current.settled).toBe(initial);
@@ -20,7 +20,7 @@ it('blocks the next turn until the visible action finishes and cancels on restar
   expect(hook.result.current.busy).toBe(true);
   act(() => vi.advanceTimersByTime(1));
   expect(hook.result.current.busy).toBe(false);
-  const reply = applyAction(placed, { type: 'place', kind: 'walrus', at: { x: 4, y: 0 } });
+  const reply = applyAction(placed, { type: 'place', kind: 'seal', at: { x: 4, y: 2 } });
   hook.rerender({ game: reply });
   expect(hook.result.current.motion).not.toBeNull();
   const restarted = createGame();
@@ -150,7 +150,7 @@ it('keeps the arrival deadline while rotating previews and preserves the exact p
       },
       {
         id: 's',
-        kind: 'seal' as const,
+        kind: 'orca' as const,
         owner: 'north' as const,
         promoted: false,
         at: { x: 4, y: 4 },

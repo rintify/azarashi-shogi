@@ -11,7 +11,7 @@ import {
   sampleMotion,
 } from './motion';
 const orca: Piece = { id: 'o', kind: 'orca', owner: 'south', promoted: false, at: { x: 4, y: 6 } };
-const food: Piece = { id: 'f', kind: 'seal', owner: 'north', promoted: false, at: { x: 4, y: 4 } };
+const food: Piece = { id: 'f', kind: 'orca', owner: 'north', promoted: false, at: { x: 4, y: 4 } };
 const state: GameState = { ...createGame(), phase: 'playing', pieces: [orca, food] };
 describe('presentation geometry and timing', () => {
   it('faces both armies toward their forward moves, including horizontal orcas', () => {

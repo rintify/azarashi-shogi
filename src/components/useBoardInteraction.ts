@@ -34,9 +34,8 @@ export function useBoardInteraction(
   const [optionIndex, setOptionIndex] = useState(0);
   const [inspectedThreat, setInspectedThreat] = useState<string | null>(null);
   const humanTurn = enabled && game.turn === human && game.phase !== 'finished';
-  const setup = game.phase.startsWith('setup');
   const selected = game.pieces.find((p) => p.id === selectedId) ?? null;
-  const activeKind = setup ? 'walrus' : stockKind;
+  const activeKind = stockKind;
   const legalCells = useMemo(() => {
     if (!humanTurn || pending) return [];
     if (selected) return moveCells(game, selected);
@@ -106,7 +105,7 @@ export function useBoardInteraction(
     setInspectedThreat(null);
   }
   function selectStock(kind: Kind) {
-    if (!humanTurn || setup || game.stocks[human][kind] === 0) return;
+    if (!humanTurn || game.stocks[human][kind] === 0) return;
     clearChoice();
     setSelectedId(null);
     setStockKind(kind === stockKind ? null : kind);
@@ -137,12 +136,12 @@ export function useBoardInteraction(
       return;
     }
     const piece = pieceAt(game, cell);
-    if (!setup && piece?.owner === human) {
+    if (piece?.owner === human) {
       setSelectedId(piece.id === selectedId ? null : piece.id);
       setStockKind(null);
       setInspectedThreat(null);
       setHover(null);
-    } else if (!setup) {
+    } else {
       setSelectedId(null);
       setStockKind(null);
       setHover(null);
@@ -165,7 +164,6 @@ export function useBoardInteraction(
     pending,
     optionIndex,
     humanTurn,
-    setup,
     legalCells,
     reachableCells,
     unsafeCells,

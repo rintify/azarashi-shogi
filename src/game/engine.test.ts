@@ -33,25 +33,39 @@ function board(...pieces: Piece[]): GameState {
   };
 }
 describe('initial placement and deployment', () => {
-  it('starts empty with 13 pieces on each side', () => {
+  it('starts immediately with both kings centered on the back two ranks', () => {
     const state = createGame();
-    expect(state.pieces).toHaveLength(0);
-    expect(Object.values(state.stocks.south).reduce((a, b) => a + b)).toBe(13);
-    expect(state.stocks.north).toEqual(initialStock());
-    expect(placementCells(state, 'seal')).toEqual([]);
-    expect(placementCells(state, 'walrus')).toHaveLength(36);
-  });
-  it('constrains the entire royal footprint to its own half', () => {
-    expect(
-      previewAction(createGame(), { type: 'place', kind: 'walrus', at: { x: 3, y: 4 } }),
-    ).toBeNull();
-    let state = applyAction(createGame(), { type: 'place', kind: 'walrus', at: { x: 4, y: 8 } });
-    expect(state.phase).toBe('setup-north');
-    expect(placementCells(state, 'walrus').every((c) => c.y <= 3)).toBe(true);
-    state = applyAction(state, { type: 'place', kind: 'walrus', at: { x: 4, y: 0 } });
     expect(state.phase).toBe('playing');
     expect(state.turn).toBe('south');
-    expect(state.stocks.south.walrus).toBe(0);
+    expect(state.revision).toBe(0);
+    expect(state.pieces).toHaveLength(2);
+    expect(state.pieces.map((king) => ({ owner: king.owner, cells: footprint(king) }))).toEqual([
+      {
+        owner: 'south',
+        cells: [
+          { x: 4, y: 8 },
+          { x: 5, y: 8 },
+          { x: 4, y: 9 },
+          { x: 5, y: 9 },
+        ],
+      },
+      {
+        owner: 'north',
+        cells: [
+          { x: 4, y: 0 },
+          { x: 5, y: 0 },
+          { x: 4, y: 1 },
+          { x: 5, y: 1 },
+        ],
+      },
+    ]);
+    expect(state.stocks.south).toEqual({ ...initialStock(), walrus: 0 });
+    expect(state.stocks.north).toEqual(state.stocks.south);
+    expect(Object.values(state.stocks.south).reduce((a, b) => a + b)).toBe(12);
+    expect(placementCells(state, 'walrus')).toEqual([]);
+    expect(placementCells(state, 'seal')).toContainEqual({ x: 3, y: 7 });
+    expect(legalPreviews(state).some((p) => p.action.type === 'move')).toBe(true);
+    expect(previewAction(state, { type: 'place', kind: 'walrus', at: { x: 0, y: 8 } })).toBeNull();
   });
   it('requires friendly edge or corner contact and all cells empty', () => {
     const state = board(p('s', 'seal', 4, 4), p('e', 'seal', 8, 8, 'north'));
@@ -164,7 +178,7 @@ describe('capture, transformation, and terminal outcomes', () => {
     const orca = p('o', 'orca', 4, 6);
     const state = board(
       orca,
-      p('f', 'seal', 4, 4),
+      p('f', 'orca', 4, 4),
       p('l', 'seal', 3, 4, 'north'),
       p('r', 'seal', 5, 5, 'north'),
     );
@@ -178,14 +192,17 @@ describe('capture, transformation, and terminal outcomes', () => {
     expect(options.some((o) => o.captured.some((c) => c.id === 'l'))).toBe(true);
     expect(options.some((o) => o.captured.some((c) => c.id === 'r'))).toBe(true);
     const horizontal = p('o', 'orca', 4, 5, 'south', true);
-    const back = moveOptions(board(horizontal, p('f', 'seal', 4, 4)), horizontal, { x: 4, y: 4 });
+    const back = moveOptions(board(horizontal, p('f', 'orca', 4, 4, 'north', true)), horizontal, {
+      x: 4,
+      y: 4,
+    });
     expect(back).toHaveLength(5);
     expect(back.slice(1).every((o) => !o.piece.promoted)).toBe(true);
   });
   it('excludes off-board rotations and rejects rotation without an initial capture', () => {
     const orca = p('o', 'orca', 0, 4);
     const state = board(orca, p('f', 'seal', 0, 2));
-    expect(moveOptions(state, orca, { x: 0, y: 2 })).toHaveLength(3);
+    expect(moveOptions(state, orca, { x: 0, y: 2 })).toHaveLength(2);
     expect(
       previewAction(board(orca, p('e', 'seal', 1, 2)), {
         type: 'move',
@@ -254,14 +271,6 @@ describe('state integrity and record replay', () => {
   it('matches previews, preserves non-royal totals and replay over generated games', () => {
     let state = createGame();
     const record = newRecord();
-    for (const at of [
-      { x: 0, y: 8 },
-      { x: 8, y: 0 },
-    ]) {
-      const action = { type: 'place' as const, kind: 'walrus' as const, at };
-      state = applyAction(state, action);
-      record.actions.push(action);
-    }
     let seed = 93;
     for (let i = 0; i < 100 && state.phase !== 'finished'; i++) {
       const choices = legalPreviews(state);
@@ -288,7 +297,7 @@ describe('state integrity and record replay', () => {
   it('rejects corrupt saves and incompatible versions', () => {
     expect(() => decodeRecord('{')).toThrow();
     expect(() => decodeRecord(JSON.stringify({ ...newRecord(), version: 2 }))).toThrow();
-    expect(() => decodeRecord(JSON.stringify({ ...newRecord(), rulesVersion: 2 }))).toThrow();
+    expect(() => decodeRecord(JSON.stringify({ ...newRecord(), rulesVersion: 3 }))).toThrow();
     expect(() =>
       decodeRecord(
         JSON.stringify({
@@ -330,5 +339,52 @@ describe('check is a warning, not a terminal rule', () => {
     });
     expect(captured.phase).toBe('finished');
     expect(captured.lastAction?.captured.map((p) => p.id)).toContain('own');
+  });
+});
+
+describe('orca rotation retains an initial capture cell', () => {
+  for (const promoted of [false, true])
+    for (const owner of ['south', 'north'] as const) {
+      it(`retains only the occupied pivot for ${promoted ? 'horizontal' : 'vertical'} ${owner}`, () => {
+        const orca = p('o', 'orca', 4, promoted ? 5 : 6, owner, promoted);
+        const to = { x: 4, y: 4 };
+        for (const pivot of [0, 1] as const) {
+          const cells = footprint({ ...orca, at: to });
+          const food = p('food', 'seal', cells[pivot].x, cells[pivot].y, owner);
+          const state = { ...board(orca, food), turn: owner };
+          const options = moveOptions(state, orca, to);
+          expect(options).toHaveLength(3);
+          for (const option of options.slice(1)) {
+            expect(option.action.type === 'move' && option.action.transformation).toMatchObject({
+              pivot,
+            });
+            expect(option.footprint).toContainEqual(food.at);
+          }
+          for (const direction of [-1, 1] as const)
+            expect(
+              previewAction(state, {
+                type: 'move',
+                pieceId: 'o',
+                to,
+                transformation: { type: 'rotate', pivot: pivot === 0 ? 1 : 0, direction },
+              }),
+            ).toBeNull();
+        }
+      });
+    }
+  it('does not use new rotation-only victims to validate an unoccupied initial pivot', () => {
+    const orca = p('o', 'orca', 4, 6);
+    const state = board(orca, p('food', 'seal', 5, 4), p('extra', 'seal', 6, 5, 'north'));
+    const action = {
+      type: 'move' as const,
+      pieceId: 'o',
+      to: { x: 5, y: 4 },
+      transformation: { type: 'rotate' as const, pivot: 1 as const, direction: -1 as const },
+    };
+    expect(previewAction(state, action)).toBeNull();
+    expect(() => applyAction(state, action)).toThrow();
+    expect(
+      getThreats({ ...state, turn: 'north' }, 'north').some((t) => t.targetId === 'extra'),
+    ).toBe(false);
   });
 });

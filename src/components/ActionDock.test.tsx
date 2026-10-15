@@ -39,7 +39,11 @@ describe('compact touch controls', () => {
     render(
       <Fixture
         submit={submit}
-        game={{ ...createGame(), phase: 'playing', pieces: [orca, food] }}
+        game={{
+          ...createGame(),
+          phase: 'playing',
+          pieces: [orca, food, { ...food, id: 'second', at: { x: 4, y: 5 } }],
+        }}
       />,
     );
     fireEvent.click(screen.getByText('シャチを選ぶ'));

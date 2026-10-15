@@ -30,3 +30,7 @@ it('rejects unknown modes and malformed AI levels rather than starting an invali
     ),
   ).toThrow();
 });
+
+it('does not replay a record under a different rule version', () => {
+  expect(() => decodeRecord(JSON.stringify({ ...newRecord(), rulesVersion: 1 }))).toThrow();
+});

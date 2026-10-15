@@ -128,7 +128,11 @@ it('shades the entire reachable footprint without treating trailing cells as des
 it('includes all legal orca rotation footprints in the same reachable guide', () => {
   const orca: Piece = { ...penguin, kind: 'orca', at: { x: 4, y: 6 } };
   const target: Piece = { ...food, owner: 'north', at: { x: 5, y: 4 } };
-  const game = { ...createGame(), phase: 'playing' as const, pieces: [orca, target] };
+  const game = {
+    ...createGame(),
+    phase: 'playing' as const,
+    pieces: [orca, target, { ...target, id: 'second', at: { x: 5, y: 5 } }],
+  };
   const notify = vi.fn();
   const hook = renderHook(() => useBoardInteraction(game, 'south', vi.fn(), true, notify));
   act(() => hook.result.current.clickCell(orca.at));
@@ -174,4 +178,22 @@ it('retains an ordinary white seal move and the friendly king loss warning', () 
   expect(danger.result.current.pending).toHaveLength(1);
   expect(danger.result.current.pending![0].piece.promoted).toBe(true);
   expect(submit).not.toHaveBeenCalled();
+});
+
+it('shows a blue safe destination after capturing its attacker rather than using the old board', () => {
+  const own: Piece = { ...penguin, id: 'king', kind: 'walrus', at: { x: 4, y: 7 } };
+  const attacker: Piece = {
+    ...penguin,
+    id: 'attacker',
+    owner: 'north',
+    kind: 'bear',
+    at: { x: 5, y: 5 },
+  };
+  const game = { ...createGame(), pieces: [own, attacker] };
+  const hook = renderHook(() => useBoardInteraction(game, 'south', vi.fn()));
+  expect(hook.result.current.threats.some((t) => t.targetId === own.id)).toBe(true);
+  act(() => hook.result.current.clickCell(own.at));
+  expect(hook.result.current.legalCells).toContainEqual({ x: 4, y: 5 });
+  expect(hook.result.current.unsafeCells).not.toContainEqual({ x: 4, y: 5 });
+  expect(hook.result.current.unsafeCells.length).toBeGreaterThan(0);
 });

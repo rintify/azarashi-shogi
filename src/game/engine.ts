@@ -14,12 +14,15 @@ import type {
 
 export function createGame(): GameState {
   return {
-    rulesVersion: 1,
+    rulesVersion: 2,
     revision: 0,
-    phase: 'setup-south',
+    phase: 'playing',
     turn: 'south',
-    pieces: [],
-    stocks: { south: initialStock(), north: initialStock() },
+    pieces: [
+      { id: 'king-south', kind: 'walrus', owner: 'south', at: { x: 4, y: 8 }, promoted: false },
+      { id: 'king-north', kind: 'walrus', owner: 'north', at: { x: 4, y: 0 }, promoted: false },
+    ],
+    stocks: { south: { ...initialStock(), walrus: 0 }, north: { ...initialStock(), walrus: 0 } },
     result: null,
     lastAction: null,
   };
@@ -44,10 +47,8 @@ export function pieceAt(state: GameState, at: Cell): Piece | undefined {
   return state.pieces.find((p) => footprint(p).some((c) => sameCell(c, at)));
 }
 export function placementCells(state: GameState, kind: Kind): Cell[] {
-  if (state.phase === 'finished' || state.stocks[state.turn][kind] <= 0) return [];
-  const setup = state.phase !== 'playing';
-  if (setup && kind !== 'walrus') return [];
-  if (!setup && kind === 'walrus') return [];
+  if (state.phase !== 'playing' || kind === 'walrus' || state.stocks[state.turn][kind] <= 0)
+    return [];
   const occupied = occupancy(state);
   const allied = state.pieces.filter((p) => p.owner === state.turn).flatMap(footprint);
   const cells: Cell[] = [];
@@ -56,9 +57,7 @@ export function placementCells(state: GameState, kind: Kind): Cell[] {
       const piece: Piece = { id: '', kind, owner: state.turn, at: { x, y }, promoted: false };
       const body = footprint(piece);
       if (!fits(piece) || body.some((c) => occupied.has(cellKey(c)))) continue;
-      if (setup) {
-        if (!body.every((c) => (state.turn === 'south' ? c.y >= 5 : c.y < 5))) continue;
-      } else if (
+      if (
         !body.some((c) =>
           allied.some((a) => Math.max(Math.abs(c.x - a.x), Math.abs(c.y - a.y)) === 1),
         )
@@ -162,6 +161,15 @@ function buildMovePreview(
     if (!captured.length || !canTransform(piece)) return null;
     const transformed = transformedPiece(piece, action.transformation);
     if (!transformed) return null;
+    // A rotation must retain contact with an occupied cell of the initial capture.
+    // New victims reached only by rotation cannot unlock an otherwise illegal pivot.
+    if (
+      piece.kind === 'orca' &&
+      !footprint(transformed).some((cell) =>
+        captureCells.some((landing) => sameCell(cell, landing) && occupied.has(cellKey(landing))),
+      )
+    )
+      return null;
     piece = transformed;
     captureCells = [
       ...new Map([...captureCells, ...footprint(piece)].map((c) => [cellKey(c), c])).values(),
@@ -239,13 +247,8 @@ export function applyPreview(state: GameState, preview: ActionPreview): GameStat
   for (const p of captured) if (p.kind !== 'walrus') stocks[state.turn][p.kind]++;
   const deadKings = captured.filter((p) => p.kind === 'walrus').map((p) => p.owner);
   let phase = state.phase;
-  let turn = otherPlayer(state.turn);
+  const turn = otherPlayer(state.turn);
   let result = state.result;
-  if (phase === 'setup-south') phase = 'setup-north';
-  else if (phase === 'setup-north') {
-    phase = 'playing';
-    turn = 'south';
-  }
   if (deadKings.length) {
     phase = 'finished';
     result =

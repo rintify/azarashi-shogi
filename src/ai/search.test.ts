@@ -47,10 +47,13 @@ describe('fair NPC search', () => {
     const next = applyAction(state, result.action!);
     expect(legalPreviews(next).some((m) => m.captured.some((p) => p.id === 'own'))).toBe(false);
   });
-  it('searches initial placement with exactly the normal legal rules', () => {
+  it('searches the first turn with both fixed kings already on the board', () => {
     const state = createGame();
     const result = searchBestAction(state, { difficulty: 2, budgetMs: 30 });
-    expect(result.action?.type).toBe('place');
+    expect(state.pieces.filter((p) => p.kind === 'walrus')).toHaveLength(2);
+    expect(
+      result.action && !(result.action.type === 'place' && result.action.kind === 'walrus'),
+    ).toBe(true);
     expect(previewAction(state, result.action!)).not.toBeNull();
     expect(state).toEqual(createGame());
   });

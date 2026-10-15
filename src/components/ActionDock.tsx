@@ -18,7 +18,7 @@ interface Props {
 
 /** The persistent stock strip never changes size; its chooser overlays the world. */
 export function ActionDock({ game, settings, interaction, onHelp, busy = false }: Props) {
-  const { activeKind, humanTurn, setup, selectStock, pending, clearSelection } = interaction;
+  const { activeKind, humanTurn, selectStock, pending, clearSelection } = interaction;
   const [expanded, setExpanded] = useState(false);
   const root = useRef<HTMLElement>(null);
   const toggle = useRef<HTMLButtonElement>(null);
@@ -43,26 +43,21 @@ export function ActionDock({ game, settings, interaction, onHelp, busy = false }
     };
   }, [expanded]);
   if (pending) return <CaptureChoice human={settings.human} interaction={interaction} />;
-  const hasSelection = !setup && !!(interaction.selected || activeKind);
+  const hasSelection = !!(interaction.selected || activeKind);
   return (
     <aside ref={root} className="reserve-dock" aria-label="対局の操作">
       <button
         ref={toggle}
         className="reserve-toggle"
-        disabled={setup || busy}
+        disabled={busy}
         aria-label={expanded ? '持ち駒を閉じる' : '持ち駒を開く'}
         aria-expanded={expanded}
         aria-controls={trayId}
         onClick={() => setExpanded((open) => !open)}
       >
         <span className="reserve-label">持ち駒</span>
-        <StockItems
-          game={game}
-          player={settings.human}
-          includeKing={setup}
-          activeKind={activeKind}
-        />
-        {!setup && <ChevronUp size={15} className={expanded ? 'is-open' : ''} />}
+        <StockItems game={game} player={settings.human} activeKind={activeKind} />
+        <ChevronUp size={15} className={expanded ? 'is-open' : ''} />
       </button>
       {hasSelection && !busy && (
         <button className="reserve-clear" aria-label="選択を解除" onClick={clearSelection}>
