@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createGame } from '../game/engine';
+import { applyAction, createGame } from '../game/engine';
 import type { ThinkResponse } from './protocol';
 import { useNpc } from './useNpc';
 class FakeWorker {
@@ -113,7 +113,7 @@ it('runs both armies in spectator mode and submits their king placements in sequ
   expect(first.postMessage).toHaveBeenCalledWith({ state: initial, difficulty: 2, revision: 0 });
   act(() => first.send({ type: 'result', revision: 0, result }));
   expect(submit).toHaveBeenCalledWith(result.action, 0);
-  const north = { ...initial, revision: 1, turn: 'north' as const, phase: 'setup-north' as const };
+  const north = applyAction(initial, result.action);
   hook.rerender({ game: north, level: 4 });
   expect(first.terminate).toHaveBeenCalledOnce();
   expect(FakeWorker.instances[1].postMessage).toHaveBeenCalledWith({
@@ -121,4 +121,10 @@ it('runs both armies in spectator mode and submits their king placements in sequ
     difficulty: 4,
     revision: 1,
   });
+  const reply = {
+    ...result,
+    action: { type: 'place' as const, kind: 'walrus' as const, at: { x: 4, y: 0 } },
+  };
+  act(() => FakeWorker.instances[1].send({ type: 'result', revision: 1, result: reply }));
+  expect(submit).toHaveBeenLastCalledWith(reply.action, 1);
 });

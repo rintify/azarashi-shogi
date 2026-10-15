@@ -11,6 +11,7 @@ import {
   facing,
   progress,
   sampleMotion,
+  transformationProgress,
   type MoveMotion,
 } from '../presentation/motion';
 
@@ -79,8 +80,7 @@ export function PieceActor({
           motion.action.action.type === 'move' &&
           motion.action.action.transformation?.type === 'rotate'
         ) {
-          const phase = Math.max(0, Math.min(1, (t - 0.56) / 0.36));
-          const ease = phase * phase * (3 - 2 * phase);
+          const ease = transformationProgress(motion, t);
           base.current.rotation.y =
             ((-motion.action.action.transformation.direction * Math.PI) / 2) * ease;
         }

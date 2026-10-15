@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { MoveMotion } from './motion';
+import { hasTransformation, landingMoment, type MoveMotion } from './motion';
 /** Small synthesized ice/wood cues; audio starts only after a user gesture. */
 export function useGameAudio(motion: MoveMotion | null) {
   const context = useRef<AudioContext | null>(null);
@@ -46,15 +46,21 @@ export function useGameAudio(motion: MoveMotion | null) {
       oscillator.stop(start + length + 0.02);
       nodes.push(oscillator);
     }
-    tone(0.01, 440, 0.09, 0.025);
-    tone(
-      (motion.duration / 1000) * (motion.before ? 0.56 : 0.7),
-      motion.action.captured.length ? 160 : 260,
-      0.18,
-      0.065,
-    );
-    if (motion.action.action.type === 'move' && motion.action.action.transformation)
-      tone((motion.duration / 1000) * 0.84, 760, 0.22, 0.035);
+    if (motion.stage !== 'resolve') tone(0.01, 440, 0.09, 0.025);
+    if (motion.stage !== 'choice') {
+      tone(
+        (motion.duration / 1000) * landingMoment(motion),
+        motion.action.captured.length ? 160 : 260,
+        0.18,
+        0.065,
+      );
+      if (hasTransformation(motion)) {
+        const start = motion.stage === 'resolve' ? 0.18 : 0.44;
+        [660, 880, 1320].forEach((frequency, i) =>
+          tone((motion.duration / 1000) * start + i * 0.08, frequency, 0.22, 0.022),
+        );
+      }
+    }
     return () =>
       nodes.forEach((node) => {
         try {

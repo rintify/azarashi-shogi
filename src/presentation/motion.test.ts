@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { applyAction, createGame, moveOptions } from '../game/engine';
 import type { GameState, Piece } from '../game/types';
-import { captureProgress, center, createMotion, facing, IMPACT, sampleMotion } from './motion';
+import {
+  captureProgress,
+  center,
+  createMotion,
+  facing,
+  HOVER_HEIGHT,
+  IMPACT,
+  sampleMotion,
+} from './motion';
 const orca: Piece = { id: 'o', kind: 'orca', owner: 'south', promoted: false, at: { x: 4, y: 6 } };
 const food: Piece = { id: 'f', kind: 'seal', owner: 'north', promoted: false, at: { x: 4, y: 4 } };
 const state: GameState = { ...createGame(), phase: 'playing', pieces: [orca, food] };
@@ -32,12 +40,14 @@ describe('presentation geometry and timing', () => {
       expect(final.yaw).toBeCloseTo(facing(option.piece));
     }
   });
-  it('keeps extra L-shape victims alive until rotation reaches them', () => {
+  it('retains L-shape victims while transforming in the air and consumes them at landing', () => {
     const extra: Piece = { ...food, id: 'extra', at: { x: 3, y: 4 } };
     const start = { ...state, pieces: [orca, food, extra] };
     const option = moveOptions(start, orca, food.at).find((o) => o.captured.length === 2)!;
     const motion = createMotion(start, applyAction(start, option.action), 0)!;
-    expect(captureProgress(motion, food, 0.75)).toBe(1);
+    expect(captureProgress(motion, food, 0.75)).toBe(0);
+    expect(captureProgress(motion, food, 0.85)).toBeGreaterThan(0);
+    expect(captureProgress(motion, extra, 0.85)).toBe(0);
     expect(captureProgress(motion, extra, 0.75)).toBe(0);
     expect(captureProgress(motion, extra, 1)).toBe(1);
   });
@@ -48,4 +58,24 @@ describe('presentation geometry and timing', () => {
     expect(motion.duration).toBe(180);
     expect(sampleMotion(motion, 0.2).position).toEqual(center(after.lastAction!.piece));
   });
+});
+
+it('waits above the destination untransformed, then transforms in the air and lands', () => {
+  const option = moveOptions(state, orca, food.at)[1];
+  const after = applyAction(state, option.action);
+  const staged = {
+    ...createMotion(state, after, 0)!,
+    stage: 'choice' as const,
+    action: moveOptions(state, orca, food.at)[0],
+  };
+  const hovering = sampleMotion(staged, 1);
+  expect(hovering.position[1]).toBeCloseTo(HOVER_HEIGHT);
+  expect(hovering.position[0]).toBeCloseTo(center({ ...orca, at: food.at })[0]);
+  expect(hovering.promoted).toBe(false);
+  expect(captureProgress(staged, food, 1)).toBe(0);
+  const resolving = { ...createMotion(state, after, 0)!, stage: 'resolve' as const };
+  expect(sampleMotion(resolving, 0).position).toEqual(hovering.position);
+  expect(sampleMotion(resolving, 0.6).promoted).toBe(true);
+  expect(sampleMotion(resolving, 0.6).position[1]).toBeCloseTo(HOVER_HEIGHT);
+  expect(sampleMotion(resolving, 1).position[1]).toBeCloseTo(0);
 });

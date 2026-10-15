@@ -10,11 +10,13 @@ export function SceneCamera({
   view,
   human,
   reduced,
+  ceiling = 1.7,
 }: {
   area: PlayArea | null;
   view: 'perspective' | 'top';
   human: Player;
   reduced: boolean;
+  ceiling?: number;
 }) {
   const { camera, size } = useThree();
   const destination = useRef(new Vector3(0, 20, 9));
@@ -34,7 +36,7 @@ export function SceneCamera({
     const tangent = Math.tan((camera.fov * Math.PI) / 360);
     let distance = 1;
     for (const x of [-5.55, 5.55])
-      for (const y of [0, 1.7])
+      for (const y of [0, ceiling])
         for (const z of [-5.55, 5.55]) {
           const v = new Vector3(x, y, z).applyQuaternion(inverse);
           distance = Math.max(
@@ -51,7 +53,7 @@ export function SceneCamera({
       initial.current = false;
     }
     camera.updateProjectionMatrix();
-  }, [camera, area, size.width, size.height, view, human, reduced]);
+  }, [camera, area, size.width, size.height, view, human, reduced, ceiling]);
   useFrame((_, delta) => {
     if (camera.position.distanceToSquared(destination.current) > 0.00001) {
       camera.position.lerp(destination.current, 1 - Math.exp(-delta * 12));

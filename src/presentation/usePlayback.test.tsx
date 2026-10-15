@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { applyAction, createGame } from '../game/engine';
+import { applyAction, createGame, moveOptions } from '../game/engine';
 import { usePlayback } from './usePlayback';
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => {
@@ -60,4 +60,78 @@ it('holds the result until the king capture has been shown', () => {
   act(() => vi.advanceTimersByTime(1100));
   expect(hook.result.current.busy).toBe(false);
   expect(hook.result.current.settled.phase).toBe('finished');
+});
+
+it('stages an uncommitted capture, waits for choice, and resolves from the air without replaying the move', () => {
+  const before = {
+    ...createGame(),
+    phase: 'playing' as const,
+    pieces: [
+      {
+        id: 'p',
+        kind: 'penguin' as const,
+        owner: 'south' as const,
+        promoted: false,
+        at: { x: 4, y: 5 },
+      },
+      {
+        id: 's',
+        kind: 'seal' as const,
+        owner: 'north' as const,
+        promoted: false,
+        at: { x: 4, y: 4 },
+      },
+    ],
+  };
+  const choices = moveOptions(before, before.pieces[0], { x: 4, y: 4 });
+  const hook = renderHook(({ game }) => usePlayback(game), {
+    initialProps: { game: before as ReturnType<typeof createGame> },
+  });
+  act(() => hook.result.current.presentChoice(choices[0]));
+  expect(hook.result.current.motion?.stage).toBe('choice');
+  expect(hook.result.current.busy).toBe(true);
+  expect(hook.result.current.resolving).toBe(false);
+  act(() => vi.advanceTimersByTime(620));
+  expect(hook.result.current.choiceReady).toBe(true);
+  expect(before.pieces).toHaveLength(2);
+  hook.rerender({ game: applyAction(before, choices[1].action) });
+  expect(hook.result.current.motion?.stage).toBe('resolve');
+  expect(hook.result.current.choiceReady).toBe(false);
+  act(() => vi.advanceTimersByTime(1150));
+  expect(hook.result.current.busy).toBe(false);
+});
+it('cancels an airborne choice and discards its arrival timer on restart', () => {
+  const before = {
+    ...createGame(),
+    phase: 'playing' as const,
+    pieces: [
+      {
+        id: 'p',
+        kind: 'penguin' as const,
+        owner: 'south' as const,
+        promoted: false,
+        at: { x: 4, y: 5 },
+      },
+      {
+        id: 's',
+        kind: 'seal' as const,
+        owner: 'north' as const,
+        promoted: false,
+        at: { x: 4, y: 4 },
+      },
+    ],
+  };
+  const preview = moveOptions(before, before.pieces[0], { x: 4, y: 4 })[0];
+  const hook = renderHook(({ game }) => usePlayback(game), {
+    initialProps: { game: before as ReturnType<typeof createGame> },
+  });
+  act(() => hook.result.current.presentChoice(preview));
+  act(() => hook.result.current.presentChoice(null));
+  expect(hook.result.current.motion).toBeNull();
+  expect(hook.result.current.busy).toBe(false);
+  act(() => hook.result.current.presentChoice(preview));
+  hook.rerender({ game: createGame() });
+  act(() => vi.runAllTimers());
+  expect(hook.result.current.motion).toBeNull();
+  expect(hook.result.current.choiceReady).toBe(false);
 });

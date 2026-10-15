@@ -25,6 +25,7 @@ export function useBoardInteraction(
   human: Player,
   submit: (action: GameAction, revision: number) => void,
   enabled = true,
+  onCaptureChoice?: (preview: ActionPreview | null) => void,
 ) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [stockKind, setStockKind] = useState<Kind | null>(null);
@@ -46,10 +47,19 @@ export function useBoardInteraction(
     const body = selected ?? (activeKind ? { kind: activeKind, promoted: false } : null);
     if (!body) return [];
     const cells = new Map<string, Cell>();
-    for (const at of legalCells)
-      for (const cell of footprint({ ...body, at })) cells.set(cellKey(cell), cell);
+    const options =
+      pending ??
+      (selected?.kind === 'orca'
+        ? legalCells.flatMap((at) => moveOptions(game, selected, at))
+        : []);
+    for (const option of options)
+      for (const cell of [...option.footprint, ...option.captureCells])
+        cells.set(cellKey(cell), cell);
+    if (!pending)
+      for (const at of legalCells)
+        for (const cell of footprint({ ...body, at })) cells.set(cellKey(cell), cell);
     return [...cells.values()];
-  }, [selected, activeKind, legalCells]);
+  }, [selected, activeKind, legalCells, pending, game]);
   // Amber destinations remain legal; the rules never prohibit moving into danger.
   const unsafeCells = useMemo(() => {
     if (!selected || selected.kind !== 'walrus' || !humanTurn || pending) return [];
@@ -76,6 +86,7 @@ export function useBoardInteraction(
       ? { id: 'portrait', kind: activeKind, owner: human, at: { x: 4, y: 4 }, promoted: false }
       : null);
   const clearChoice = () => {
+    onCaptureChoice?.(null);
     setPending(null);
     setOptionIndex(0);
     setHover(null);
@@ -111,6 +122,7 @@ export function useBoardInteraction(
           options[0]?.captured.some((p) => p.kind === 'walrus' && p.owner === human)
         ) {
           setPending(options);
+          if (options.length > 1) onCaptureChoice?.(options[0]);
           setOptionIndex(0);
         } else if (options[0]) submit(options[0].action, game.revision);
       } else if (activeKind) submit({ type: 'place', kind: activeKind, at: cell }, game.revision);

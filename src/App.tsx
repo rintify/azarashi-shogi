@@ -15,6 +15,7 @@ import { otherPlayer } from './game/types';
 import { SpectatorDock } from './components/SpectatorDock';
 import { useMatch } from './match/useMatch';
 import { useNpc } from './ai/useNpc';
+import { TransformationDialog } from './components/TransformationDialog';
 import { MatchResult } from './components/MatchResult';
 import { RulesDialog } from './components/RulesDialog';
 import { NewGameDialog } from './components/NewGameDialog';
@@ -61,7 +62,8 @@ export default function App() {
     game,
     settings.human,
     submit,
-    sceneReady && !playback.busy && !watching,
+    sceneReady && !playback.resolving && !watching,
+    playback.presentChoice,
   );
   const { area, ref: playRef } = usePlayArea();
   const {
@@ -87,6 +89,7 @@ export default function App() {
     : status.title;
   const actorLabel = (owner = game.turn) => playerLabel(settings, owner);
   useEffect(() => {
+    if (interaction.pending && interaction.pending.length > 1) setKeyboardOpen(false);
     function escape(e: KeyboardEvent) {
       if (e.key === 'Escape' && !document.querySelector('dialog[open]')) {
         interaction.clearSelection();
@@ -106,7 +109,7 @@ export default function App() {
   const last = game.lastAction;
   return (
     <main
-      className={`play-screen ${interaction.pending ? 'capture-pending' : ''} ${ended ? 'match-ended' : ''}`}
+      className={`play-screen ${interaction.pending || playback.motion?.stage === 'resolve' ? 'capture-pending' : ''} ${ended ? 'match-ended' : ''}`}
       onPointerDown={audio.unlock}
     >
       <section className="world-layer" aria-label="対局盤" aria-busy={playback.busy}>
@@ -205,8 +208,15 @@ export default function App() {
       <div className={`turn-banner ${kingDanger ? 'king-danger' : ''}`} role="status">
         {playback.busy ? (
           <>
-            <span className="status-pulse" /> {actorLabel(last?.piece.owner)}：
-            {last && pieceName(last.piece)}を{last?.from ? '移動' : '配置'}
+            <span className="status-pulse" />{' '}
+            {actorLabel(playback.motion?.action.piece.owner ?? last?.piece.owner)}：
+            {playback.motion?.stage === 'choice' ? (
+              '移動先の上空で変身を選択'
+            ) : (
+              <>
+                {last && pieceName(last.piece)}を{last?.from ? '移動' : '配置'}
+              </>
+            )}
           </>
         ) : ended ? (
           resultTitle
@@ -254,7 +264,7 @@ export default function App() {
           />
         </section>
       )}
-      {!ended && (
+      {!ended && !(interaction.pending && interaction.pending.length > 1) && (
         <div className="bottom-hud">
           {watching ? (
             <SpectatorDock
@@ -327,6 +337,9 @@ export default function App() {
             </button>
           </div>
         </div>
+      )}
+      {interaction.pending && interaction.pending.length > 1 && playback.choiceReady && (
+        <TransformationDialog human={settings.human} interaction={interaction} />
       )}
       {rulesOpen && <RulesDialog close={() => setRulesOpen(false)} />}
       {newGameOpen && (

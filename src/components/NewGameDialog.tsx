@@ -117,9 +117,11 @@ export function NewGameDialog({
         <span>じっくり勝負</span>
       </div>
       <p className="difficulty-note">
-        {difficulty === 5
-          ? '最長10秒じっくり考える「極」。同じルールで、全力の一手を指します。'
-          : `NPCの思考時間は最大${LEVELS[difficulty].thinkingMs / 1000}秒。${LEVELS[difficulty].name}レベルで対戦します。`}
+        {watching
+          ? `先手は最大${LEVELS[southLevel].thinkingMs / 1000}秒、後手は最大${LEVELS[difficulty].thinkingMs / 1000}秒。同じルールで対局します。`
+          : difficulty === 5
+            ? '最長10秒じっくり考える「極」。同じルールで、全力の一手を指します。'
+            : `NPCの思考時間は最大${LEVELS[difficulty].thinkingMs / 1000}秒。${LEVELS[difficulty].name}レベルで対戦します。`}
       </p>
       <button
         className="primary-button full"

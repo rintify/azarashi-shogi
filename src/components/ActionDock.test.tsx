@@ -51,7 +51,7 @@ describe('compact touch controls', () => {
       expect(candidates[i].getAttribute('aria-pressed')).toBe('true');
       expect(submit).not.toHaveBeenCalled();
     }
-    fireEvent.click(screen.getByText('この手を指す'));
+    fireEvent.click(screen.getByRole('button', { name: '変身して着地' }));
     expect(submit).toHaveBeenCalledWith(
       {
         type: 'move',

@@ -124,3 +124,18 @@ it('shades the entire reachable footprint without treating trailing cells as des
   act(() => hook.result.current.clearSelection());
   expect(hook.result.current.reachableCells).toEqual([]);
 });
+
+it('includes all legal orca rotation footprints in the same reachable guide', () => {
+  const orca: Piece = { ...penguin, kind: 'orca', at: { x: 4, y: 6 } };
+  const target: Piece = { ...food, owner: 'north', at: { x: 5, y: 4 } };
+  const game = { ...createGame(), phase: 'playing' as const, pieces: [orca, target] };
+  const notify = vi.fn();
+  const hook = renderHook(() => useBoardInteraction(game, 'south', vi.fn(), true, notify));
+  act(() => hook.result.current.clickCell(orca.at));
+  expect(hook.result.current.reachableCells).toContainEqual({ x: 6, y: 4 });
+  expect(hook.result.current.legalCells).not.toContainEqual({ x: 6, y: 4 });
+  act(() => hook.result.current.clickCell(target.at));
+  expect(notify).toHaveBeenCalledOnce();
+  expect(hook.result.current.pending).toHaveLength(5);
+  expect(hook.result.current.reachableCells).toContainEqual({ x: 6, y: 4 });
+});

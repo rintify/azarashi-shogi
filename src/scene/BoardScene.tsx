@@ -6,7 +6,13 @@ import type { ActionPreview, Cell, GameState, Player, Threat } from '../game/typ
 import { cellKey } from '../game/types';
 import { dimensions } from '../game/pieces';
 import { Animal } from './Animals';
-import { center, facing, type MoveMotion } from '../presentation/motion';
+import {
+  center,
+  facing,
+  hasTransformation,
+  HOVER_HEIGHT,
+  type MoveMotion,
+} from '../presentation/motion';
 import type { PlayArea } from '../presentation/usePlayArea';
 import { SceneCamera } from './SceneCamera';
 import { IceWorld } from './IceWorld';
@@ -84,7 +90,7 @@ function BoardContents(props: BoardProps & { htmlPortal: RefObject<HTMLDivElemen
               <mesh position={[0, 0.005, 0]} rotation={[-Math.PI / 2, 0, 0]} raycast={() => null}>
                 <planeGeometry args={[0.98, 0.98]} />
                 <meshBasicMaterial
-                  color={additional ? '#f4ad62' : '#42b9d8'}
+                  color="#42b9d8"
                   transparent
                   opacity={active || additional ? 0.36 : reachable.has(key) ? 0.2 : 0.1}
                   depthWrite={false}
@@ -105,7 +111,7 @@ function BoardContents(props: BoardProps & { htmlPortal: RefObject<HTMLDivElemen
               <mesh position={[0, 0.009, 0]} rotation={[-Math.PI / 2, 0, 0]}>
                 <ringGeometry args={[0.43, 0.46, 4, 1, Math.PI / 4]} />
                 <meshBasicMaterial
-                  color={active ? '#098bba' : additional ? '#e8893d' : '#6fa9be'}
+                  color={active || additional ? '#098bba' : '#6fa9be'}
                   transparent
                   opacity={active || additional ? 0.9 : 0.45}
                 />
@@ -136,12 +142,19 @@ function BoardContents(props: BoardProps & { htmlPortal: RefObject<HTMLDivElemen
           </Html>
         </group>
       ))}
-      {[...game.pieces, ...(motion?.action.captured ?? [])].map((piece) => (
+      {[
+        ...game.pieces,
+        ...(motion?.action.captured.filter(
+          (p) => !game.pieces.some((current) => current.id === p.id),
+        ) ?? []),
+      ].map((piece) => (
         <PieceActor
           key={piece.id}
           piece={piece}
           motion={motion}
-          victim={!!motion?.action.captured.some((p) => p.id === piece.id)}
+          victim={
+            motion?.stage !== 'choice' && !!motion?.action.captured.some((p) => p.id === piece.id)
+          }
           selected={selectedId === piece.id}
           targeted={captured.has(piece.id)}
           source={props.threatSources.includes(piece.id)}
@@ -173,6 +186,7 @@ function BoardContents(props: BoardProps & { htmlPortal: RefObject<HTMLDivElemen
         view={props.view}
         human={props.human}
         reduced={props.reduced}
+        ceiling={motion && (motion.stage || hasTransformation(motion)) ? HOVER_HEIGHT + 1.8 : 1.7}
       />
     </>
   );

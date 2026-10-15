@@ -1116,3 +1116,45 @@ svg {
   width: 20px;
   height: 20px;
 }
+
+.transformation-dialog {
+  position: fixed;
+  inset: auto auto max(30px, calc(env(safe-area-inset-bottom) + 16px)) 50%;
+  transform: translateX(-50%);
+  width: min(560px, calc(100% - 20px));
+  max-width: none;
+  max-height: calc(100dvh - 28px);
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  overflow: visible;
+  color: #e5f6ff;
+  animation: choice-pop 160ms ease-out;
+}
+.transformation-dialog::backdrop {
+  background: #061d301f;
+}
+.transformation-dialog .action-dock {
+  box-shadow: 0 18px 65px #00172888;
+  border: 1px solid #a1dfed66;
+}
+@keyframes choice-pop {
+  from {
+    opacity: 0;
+    translate: 0 10px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+@media (max-height: 520px) and (min-width: 600px) {
+  .transformation-dialog {
+    left: auto;
+    right: max(14px, env(safe-area-inset-right));
+    bottom: max(22px, env(safe-area-inset-bottom));
+    width: 280px;
+    transform: none;
+  }
+}
