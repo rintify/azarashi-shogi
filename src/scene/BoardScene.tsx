@@ -21,6 +21,7 @@ export interface BoardProps {
   reachableCells: Cell[];
   unsafeCells: Cell[];
   preview: ActionPreview | null;
+  previewUnsafe: boolean;
   threats: Threat[];
   threatSources: string[];
   view: 'perspective' | 'top';
@@ -88,6 +89,7 @@ function BoardContents(props: BoardProps & { htmlPortal: RefObject<HTMLDivElemen
               last={last.has(key)}
               legal={legal.has(key) && !busy}
               unsafe={unsafe.has(key)}
+              previewUnsafe={!!preview && props.previewUnsafe}
               reduced={props.reduced}
             />
           </group>

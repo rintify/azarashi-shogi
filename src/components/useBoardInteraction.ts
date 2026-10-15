@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  applyPreview,
   getThreats,
   moveCells,
   moveOptions,
@@ -8,6 +7,7 @@ import {
   placementCells,
   previewAction,
 } from '../game/engine';
+import { actionSafety } from '../game/safety';
 import { cellKey, sameCell } from '../game/types';
 import { footprint } from '../game/pieces';
 import type {
@@ -41,16 +41,49 @@ export function useBoardInteraction(
     if (selected) return moveCells(game, selected);
     return activeKind ? placementCells(game, activeKind) : [];
   }, [game, humanTurn, pending, selected, activeKind]);
+  // Cache the exact actions offered by the UI, including automatic seal promotion.
+  const destinations = useMemo(
+    () =>
+      new Map(
+        legalCells.map((at) => {
+          const moves = selected ? moveOptions(game, selected, at) : [];
+          const offered =
+            selected?.kind === 'seal' && !selected.promoted && moves.some((p) => p.piece.promoted)
+              ? moves.filter((p) => p.piece.promoted)
+              : moves;
+          const placement =
+            !selected && activeKind
+              ? previewAction(game, { type: 'place', kind: activeKind, at })
+              : null;
+          return [cellKey(at), placement ? [placement] : offered] as const;
+        }),
+      ),
+    [game, legalCells, selected, activeKind],
+  );
+  const destinationSafety = useMemo(
+    () =>
+      new Map(
+        [...destinations].flatMap(([key, options]) =>
+          options[0] ? [[key, actionSafety(game, options[0])] as const] : [],
+        ),
+      ),
+    [game, destinations],
+  );
+  // Red marks risk, never illegality. Empty drops and non-royal moves need the same analysis.
+  const unsafeCells = useMemo(
+    () => legalCells.filter((at) => destinationSafety.get(cellKey(at))?.unsafe),
+    [legalCells, destinationSafety],
+  );
+  const pendingSafety = useMemo(
+    () => pending?.map((option) => actionSafety(game, option)) ?? [],
+    [game, pending],
+  );
   // Destination markers use anchors; the pale guide covers each body's entire footprint.
   const reachableCells = useMemo(() => {
     const body = selected ?? (activeKind ? { kind: activeKind, promoted: false } : null);
     if (!body) return [];
     const cells = new Map<string, Cell>();
-    const options =
-      pending ??
-      (selected?.kind === 'orca'
-        ? legalCells.flatMap((at) => moveOptions(game, selected, at))
-        : []);
+    const options = pending ?? (selected?.kind === 'orca' ? [...destinations.values()].flat() : []);
     for (const option of options)
       for (const cell of [...option.footprint, ...option.captureCells])
         cells.set(cellKey(cell), cell);
@@ -58,27 +91,17 @@ export function useBoardInteraction(
       for (const at of legalCells)
         for (const cell of footprint({ ...body, at })) cells.set(cellKey(cell), cell);
     return [...cells.values()];
-  }, [selected, activeKind, legalCells, pending, game]);
-  // Amber destinations remain legal; the rules never prohibit moving into danger.
-  const unsafeCells = useMemo(() => {
-    if (!selected || selected.kind !== 'walrus' || !humanTurn || pending) return [];
-    return legalCells.filter((to) => {
-      const candidate = moveOptions(game, selected, to)[0];
-      if (!candidate) return false;
-      const next = applyPreview(game, candidate);
-      return (
-        next.phase === 'playing' && getThreats(next, human).some((t) => t.targetId === selected.id)
-      );
-    });
-  }, [selected, humanTurn, pending, legalCells, game, human]);
+  }, [selected, activeKind, legalCells, pending, destinations]);
   const threats = useMemo(() => getThreats(game, human), [game, human]);
   const threat = threats.find((t) => t.targetId === (inspectedThreat ?? selectedId));
   const preview = useMemo(() => {
     if (pending) return pending[optionIndex];
     if (!hover || !legalCells.some((c) => sameCell(c, hover))) return null;
-    if (selected) return moveOptions(game, selected, hover)[0];
-    return activeKind ? previewAction(game, { type: 'place', kind: activeKind, at: hover }) : null;
-  }, [pending, optionIndex, hover, legalCells, selected, activeKind, game]);
+    return destinations.get(cellKey(hover))?.[0] ?? null;
+  }, [pending, optionIndex, hover, legalCells, destinations]);
+  const previewUnsafe = pending
+    ? !!pendingSafety[optionIndex]?.unsafe
+    : !!hover && !!destinationSafety.get(cellKey(hover))?.unsafe;
   const portrait: Piece | null =
     selected ??
     (activeKind
@@ -115,15 +138,7 @@ export function useBoardInteraction(
     if (!humanTurn || pending) return;
     if (legalCells.some((c) => sameCell(c, cell))) {
       if (selected) {
-        const legal = moveOptions(game, selected, cell);
-        // Black seals strictly add moves without changing the footprint or capture.
-        // This is a UI shortcut; the shared rules still permit declining promotion.
-        const options =
-          selected.kind === 'seal' &&
-          !selected.promoted &&
-          legal.some((option) => option.piece.promoted)
-            ? legal.filter((option) => option.piece.promoted)
-            : legal;
+        const options = destinations.get(cellKey(cell)) ?? [];
         if (
           options.length > 1 ||
           options[0]?.captured.some((p) => p.kind === 'walrus' && p.owner === human)
@@ -167,6 +182,8 @@ export function useBoardInteraction(
     legalCells,
     reachableCells,
     unsafeCells,
+    previewUnsafe,
+    pendingSafety,
     threats,
     threat,
     preview,

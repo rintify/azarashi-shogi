@@ -197,3 +197,39 @@ it('shows a blue safe destination after capturing its attacker rather than using
   expect(hook.result.current.unsafeCells).not.toContainEqual({ x: 4, y: 5 });
   expect(hook.result.current.unsafeCells.length).toBeGreaterThan(0);
 });
+
+it('marks ordinary moves and stock placements red, with matching hover previews', () => {
+  const mover: Piece = { ...penguin, at: { x: 4, y: 5 } };
+  const hunter: Piece = { ...food, id: 'hunter', kind: 'bear', owner: 'north', at: { x: 6, y: 4 } };
+  const game = { ...createGame(), pieces: [...createGame().pieces, mover, hunter] };
+  const hook = renderHook(() => useBoardInteraction(game, 'south', vi.fn()));
+  act(() => hook.result.current.clickCell(mover.at));
+  expect(hook.result.current.unsafeCells).toContainEqual({ x: 4, y: 4 });
+  act(() => hook.result.current.setHover({ x: 4, y: 4 }));
+  expect(hook.result.current.previewUnsafe).toBe(true);
+  act(() => hook.result.current.selectStock('orca'));
+  expect(hook.result.current.unsafeCells).toContainEqual({ x: 4, y: 3 });
+  act(() => hook.result.current.setHover({ x: 4, y: 3 }));
+  expect(hook.result.current.preview?.action.type).toBe('place');
+  expect(hook.result.current.previewUnsafe).toBe(true);
+});
+it('updates danger for the exact airborne orca candidate rather than the unrotated landing', () => {
+  const orca: Piece = { ...penguin, kind: 'orca', at: { x: 4, y: 6 } };
+  const game = {
+    ...createGame(),
+    pieces: [
+      ...createGame().pieces,
+      orca,
+      { ...food, at: { x: 4, y: 4 } },
+      { ...food, id: 'hunter', owner: 'north' as const, at: { x: 5, y: 3 } },
+    ],
+  };
+  const hook = renderHook(() => useBoardInteraction(game, 'south', vi.fn()));
+  act(() => hook.result.current.clickCell(orca.at));
+  expect(hook.result.current.unsafeCells).not.toContainEqual({ x: 4, y: 4 });
+  act(() => hook.result.current.clickCell({ x: 4, y: 4 }));
+  expect(hook.result.current.pending).toHaveLength(3);
+  expect(hook.result.current.previewUnsafe).toBe(true);
+  act(() => hook.result.current.setOptionIndex(2));
+  expect(hook.result.current.previewUnsafe).toBe(false);
+});

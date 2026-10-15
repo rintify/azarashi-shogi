@@ -1,3 +1,5 @@
+import { GUIDE_COLORS } from './presentation/guideStyle';
+import type { CSSProperties } from 'react';
 import { AnimatedPresence, AnimatedValue } from './components/AnimatedUI';
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import {
@@ -117,7 +119,11 @@ export default function App() {
   const ended = game.phase === 'finished' && !playback.busy;
   const last = game.lastAction;
   return (
-    <main className={`play-screen ${ended ? 'match-ended' : ''}`} onPointerDown={audio.unlock}>
+    <main
+      className={`play-screen ${ended ? 'match-ended' : ''}`}
+      style={{ '--danger-color': GUIDE_COLORS.danger } as CSSProperties}
+      onPointerDown={audio.unlock}
+    >
       <section className="world-layer" aria-label="対局盤" aria-busy={playback.busy}>
         <SceneBoundary
           onFallback={() => {
@@ -142,6 +148,7 @@ export default function App() {
               reachableCells={interaction.reachableCells}
               unsafeCells={interaction.unsafeCells}
               preview={interaction.preview}
+              previewUnsafe={interaction.previewUnsafe}
               threats={interaction.threats}
               threatSources={interaction.threat?.attackerIds ?? []}
               view={view}

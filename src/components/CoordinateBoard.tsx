@@ -1,4 +1,5 @@
-import { useRef, useState } from 'react';
+import { GUIDE_COLORS } from '../presentation/guideStyle';
+import { useRef, useState, type CSSProperties } from 'react';
 import { pieceAt } from '../game/engine';
 import { pieceName } from '../game/pieces';
 import { sameCell, type Cell, type GameState, type Player } from '../game/types';
@@ -26,7 +27,12 @@ export function CoordinateBoard({
   const [focused, setFocused] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
   return (
-    <div ref={ref} className="coordinate-board" aria-label="マス一覧で操作">
+    <div
+      ref={ref}
+      className="coordinate-board"
+      aria-label="マス一覧で操作"
+      style={{ '--danger-color': GUIDE_COLORS.danger } as CSSProperties}
+    >
       {Array.from({ length: 100 }, (_, index) => {
         const i = human === 'south' ? index : 99 - index;
         const cell = { x: i % 10, y: Math.floor(i / 10) };
@@ -55,7 +61,7 @@ export function CoordinateBoard({
                 ?.focus();
             }}
             className={`${reachable ? 'reachable' : ''} ${unsafe ? 'unsafe' : ''} ${legal ? 'legal' : ''} ${piece ? (piece.owner === human ? 'own' : 'enemy') : ''}`}
-            aria-label={`${coordinate(cell)}${piece ? ` ${pieceName(piece)}` : ''}${legal ? ' 選択可能' : ''}${unsafe ? ' 王が危険' : ''}`}
+            aria-label={`${coordinate(cell)}${piece ? ` ${pieceName(piece)}` : ''}${legal ? ' 選択可能' : ''}${unsafe ? ' 捕食の危険' : ''}`}
             onClick={() => onCell(cell)}
             onFocus={() => {
               setFocused(index);

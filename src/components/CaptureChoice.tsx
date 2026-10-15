@@ -30,7 +30,8 @@ export function CaptureChoice({
             <button
               key={i}
               className="rotation-choice"
-              aria-label={rotationLabel(candidate, pending[0])}
+              data-danger={interaction.pendingSafety[i + 1]?.unsafe || undefined}
+              aria-label={`${rotationLabel(candidate, pending[0])}${interaction.pendingSafety[i + 1]?.unsafe ? '・捕食の危険' : ''}`}
               aria-pressed={optionIndex === i + 1}
               onClick={() => setOptionIndex(i + 1)}
             >
@@ -50,12 +51,14 @@ export function CaptureChoice({
           <>
             <button
               className="promotion-button keep-button"
+              data-danger={interaction.pendingSafety[0]?.unsafe || undefined}
               onClick={() => chooseOption(pending[0])}
             >
               そのまま
             </button>
             <button
               className="promotion-button evolve-button"
+              data-danger={interaction.pendingSafety[transformIndex]?.unsafe || undefined}
               onClick={() => chooseOption(transform)}
             >
               <Sparkles size={21} />

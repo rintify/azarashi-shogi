@@ -1032,7 +1032,9 @@ svg {
 }
 
 .coordinate-board button.unsafe {
-  background: #f2d0a9;
+  background: #ffd5dc;
+  color: #a51d37;
+  box-shadow: inset 0 0 0 2px var(--danger-color);
 }
 .result-inspect {
   margin: 10px auto 0;
@@ -1640,4 +1642,21 @@ button:not(:disabled):focus-visible {
   to {
     opacity: 0;
   }
+}
+
+.rotation-choice[data-danger='true'] {
+  color: var(--danger-color);
+  background: #ffe4e9;
+}
+.rotation-choice[data-danger='true'][aria-pressed='true'] {
+  background: #ffc8d2;
+  border-color: white;
+  box-shadow:
+    0 5px 0 var(--danger-color),
+    0 7px 14px #a51d3733;
+}
+.promotion-button[data-danger='true'] {
+  box-shadow:
+    0 5px 0 var(--danger-color),
+    0 8px 16px #a51d3733;
 }
