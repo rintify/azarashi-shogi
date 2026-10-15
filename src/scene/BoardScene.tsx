@@ -1,4 +1,4 @@
-import { Suspense, useMemo, useState, type RefObject } from 'react';
+import { Suspense, useMemo, useState, useEffect, type RefObject } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Html, RoundedBox } from '@react-three/drei';
 import { ACESFilmicToneMapping, PCFSoftShadowMap } from 'three';
@@ -13,6 +13,7 @@ import { IceWorld } from './IceWorld';
 import { PieceActor } from './PieceActor';
 import { ActionEffects } from './ActionEffects';
 export interface BoardProps {
+  onReady: () => void;
   game: GameState;
   human: Player;
   selectedId: string | null;
@@ -32,6 +33,7 @@ export interface BoardProps {
 }
 function BoardContents(props: BoardProps & { htmlPortal: RefObject<HTMLDivElement> }) {
   const { game, selectedId, preview, motion, busy } = props;
+  useEffect(props.onReady, [props.onReady]);
   const legal = useMemo(() => new Set(props.legalCells.map(cellKey)), [props.legalCells]);
   const unsafe = new Set(props.unsafeCells.map(cellKey));
   const target = new Set(preview?.footprint.map(cellKey));
@@ -40,7 +42,7 @@ function BoardContents(props: BoardProps & { htmlPortal: RefObject<HTMLDivElemen
   const last = new Set(game.lastAction?.footprint.map(cellKey));
   return (
     <>
-      <IceWorld />
+      <IceWorld reduced={props.reduced} />
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.151, 0]} receiveShadow>
         <planeGeometry args={[10.04, 10.04]} />
         <meshStandardMaterial color="#74a7bd" roughness={0.85} envMapIntensity={0.15} />
@@ -58,6 +60,10 @@ function BoardContents(props: BoardProps & { htmlPortal: RefObject<HTMLDivElemen
               onClick={(e) => {
                 e.stopPropagation();
                 if (!busy && e.delta < 6) props.onCell(cell);
+              }}
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                if (!busy) props.onHover(cell);
               }}
               onPointerMove={(e) => {
                 e.stopPropagation();

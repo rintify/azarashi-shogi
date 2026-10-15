@@ -3,7 +3,20 @@ import type { MoveMotion } from './motion';
 /** Small synthesized ice/wood cues; audio starts only after a user gesture. */
 export function useGameAudio(motion: MoveMotion | null) {
   const context = useRef<AudioContext | null>(null);
-  const [enabled, setEnabled] = useState(true);
+  const [enabled, setEnabled] = useState(() => {
+    try {
+      return localStorage.getItem('azarashi-shogi.sound') !== 'off';
+    } catch {
+      return true;
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem('azarashi-shogi.sound', enabled ? 'on' : 'off');
+    } catch {
+      /* Gameplay does not depend on preference storage. */
+    }
+  }, [enabled]);
   const unlock = useCallback(() => {
     if (!enabled || !('AudioContext' in window)) return;
     try {

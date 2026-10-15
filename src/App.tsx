@@ -1,7 +1,6 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import {
   BookOpen,
-  Flag,
   Grid2X2,
   Maximize2,
   RotateCcw,
@@ -13,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useMatch } from './match/useMatch';
 import { useNpc } from './ai/useNpc';
+import { MatchResult } from './components/MatchResult';
 import { RulesDialog } from './components/RulesDialog';
 import { NewGameDialog } from './components/NewGameDialog';
 import { SceneBoundary } from './components/SceneBoundary';
@@ -32,9 +32,12 @@ const BoardScene = lazy(() =>
 
 export default function App() {
   const { game, settings, warning, submit, restart } = useMatch();
+  const [sceneReady, setSceneReady] = useState(false);
+  const markReady = useCallback(() => setSceneReady(true), []);
   const [rulesOpen, setRulesOpen] = useState(false),
     [newGameOpen, setNewGameOpen] = useState(false);
   const [view, setView] = useState<'perspective' | 'top'>('perspective');
+  const [resultDismissed, setResultDismissed] = useState(false);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   const [reduced, setReduced] = useState(
     () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
@@ -47,7 +50,12 @@ export default function App() {
   }, []);
   const playback = usePlayback(game, reduced),
     audio = useGameAudio(playback.motion);
-  const interaction = useBoardInteraction(game, settings.human, submit, !playback.busy);
+  const interaction = useBoardInteraction(
+    game,
+    settings.human,
+    submit,
+    sceneReady && !playback.busy,
+  );
   const { area, ref: playRef } = usePlayArea();
   const {
     status: aiStatus,
@@ -58,19 +66,19 @@ export default function App() {
     settings.human,
     settings.difficulty,
     submit,
-    !playback.busy && !rulesOpen && !newGameOpen,
+    sceneReady && !playback.busy && !rulesOpen && !newGameOpen,
   );
   const status = statusCopy(game, settings.human, interaction);
   useEffect(() => {
     function escape(e: KeyboardEvent) {
-      if (e.key === 'Escape' && !rulesOpen && !newGameOpen) {
+      if (e.key === 'Escape' && !document.querySelector('dialog[open]')) {
         interaction.clearSelection();
         setKeyboardOpen(false);
       }
     }
     window.addEventListener('keydown', escape);
     return () => window.removeEventListener('keydown', escape);
-  }, [interaction, rulesOpen, newGameOpen]);
+  }, [interaction]);
   const king = game.pieces.find((p) => p.kind === 'walrus' && p.owner === settings.human);
   const kingDanger =
     !!king && interaction.threats.some((t) => t.targetId === king.id) && !playback.busy;
@@ -82,7 +90,12 @@ export default function App() {
       onPointerDown={audio.unlock}
     >
       <section className="world-layer" aria-label="対局盤" aria-busy={playback.busy}>
-        <SceneBoundary onFallback={() => setKeyboardOpen(true)}>
+        <SceneBoundary
+          onFallback={() => {
+            setSceneReady(true);
+            setKeyboardOpen(true);
+          }}
+        >
           <Suspense
             fallback={
               <div className="canvas-loading">
@@ -92,6 +105,7 @@ export default function App() {
             }
           >
             <BoardScene
+              onReady={markReady}
               game={game}
               human={settings.human}
               selectedId={interaction.selectedId}
@@ -203,6 +217,7 @@ export default function App() {
           }
         >
           <CoordinateBoard
+            unsafeCells={interaction.unsafeCells}
             game={game}
             human={settings.human}
             legalCells={interaction.legalCells}
@@ -244,21 +259,28 @@ export default function App() {
           </span>
         )}
       </div>
-      {ended && (
-        <div className="result-overlay">
-          <section>
-            <Flag size={32} />
-            <p className="result-kicker">対局終了</p>
-            <h2>{status.title}</h2>
-            <p>
-              {game.result?.reason === 'both-kings'
-                ? '両方の王が同じ一手で捕食されました。'
-                : `${last ? pieceName(last.piece) : '駒'}が${last?.captured.find((p) => p.kind === 'walrus')?.owner === settings.human ? 'あなた' : '相手'}の王を捕食しました。`}
-            </p>
-            <button className="primary-button full" onClick={() => setNewGameOpen(true)}>
+      {ended && !resultDismissed && (
+        <MatchResult
+          title={status.title}
+          detail={
+            game.result?.reason === 'both-kings'
+              ? '両方の王が同じ一手で捕食されました。'
+              : `${last ? pieceName(last.piece) : '駒'}が${last?.captured.find((p) => p.kind === 'walrus')?.owner === settings.human ? 'あなた' : '相手'}の王を捕食しました。`
+          }
+          onNewGame={() => setNewGameOpen(true)}
+          onInspect={() => setResultDismissed(true)}
+        />
+      )}
+      {ended && resultDismissed && (
+        <div className="bottom-hud">
+          <div className="result-actions">
+            <button className="primary-button" onClick={() => setResultDismissed(false)}>
+              結果を見る
+            </button>
+            <button className="primary-button" onClick={() => setNewGameOpen(true)}>
               新しい対局
             </button>
-          </section>
+          </div>
         </div>
       )}
       {rulesOpen && <RulesDialog close={() => setRulesOpen(false)} />}
@@ -267,6 +289,7 @@ export default function App() {
           current={settings}
           close={() => setNewGameOpen(false)}
           start={(s) => {
+            setResultDismissed(false);
             restart(s);
             setNewGameOpen(false);
             interaction.clearSelection();

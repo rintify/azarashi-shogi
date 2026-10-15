@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import { Environment, Lightformer, RoundedBox, Line } from '@react-three/drei';
 import { Color, Shape, ShaderMaterial } from 'three';
 
-function Ocean() {
+function Ocean({ reduced }: { reduced: boolean }) {
   const material = useRef<ShaderMaterial>(null);
   const uniforms = useMemo(
     () => ({
@@ -14,7 +14,7 @@ function Ocean() {
     [],
   );
   useFrame(({ clock }) => {
-    if (material.current) material.current.uniforms.time.value = clock.elapsedTime;
+    if (material.current && !reduced) material.current.uniforms.time.value = clock.elapsedTime;
   });
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1.2, 0]}>
@@ -34,7 +34,7 @@ function Ocean() {
     </mesh>
   );
 }
-export function IceWorld() {
+export function IceWorld({ reduced }: { reduced: boolean }) {
   const shelf = useMemo(() => {
     const shape = new Shape();
     const points = [
@@ -93,7 +93,7 @@ export function IceWorld() {
           scale={[5, 8, 1]}
         />
       </Environment>
-      <Ocean />
+      <Ocean reduced={reduced} />
       <mesh position={[0, -0.65, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow castShadow>
         <extrudeGeometry
           args={[

@@ -19,8 +19,7 @@ export function RulesDialog({ close }: { close: () => void }) {
     >
       <header>
         <div>
-          <span className="eyebrow">HOW TO PLAY</span>
-          <h2 id="rules-title">氷の上の、小さなルール。</h2>
+          <h2 id="rules-title">あそびかた</h2>
         </div>
         <button className="icon-button" onClick={close} aria-label="ルールを閉じる">
           <X size={20} />
@@ -45,11 +44,11 @@ export function RulesDialog({ close }: { close: () => void }) {
       </div>
       <ol className="rule-steps">
         <li>
-          <strong>まずは王を置こう</strong>
+          <strong>王の配置</strong>
           <p>先手から、自分側の半分に2×2のセイウチを配置。両者の王が揃ったら先手からスタート。</p>
         </li>
         <li>
-          <strong>動かす、または仲間を呼ぶ</strong>
+          <strong>移動と配置</strong>
           <p>
             1手に移動か配置を1回。配置は自軍の駒に縦横斜めで隣接する空きマスへ。大きな駒は体全体が収まる必要があります。
           </p>
@@ -61,13 +60,13 @@ export function RulesDialog({ close }: { close: () => void }) {
           </p>
         </li>
         <li>
-          <strong>捕食したら変身のチャンス</strong>
+          <strong>捕食後の変身</strong>
           <p>
             捕食した手で1回だけ、成るか選べます。白アザラシ以外は捕食時に元へ戻れます。シャチは軸と回転方向を選び、変形前後のL字3マスを捕食できます。
           </p>
         </li>
         <li>
-          <strong>王の運命で決着</strong>
+          <strong>勝敗の条件</strong>
           <p>
             自分の王を食べると負け。1手で両方の王を食べると引き分け。王手による移動制限はありません。「!」は相手の次の1手で食べられる可能性がある印です。
           </p>
@@ -77,7 +76,7 @@ export function RulesDialog({ close }: { close: () => void }) {
         千日手・手数制限はありません。対局はこのブラウザーに自動保存されます。
       </p>
       <button className="primary-button full" onClick={close}>
-        わかった、遊んでみよう
+        盤面に戻る
       </button>
     </dialog>
   );

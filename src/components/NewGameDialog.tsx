@@ -30,20 +30,27 @@ export function NewGameDialog({
     >
       <header>
         <div>
-          <span className="eyebrow">A FRESH START</span>
-          <h2 id="new-game-title">新しい氷上の一戦。</h2>
+          <h2 id="new-game-title">新しい対局</h2>
         </div>
         <button className="icon-button" onClick={close} aria-label="設定を閉じる">
           <X size={20} />
         </button>
       </header>
-      <p className="dialog-intro">現在の対局を終了して、新しい対局を始めます。</p>
+      <p className="dialog-intro">先後とNPCの強さを選びます。開始すると現在の対局は終了します。</p>
       <label className="setting-label">あなたの手番</label>
       <div className="side-options">
-        <button className={human === 'south' ? 'active' : ''} onClick={() => setHuman('south')}>
+        <button
+          aria-pressed={human === 'south'}
+          className={human === 'south' ? 'active' : ''}
+          onClick={() => setHuman('south')}
+        >
           先手<span>あなたから配置</span>
         </button>
-        <button className={human === 'north' ? 'active' : ''} onClick={() => setHuman('north')}>
+        <button
+          aria-pressed={human === 'north'}
+          className={human === 'north' ? 'active' : ''}
+          onClick={() => setHuman('north')}
+        >
           後手<span>NPCから配置</span>
         </button>
       </div>
@@ -69,7 +76,7 @@ export function NewGameDialog({
       <p className="difficulty-note">
         {difficulty === 5
           ? '最長10秒じっくり考える「極」。同じルールで、全力の一手を指します。'
-          : `NPCの思考時間は最大${LEVELS[difficulty].thinkingMs / 1000}秒。${LEVELS[difficulty].name}のペンギンがお相手します。`}
+          : `NPCの思考時間は最大${LEVELS[difficulty].thinkingMs / 1000}秒。${LEVELS[difficulty].name}レベルで対戦します。`}
       </p>
       <button className="primary-button full" onClick={() => start({ human, difficulty })}>
         この設定ではじめる

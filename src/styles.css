@@ -406,9 +406,6 @@ svg {
   width: 33px;
   height: 33px;
 }
-.selection-note {
-  display: none;
-}
 .is-confirming {
   padding: 12px 16px;
 }
@@ -607,14 +604,22 @@ svg {
   color: #c3ebfb;
 }
 .result-overlay {
-  position: absolute;
+  position: fixed;
   inset: 0;
-  z-index: 40;
+  width: 100%;
+  height: 100dvh;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  border: 0;
   display: grid;
   place-items: center;
+  background: transparent;
+  padding: 20px;
+}
+.result-overlay::backdrop {
   background: #031e3555;
   backdrop-filter: blur(4px);
-  padding: 20px;
 }
 .result-overlay section {
   background: #0b2c40f5;
@@ -967,9 +972,11 @@ svg {
     height: 36px;
   }
   .opponent-hud {
-    top: 12px;
+    top: 54px;
     width: 280px;
-    left: 47%;
+    right: max(14px, env(safe-area-inset-right));
+    left: auto;
+    transform: none;
   }
   .opponent-bar {
     height: 34px;
@@ -983,12 +990,16 @@ svg {
     height: 18px;
   }
   .turn-banner {
-    top: 58px;
-    left: 32%;
+    top: 100px;
+    right: max(14px, env(safe-area-inset-right));
+    width: 280px;
+    left: auto;
+    transform: none;
+    justify-content: center;
   }
   .play-window {
-    top: 84px;
-    bottom: 30px;
+    top: 52px;
+    bottom: 20px;
     left: max(14px, env(safe-area-inset-left));
     right: 310px;
   }
@@ -997,8 +1008,7 @@ svg {
     transform: none;
     right: max(14px, env(safe-area-inset-right));
     width: 280px;
-    bottom: 50%;
-    translate: 0 50%;
+    bottom: max(22px, env(safe-area-inset-bottom));
   }
   .action-dock {
     padding: 10px 12px;
@@ -1036,5 +1046,28 @@ svg {
   *::after {
     animation: none !important;
     transition: none !important;
+  }
+}
+
+.coordinate-board button.unsafe {
+  background: #f2d0a9;
+}
+.result-inspect {
+  margin: 10px auto 0;
+  min-height: 44px;
+  padding: 8px 16px;
+  background: transparent;
+  color: #b5d1e0;
+  font-size: 12px;
+}
+.result-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+@media (max-height: 360px) and (min-width: 600px) {
+  .capture-pending .opponent-hud,
+  .capture-pending .turn-banner {
+    visibility: hidden;
   }
 }

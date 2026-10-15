@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { CaptureDetails } from './CaptureDetails';
-import { ArrowRight, Check, ChevronLeft, ChevronRight, Info, X } from 'lucide-react';
+import { ArrowRight, ChevronLeft, ChevronRight, Info, X } from 'lucide-react';
 import type { ActionPreview, GameState } from '../game/types';
 import { DEFINITIONS, dimensions, KINDS, pieceName } from '../game/pieces';
 import type { MatchSettings } from '../match/record';
@@ -29,7 +29,6 @@ export function ActionDock({ game, settings, interaction, onHelp, busy = false }
     setOptionIndex,
     clearChoice,
     clearSelection,
-    portrait,
     threat,
     chooseOption,
   } = interaction;
@@ -39,12 +38,15 @@ export function ActionDock({ game, settings, interaction, onHelp, busy = false }
   const ownKing = option?.captured.some((p) => p.kind === 'walrus' && p.owner === settings.human);
   const bothKings =
     ownKing && option?.captured.some((p) => p.kind === 'walrus' && p.owner !== settings.human);
-  const dangerSources = threat?.attackerIds
-    .flatMap((id) => {
+  const dangerSources =
+    threat?.attackerIds.flatMap((id) => {
       const p = game.pieces.find((p) => p.id === id);
       return p ? [pieceName(p)] : [];
-    })
-    .join('・');
+    }) ?? [];
+  const dangerText =
+    dangerSources.length === 1
+      ? `${dangerSources[0]}に捕食される危険があります。`
+      : `相手${dangerSources.length}体に狙われています。橙の枠で相手を確認。`;
 
   return (
     <aside className={`action-dock ${pending ? 'is-confirming' : ''}`} aria-label="対局の操作">
@@ -176,11 +178,11 @@ export function ActionDock({ game, settings, interaction, onHelp, busy = false }
               </button>
             </div>
           </div>
-          <p className={`turn-instruction ${dangerSources ? 'danger' : ''}`}>
+          <p className={`turn-instruction ${dangerSources.length ? 'danger' : ''}`}>
             {busy
               ? '移動が終わるまでお待ちください'
-              : dangerSources
-                ? `${dangerSources}に捕食される危険があります。`
+              : dangerSources.length
+                ? dangerText
                 : status.text}
           </p>
           <div
@@ -201,29 +203,6 @@ export function ActionDock({ game, settings, interaction, onHelp, busy = false }
                 <span>{DEFINITIONS[kind].short}</span>
               </button>
             ))}
-          </div>
-          <div className={`selection-note ${dangerSources ? 'danger' : ''}`} aria-live="polite">
-            {dangerSources ? (
-              <>
-                <b>!</b>
-                <span>{dangerSources}から捕食される危険あり</span>
-              </>
-            ) : portrait ? (
-              <>
-                <AnimalIcon kind={portrait.kind} promoted={portrait.promoted} />
-                <span>
-                  <strong>{pieceName(portrait)}</strong>
-                  <small>
-                    {setup ? '緑のマスをタップして配置' : DEFINITIONS[portrait.kind].description}
-                  </small>
-                </span>
-              </>
-            ) : (
-              <>
-                <Check size={16} />
-                <span>盤上の仲間を動かすか、ストックから配置</span>
-              </>
-            )}
           </div>
         </>
       )}

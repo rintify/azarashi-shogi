@@ -1,8 +1,26 @@
 import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
-import type { Group } from 'three';
+import { MeshPhysicalMaterial, SphereGeometry, type Group } from 'three';
 import type { Kind } from '../game/types';
 
+// Every animal part shares geometry; the fixed palette also shares GPU materials.
+const sphere = new SphereGeometry(1, 24, 18);
+const materials = new Map<string, MeshPhysicalMaterial>();
+function surface(color: string, roughness: number) {
+  const key = `${color}:${roughness}`;
+  if (!materials.has(key))
+    materials.set(
+      key,
+      new MeshPhysicalMaterial({
+        color,
+        roughness,
+        envMapIntensity: 0.35,
+        clearcoat: 0.45,
+        clearcoatRoughness: 0.3,
+      }),
+    );
+  return materials.get(key)!;
+}
 type Vec3 = [number, number, number];
 function Blob({
   at = [0, 0, 0],
@@ -18,16 +36,16 @@ function Blob({
   roughness?: number;
 }) {
   return (
-    <mesh position={at} scale={scale} rotation={rotation} castShadow receiveShadow>
-      <sphereGeometry args={[1, 24, 18]} />
-      <meshPhysicalMaterial
-        color={color}
-        roughness={roughness}
-        envMapIntensity={0.35}
-        clearcoat={0.45}
-        clearcoatRoughness={0.3}
-      />
-    </mesh>
+    <mesh
+      position={at}
+      scale={scale}
+      rotation={rotation}
+      geometry={sphere}
+      material={surface(color, roughness)}
+      dispose={null}
+      castShadow
+      receiveShadow
+    />
   );
 }
 function Eyes({
@@ -104,7 +122,7 @@ function Seal({ black }: { black: boolean }) {
 }
 function Penguin({ jet }: { jet: boolean }) {
   return (
-    <group rotation={[jet ? -0.45 : 0, 0, 0]} position={[0, jet ? 0.16 : 0, 0]}>
+    <group rotation={[jet ? 0.65 : 0, 0, 0]} position={[0, jet ? 0.16 : 0, 0]}>
       <Blob at={[0, 0.43, 0]} scale={[0.29, 0.4, 0.26]} color="#263c4b" />
       <Blob at={[0, 0.4, 0.175]} scale={[0.235, 0.3, 0.13]} color="#fffdf2" />
       <Blob at={[0, 0.76, 0.015]} scale={[0.245, 0.25, 0.23]} color="#263c4b" />

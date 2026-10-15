@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
-import { act, cleanup, renderHook } from '@testing-library/react';
+import { act, cleanup, render, renderHook, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createGame } from '../game/engine';
 import type { Piece } from '../game/types';
 import { useBoardInteraction } from './useBoardInteraction';
+import { ActionDock } from './ActionDock';
 afterEach(cleanup);
 const penguin: Piece = {
   id: 'p',
@@ -72,4 +73,40 @@ it('blocks board and stock input during animation, and supports explicit selecti
   act(() => hook.result.current.clearSelection());
   expect(hook.result.current.selected).toBeNull();
   expect(submit).not.toHaveBeenCalled();
+});
+
+it('shows a warning-only confirmation for a single-option friendly king capture', () => {
+  const submit = vi.fn();
+  const bear: Piece = { ...penguin, kind: 'bear', at: { x: 4, y: 5 } };
+  const king: Piece = { ...food, kind: 'walrus', at: { x: 4, y: 2 } };
+  const game = { ...createGame(), phase: 'playing' as const, pieces: [bear, king] };
+  const hook = renderHook(() => useBoardInteraction(game, 'south', submit));
+  act(() => hook.result.current.clickCell(bear.at));
+  act(() => hook.result.current.clickCell({ x: 4, y: 3 }));
+  expect(hook.result.current.pending).toHaveLength(1);
+  expect(submit).not.toHaveBeenCalled();
+  render(
+    <ActionDock
+      game={game}
+      settings={{ human: 'south', difficulty: 3 }}
+      interaction={hook.result.current}
+      onHelp={() => {}}
+    />,
+  );
+  expect(screen.getByRole('heading', { name: '自分の王を捕食します' })).toBeTruthy();
+  expect(screen.queryByRole('heading', { name: '変身を選択' })).toBeNull();
+  expect(screen.queryByRole('button', { name: '次の変身候補' })).toBeNull();
+  expect(screen.getByRole('button', { name: 'この手を指す' })).toBeTruthy();
+});
+it('marks risky king destinations without removing legal moves', () => {
+  const own: Piece = { ...penguin, id: 'own', kind: 'walrus', at: { x: 4, y: 8 } };
+  const enemy: Piece = { ...own, id: 'enemy', owner: 'north', at: { x: 3, y: 3 } };
+  const game = { ...createGame(), phase: 'playing' as const, pieces: [own, enemy] };
+  const submit = vi.fn();
+  const hook = renderHook(() => useBoardInteraction(game, 'south', submit));
+  act(() => hook.result.current.clickCell(own.at));
+  expect(hook.result.current.unsafeCells).toContainEqual({ x: 4, y: 6 });
+  expect(hook.result.current.legalCells).toContainEqual({ x: 4, y: 6 });
+  act(() => hook.result.current.clickCell({ x: 4, y: 6 }));
+  expect(submit).toHaveBeenCalledWith({ type: 'move', pieceId: 'own', to: { x: 4, y: 6 } }, 0);
 });
