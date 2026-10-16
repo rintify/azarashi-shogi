@@ -66,12 +66,10 @@ export function PieceActor({
   }, [intro]);
   const moving = !!motion && !victim && motion.action.piece.id === piece.id;
   const [w, h] = dimensions(moving && motion?.before ? motion.before : piece);
-  const markerHeight =
-    piece.kind === 'walrus' ? 1.45 : piece.kind === 'penguin' && !piece.promoted ? 1.05 : 0.95;
   const locateMarker = useCallback(
     (object: Object3D, camera: Camera, viewport: { width: number; height: number }) =>
-      pieceMarkerPosition(object, camera, viewport, w - 0.12, h - 0.12, markerHeight),
-    [w, h, markerHeight],
+      pieceMarkerPosition(model.current ?? object, camera, viewport),
+    [],
   );
   const ownerColor = piece.owner === 'south' ? '#087fad' : '#e58e3f';
   const color = targeted ? '#ef7049' : source ? '#f5b83b' : selected ? '#38d1df' : ownerColor;
