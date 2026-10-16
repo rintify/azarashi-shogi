@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { PlaneGeometry, ShaderMaterial, Vector2, type Mesh } from 'three';
-import { center, landingMoment, progress, type MoveMotion } from '../presentation/motion';
+import { center } from '../presentation/motion';
 import type { ActionPreview } from '../game/types';
 
-const RIPPLE_MS = 1450;
+const RIPPLE_MS = 720;
+const RIPPLE_INTERVAL_MS = 1900;
+const RIPPLE_RADIUS = 1.18;
 const board = new PlaneGeometry(10.02, 10.02);
 const vertexShader = [
   'varying vec3 vWorldPosition;',
@@ -28,23 +30,17 @@ const fragmentShader = [
   '}',
 ].join('\n');
 
-/** One soft surface ripple replaces the persistent tint on the previous move's cells. */
+/** Repeats a small, soft surface ripple from the center of the last-moved piece. */
 export function LastMoveRipple({
   action,
-  motion,
   reduced,
 }: {
   action: ActionPreview;
-  motion: MoveMotion | null;
   reduced: boolean;
 }) {
   const mesh = useRef<Mesh>(null);
-  const startedAt = useRef<number | null>(null);
-  const finished = useRef(false);
+  const startedAt = useRef(performance.now());
   const [x, , z] = center(action.piece);
-  const maxRadius = Math.max(
-    ...[-5, 5].flatMap((boardX) => [-5, 5].map((boardZ) => Math.hypot(boardX - x, boardZ - z))),
-  );
   const material = useMemo(
     () =>
       new ShaderMaterial({
@@ -64,29 +60,17 @@ export function LastMoveRipple({
   useEffect(() => () => material.dispose(), [material]);
   useFrame(() => {
     if (!mesh.current) return;
-    const now = performance.now();
-    if (reduced || finished.current) {
+    if (reduced) {
       mesh.current.visible = false;
       return;
     }
-    if (startedAt.current === null) {
-      if (
-        !motion ||
-        motion.action !== action ||
-        motion.stage === 'choice' ||
-        motion.stage === 'return' ||
-        progress(motion, now) < landingMoment(motion)
-      ) {
-        mesh.current.visible = false;
-        return;
-      }
-      startedAt.current = now;
-    }
-    const t = Math.min(1, (now - startedAt.current) / RIPPLE_MS);
-    material.uniforms.uRadius.value = maxRadius * t;
-    material.uniforms.uOpacity.value = (1 - t) * 0.34;
-    mesh.current.visible = t < 1;
-    if (t >= 1) finished.current = true;
+    const cycle = (performance.now() - startedAt.current) % RIPPLE_INTERVAL_MS;
+    const t = cycle / RIPPLE_MS;
+    const active = cycle < RIPPLE_MS;
+    const envelope = Math.sin(Math.PI * t);
+    material.uniforms.uRadius.value = RIPPLE_RADIUS * t;
+    material.uniforms.uOpacity.value = envelope * 0.28;
+    mesh.current.visible = active;
   });
   return (
     <mesh

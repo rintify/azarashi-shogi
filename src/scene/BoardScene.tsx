@@ -171,7 +171,6 @@ function BoardContents(props: BoardProps & { htmlPortal: RefObject<HTMLDivElemen
         <LastMoveRipple
           key={game.revision}
           action={game.lastAction}
-          motion={motion}
           reduced={props.reduced}
         />
       )}
