@@ -14,6 +14,11 @@ export function statusCopy(game: GameState, human: Player, interaction: BoardInt
       title: '相手が考えています',
       text: 'NPCの手を待っています。',
     };
+  if (interaction.inspectingEnemy && interaction.selected)
+    return {
+      title: `敵の${pieceName(interaction.selected)} · 移動範囲`,
+      text: '相手の移動範囲を確認中。自分の駒か持ち駒を選ぶと操作に戻ります。',
+    };
   let text = '盤上の駒、または持ち駒を選択してください。';
   if (interaction.pending) text = '空中の姿を確認し、「成る」「そのまま」で決定。';
   else if (interaction.portrait)

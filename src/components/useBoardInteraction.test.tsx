@@ -282,3 +282,53 @@ it('includes king captures available only through the orca rotation extension', 
   );
   expect(hook.result.current.kingCaptureIds).toEqual(['orca']);
 });
+
+it('inspects an enemy jet in its own forward direction without submitting a move', () => {
+  const jet: Piece = {
+    ...penguin,
+    id: 'enemy-jet',
+    owner: 'north',
+    promoted: true,
+    at: { x: 4, y: 2 },
+  };
+  const target: Piece = { ...food, at: { x: 4, y: 6 } };
+  const game = { ...createGame(), pieces: [jet, target] };
+  const submit = vi.fn();
+  const hook = renderHook(() => useBoardInteraction(game, 'south', submit));
+  act(() => hook.result.current.clickCell(jet.at));
+  expect(hook.result.current.inspectingEnemy).toBe(true);
+  expect(hook.result.current.legalCells).toEqual([target.at]);
+  act(() => hook.result.current.setHover(target.at));
+  expect(hook.result.current.preview?.captured.map((p) => p.id)).toContain(target.id);
+  act(() => hook.result.current.chooseOption(hook.result.current.preview!));
+  act(() => hook.result.current.clickCell(target.at));
+  expect(submit).not.toHaveBeenCalled();
+  expect(hook.result.current.selected?.id).toBe(target.id);
+  expect(hook.result.current.inspectingEnemy).toBe(false);
+  expect(game.turn).toBe('south');
+  expect(jet.at).toEqual({ x: 4, y: 2 });
+});
+
+it('shows enemy orca rotation coverage and clears inspection on a second tap or stock selection', () => {
+  const orca: Piece = {
+    ...penguin,
+    id: 'enemy-orca',
+    owner: 'north',
+    kind: 'orca',
+    at: { x: 4, y: 6 },
+  };
+  const target: Piece = { ...food, at: { x: 5, y: 4 } };
+  const game = { ...createGame(), pieces: [...createGame().pieces, orca, target] };
+  const submit = vi.fn();
+  const hook = renderHook(() => useBoardInteraction(game, 'south', submit));
+  act(() => hook.result.current.clickCell(orca.at));
+  expect(hook.result.current.reachableCells).toContainEqual({ x: 6, y: 4 });
+  expect(hook.result.current.legalCells).not.toContainEqual({ x: 6, y: 4 });
+  act(() => hook.result.current.clickCell(orca.at));
+  expect(hook.result.current.selected).toBeNull();
+  act(() => hook.result.current.clickCell(orca.at));
+  act(() => hook.result.current.selectStock('seal'));
+  expect(hook.result.current.selected).toBeNull();
+  expect(hook.result.current.activeKind).toBe('seal');
+  expect(submit).not.toHaveBeenCalled();
+});

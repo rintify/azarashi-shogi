@@ -4,6 +4,7 @@ import { MeshPhysicalMaterial, SphereGeometry, type Group } from 'three';
 import { JET_POSE } from './animalPoses';
 import { JetEngine } from './JetEngine';
 import { OrcaModel } from './OrcaModel';
+import { RoyalCrown } from './RoyalCrown';
 import type { Kind, Player } from '../game/types';
 
 // Every animal part shares geometry; the fixed palette also shares GPU materials.
@@ -288,18 +289,7 @@ function Walrus() {
       ))}
       <Eyes y={0.8} z={0.665} spread={0.21} size={0.048} />
       <Blob at={[0, 0.65, 0.79]} scale={[0.09, 0.05, 0.045]} color="#574b43" />
-      <group position={[0, 1.1, 0.3]}>
-        <mesh castShadow>
-          <cylinderGeometry args={[0.17, 0.13, 0.1, 16]} />
-          <meshStandardMaterial color="#e7b85c" metalness={0.3} roughness={0.3} />
-        </mesh>
-        {[-1, 0, 1].map((i) => (
-          <mesh key={i} position={[i * 0.12, 0.1, 0]}>
-            <coneGeometry args={[0.07, 0.17, 4]} />
-            <meshStandardMaterial color="#f2cc79" />
-          </mesh>
-        ))}
-      </group>
+      <RoyalCrown />
     </group>
   );
 }

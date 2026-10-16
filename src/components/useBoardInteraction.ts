@@ -35,6 +35,12 @@ export function useBoardInteraction(
   const [inspectedThreat, setInspectedThreat] = useState<string | null>(null);
   const humanTurn = enabled && game.turn === human && game.phase !== 'finished';
   const selected = game.pieces.find((p) => p.id === selectedId) ?? null;
+  const inspectingEnemy = !!selected && selected.owner !== human;
+  // Inspection uses the same rules with the selected side to move, without changing the match.
+  const analysisGame = useMemo(
+    () => (inspectingEnemy && selected ? { ...game, turn: selected.owner } : game),
+    [game, inspectingEnemy, selected],
+  );
   const activeKind = stockKind;
   const legalCells = useMemo(() => {
     if (!humanTurn || pending) return [];
@@ -46,7 +52,7 @@ export function useBoardInteraction(
     () =>
       new Map(
         legalCells.map((at) => {
-          const moves = selected ? moveOptions(game, selected, at) : [];
+          const moves = selected ? moveOptions(analysisGame, selected, at) : [];
           const offered =
             selected?.kind === 'seal' && !selected.promoted && moves.some((p) => p.piece.promoted)
               ? moves.filter((p) => p.piece.promoted)
@@ -58,16 +64,16 @@ export function useBoardInteraction(
           return [cellKey(at), placement ? [placement] : offered] as const;
         }),
       ),
-    [game, legalCells, selected, activeKind],
+    [game, analysisGame, legalCells, selected, activeKind],
   );
   const destinationSafety = useMemo(
     () =>
       new Map(
         [...destinations].flatMap(([key, options]) =>
-          options[0] ? [[key, actionSafety(game, options[0])] as const] : [],
+          options[0] ? [[key, actionSafety(analysisGame, options[0])] as const] : [],
         ),
       ),
-    [game, destinations],
+    [analysisGame, destinations],
   );
   // Red marks risk, never illegality. Empty drops and non-royal moves need the same analysis.
   const unsafeCells = useMemo(
@@ -143,7 +149,7 @@ export function useBoardInteraction(
   }
   function clickCell(cell: Cell) {
     if (!humanTurn || pending) return;
-    if (legalCells.some((c) => sameCell(c, cell))) {
+    if (!inspectingEnemy && legalCells.some((c) => sameCell(c, cell))) {
       if (selected) {
         const options = destinations.get(cellKey(cell)) ?? [];
         if (
@@ -158,7 +164,7 @@ export function useBoardInteraction(
       return;
     }
     const piece = pieceAt(game, cell);
-    if (piece?.owner === human) {
+    if (piece) {
       setSelectedId(piece.id === selectedId ? null : piece.id);
       setStockKind(null);
       setInspectedThreat(null);
@@ -177,11 +183,12 @@ export function useBoardInteraction(
     }
   }
   function chooseOption(preview: ActionPreview) {
-    if (enabled) submit(preview.action, game.revision);
+    if (humanTurn && !inspectingEnemy) submit(preview.action, game.revision);
   }
   return {
     selectedId,
     selected,
+    inspectingEnemy,
     activeKind,
     pending,
     optionIndex,

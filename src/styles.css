@@ -556,7 +556,9 @@ svg {
   color: white;
   font-size: 16px;
   font-weight: 800;
-  box-shadow: 0 3px 12px #2f160b55;
+  box-shadow: 0 3px 12px #2f160b30;
+  opacity: 0.68;
+  animation: marker-breathe 2.8s ease-in-out infinite;
 }
 .threat-badge.king-capture-badge {
   background: #f7cc61;
@@ -565,6 +567,7 @@ svg {
   box-shadow: 0 2px 8px #9b741b40;
 }
 .coordinate-king-capture {
+  animation: marker-breathe 2.8s ease-in-out infinite;
   position: absolute;
   top: 0;
   right: 0;
@@ -2120,5 +2123,22 @@ button:not(:disabled):focus-visible {
   }
   .catalog-description {
     align-self: center;
+  }
+}
+
+@keyframes marker-breathe {
+  0%,
+  100% {
+    opacity: 0.42;
+  }
+  50% {
+    opacity: 0.78;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .threat-badge,
+  .coordinate-king-capture {
+    animation: none;
+    opacity: 0.68;
   }
 }
