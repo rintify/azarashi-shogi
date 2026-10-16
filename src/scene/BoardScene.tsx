@@ -111,8 +111,8 @@ function BoardContents(props: BoardProps & { htmlPortal: RefObject<HTMLDivElemen
           selected={selectedId === piece.id}
           targeted={captured.has(piece.id)}
           source={props.threatSources.includes(piece.id)}
-          threatened={props.threats.some((t) => t.targetId === piece.id)}
-          kingCapture={props.kingCaptureIds.includes(piece.id)}
+          threatened={game.turn === props.human && props.threats.some((t) => t.targetId === piece.id)}
+          kingCapture={game.turn === props.human && props.kingCaptureIds.includes(piece.id)}
           disabled={busy}
           reduced={props.reduced}
           intro={game.revision === 0}

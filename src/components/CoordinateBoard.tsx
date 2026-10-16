@@ -43,7 +43,7 @@ export function CoordinateBoard({
         const legal = legalCells.some((c) => sameCell(c, cell));
         const reachable = reachableCells.some((c) => sameCell(c, cell));
         const unsafe = unsafeCells.some((c) => sameCell(c, cell));
-        const kingCapture = !!piece && kingCaptureIds.includes(piece.id);
+        const kingCapture = game.turn === human && !!piece && kingCaptureIds.includes(piece.id);
         return (
           <button
             key={i}
