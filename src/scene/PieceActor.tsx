@@ -191,14 +191,7 @@ export function PieceActor({
               onThreat();
             }}
           >
-            {kingCapture ? (
-              <Crown size={17} strokeWidth={1.7} />
-            ) : (
-              <svg width="17" height="17" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                <path d="M10 4v7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                <circle cx="10" cy="15" r="1" fill="currentColor" />
-              </svg>
-            )}
+            {kingCapture ? <Crown size={18} strokeWidth={2.7} /> : '!'}
           </button>
         </AnimatedPresence>
       </Html>
