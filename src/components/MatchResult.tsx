@@ -44,20 +44,24 @@ export function MatchResult({
         ))}
       </div>
       <section>
-        <div className="result-emblem" aria-hidden="true">
-          {outcome === 'victory' ? <Crown size={54} /> : <Snowflake size={54} />}
+        <div className="result-heading">
+          <div className="result-emblem" aria-hidden="true">
+            {outcome === 'victory' ? <Crown size={54} /> : <Snowflake size={54} />}
+          </div>
+          <p className="result-kicker">
+            {outcome === 'victory' ? 'VICTORY' : outcome === 'defeat' ? 'DEFEAT' : 'DRAW'}
+          </p>
+          <h2 id="result-title">{title}</h2>
         </div>
-        <p className="result-kicker">
-          {outcome === 'victory' ? 'VICTORY' : outcome === 'defeat' ? 'DEFEAT' : 'DRAW'}
-        </p>
-        <h2 id="result-title">{title}</h2>
-        <p>{detail}</p>
-        <button className="primary-button full" onClick={onNewGame}>
-          新しい対局
-        </button>
-        <button className="result-inspect" onClick={onInspect}>
-          盤面を見る
-        </button>
+        <div className="result-footer">
+          <p>{detail}</p>
+          <button className="primary-button full" onClick={onNewGame}>
+            新しい対局
+          </button>
+          <button className="result-inspect" onClick={onInspect}>
+            盤面を見る
+          </button>
+        </div>
       </section>
     </GameDialog>
   );

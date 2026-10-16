@@ -9,13 +9,13 @@ const base: GuideState = {
   unsafe: false,
   previewUnsafe: false,
 };
-it('uses red for dangerous dots, fill and outline even without hovering', () => {
+it('uses red for dangerous dots and fill without an outline', () => {
   const danger = guideStyle({ ...base, unsafe: true });
   expect(danger.dot).toBe(GUIDE_COLORS.danger);
   expect(danger.fill).toBe(GUIDE_COLORS.danger);
   expect(danger.outline).toBe(GUIDE_COLORS.danger);
   expect(danger.fillOpacity).toBeGreaterThan(0);
-  expect(danger.outlineOpacity).toBeGreaterThan(0.8);
+  expect(danger.outlineOpacity).toBe(0);
 });
 it('never replaces dangerous hover or L-shape preview with the old blue fill', () => {
   for (const key of ['active', 'additional'] as const) {

@@ -188,7 +188,7 @@ export default function App() {
   const last = game.lastAction;
   return (
     <main
-      className={`play-screen ${ended ? 'match-ended' : ''}`}
+      className={`play-screen ${ended ? 'match-ended' : ''} ${ended && !resultDismissed ? 'result-cinematic' : ''}`}
       style={{ '--danger-color': GUIDE_COLORS.danger } as CSSProperties}
       onPointerDown={audio.unlock}
     >
@@ -208,6 +208,7 @@ export default function App() {
             }
           >
             <BoardScene
+              focusResult={ended && !resultDismissed}
               onReady={markReady}
               game={game}
               human={settings.human}

@@ -551,13 +551,11 @@ svg {
   display: grid;
   place-items: center;
   padding: 0;
-  border: 1px solid #ffbd7960;
-  border-radius: 4px;
-  background: #182b3b45;
-  color: #ffd19a;
-  box-shadow:
-    inset 0 0 8px #ffbd7910,
-    0 0 9px #ffbd7920;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #f03450;
+  filter: drop-shadow(0 0 3px #f0345030);
   opacity: 0.68;
   animation: marker-breathe 2.8s ease-in-out infinite;
 }
@@ -583,17 +581,14 @@ svg {
 }
 .threat-badge.king-capture-badge {
   color: #a0f4ff;
-  border-color: #76e9ff60;
-  box-shadow:
-    inset 0 0 8px #76e9ff10,
-    0 0 9px #76e9ff20;
+  filter: drop-shadow(0 0 3px #76e9ff30);
 }
 .coordinate-king-capture {
   position: absolute;
   top: 0;
   right: 0;
   color: #b4f5ff;
-  background: #183f5366;
+  background: transparent;
   border: 1px solid #76e9ff60;
   border-radius: 3px;
   padding: 1px;
@@ -677,8 +672,8 @@ svg {
   padding: 20px;
 }
 .result-overlay::backdrop {
-  background: #03182dd9;
-  backdrop-filter: blur(5px);
+  background: transparent;
+  backdrop-filter: none;
 }
 .result-overlay {
   --result-light: #ffe19a;
@@ -699,14 +694,39 @@ svg {
   z-index: 1;
   text-align: center;
   color: white;
-  width: min(420px, 100%);
-  padding: 20px;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  text-shadow:
+    0 2px 4px #163747,
+    0 0 12px #163747;
   animation: result-arrive 850ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
+.result-heading {
+  position: absolute;
+  top: max(12px, env(safe-area-inset-top));
+  left: 0;
+  right: 0;
+}
+.result-footer {
+  position: absolute;
+  bottom: max(6px, env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(360px, 95%);
+}
+.result-cinematic .game-header,
+.result-cinematic .opponent-hud,
+.result-cinematic .turn-banner,
+.result-cinematic .match-message {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 250ms ease;
+}
 .result-emblem {
-  width: 100px;
-  height: 100px;
-  margin: 0 auto -20px;
+  width: 52px;
+  height: 52px;
+  margin: 0 auto;
   display: grid;
   place-items: center;
   color: var(--result-light);
@@ -719,7 +739,7 @@ svg {
 .result-kicker {
   font-family: system-ui, sans-serif;
   font-synthesis: weight style;
-  font-size: clamp(44px, 12vw, 72px);
+  font-size: clamp(32px, 9vw, 56px);
   font-weight: 950;
   font-style: italic;
   letter-spacing: 0.045em;
@@ -727,21 +747,30 @@ svg {
   text-shadow:
     0 4px 0 #20304f,
     0 0 36px color-mix(in srgb, var(--result-glow) 60%, transparent);
-  margin: 24px 0 12px;
+  margin: 6px 0;
   animation: result-title-impact 700ms 120ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 .result-overlay h2 {
-  font-size: clamp(23px, 6vw, 32px);
+  font-size: clamp(20px, 5vw, 28px);
   color: white;
 }
 .result-overlay p:not(.result-kicker) {
   font-size: 12px;
   color: #dae7f1;
   line-height: 1.8;
-  margin: 16px 0 28px;
+  margin: 10px 0 14px;
 }
 .result-overlay .result-inspect {
-  color: #e0eaf3;
+  color: #23465c;
+  text-shadow:
+    0 1px 3px white,
+    0 0 7px white;
+}
+.result-overlay .result-footer p {
+  color: #23465c;
+  text-shadow:
+    0 1px 3px white,
+    0 0 7px white;
 }
 .result-overlay .primary-button {
   box-shadow:
@@ -757,6 +786,7 @@ svg {
 .result-rays {
   position: absolute;
   inset: -100%;
+  opacity: 0.25;
   background: repeating-conic-gradient(
     from 0deg,
     transparent 0deg 13deg,
@@ -1240,7 +1270,7 @@ svg {
 .coordinate-board button.unsafe {
   background: #ffd5dc;
   color: #a51d37;
-  box-shadow: inset 0 0 0 2px var(--danger-color);
+  box-shadow: none;
 }
 .result-inspect {
   margin: 10px auto 0;
@@ -2316,10 +2346,10 @@ button:not(:disabled):focus-visible {
 @keyframes marker-breathe {
   0%,
   100% {
-    opacity: 0.42;
+    opacity: 0.2;
   }
   50% {
-    opacity: 0.78;
+    opacity: 0.9;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -2350,8 +2380,18 @@ button:not(:disabled):focus-visible {
 }
 
 @media (max-height: 530px) {
-  .result-overlay section {
-    padding: 10px;
+  .result-heading {
+    left: 0;
+    right: auto;
+    top: 8px;
+    width: 40%;
+  }
+  .result-footer {
+    left: auto;
+    right: 0;
+    bottom: 6px;
+    transform: none;
+    width: 34%;
   }
   .result-emblem {
     width: 50px;

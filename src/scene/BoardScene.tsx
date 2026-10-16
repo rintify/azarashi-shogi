@@ -29,6 +29,7 @@ export interface BoardProps {
   motion: MoveMotion | null;
   busy: boolean;
   reduced: boolean;
+  focusResult?: boolean;
   onCell: (cell: Cell) => void;
   onHover: (cell: Cell | null) => void;
   onThreat: (id: string) => void;
@@ -38,6 +39,13 @@ function BoardContents(props: BoardProps & { htmlPortal: RefObject<HTMLDivElemen
   useEffect(props.onReady, [props.onReady]);
   const inspectingEnemy = game.pieces.some(
     (piece) => piece.id === selectedId && piece.owner !== props.human,
+  );
+  const focusPiece = useMemo(
+    () =>
+      props.focusResult && game.lastAction?.captured.some((piece) => piece.kind === 'walrus')
+        ? (game.pieces.find((piece) => piece.id === game.lastAction?.piece.id) ?? null)
+        : null,
+    [props.focusResult, game.lastAction, game.pieces],
   );
   const legal = useMemo(() => new Set(props.legalCells.map(cellKey)), [props.legalCells]);
   const reachable = new Set(props.reachableCells.map(cellKey));
@@ -134,6 +142,7 @@ function BoardContents(props: BoardProps & { htmlPortal: RefObject<HTMLDivElemen
       />
       {motion && motion.stage !== 'return' && <ActionEffects key={game.revision} motion={motion} />}
       <SceneCamera
+        focusPiece={focusPiece}
         area={props.area}
         view={props.view}
         human={props.human}

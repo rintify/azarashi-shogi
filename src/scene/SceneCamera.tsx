@@ -1,7 +1,8 @@
 import { useLayoutEffect, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { PerspectiveCamera, Quaternion, Vector3 } from 'three';
-import type { Player } from '../game/types';
+import { resultCameraFrame } from '../presentation/resultCamera';
+import type { Piece, Player } from '../game/types';
 import type { PlayArea } from '../presentation/usePlayArea';
 
 /** Projects into the unobscured HUD rectangle while rendering the world edge to edge. */
@@ -11,18 +12,37 @@ export function SceneCamera({
   human,
   reduced,
   ceiling = 1.7,
+  focusPiece = null,
 }: {
   area: PlayArea | null;
   view: 'perspective' | 'top';
   human: Player;
   reduced: boolean;
   ceiling?: number;
+  focusPiece?: Piece | null;
 }) {
   const { camera, size } = useThree();
   const destination = useRef(new Vector3(0, 20, 9));
   const initial = useRef(true);
+  const lookTarget = useRef(new Vector3());
+  const targetDestination = useRef(new Vector3());
   useLayoutEffect(() => {
     if (!(camera instanceof PerspectiveCamera) || !area || area.height < 1) return;
+    if (focusPiece) {
+      const frame = resultCameraFrame(focusPiece, size.width / size.height);
+      destination.current.copy(frame.position);
+      targetDestination.current.copy(frame.target);
+      camera.clearViewOffset();
+      if (reduced) {
+        camera.position.copy(frame.position);
+        lookTarget.current.copy(frame.target);
+        camera.lookAt(lookTarget.current);
+      }
+      initial.current = false;
+      camera.updateProjectionMatrix();
+      return;
+    }
+    targetDestination.current.set(0, 0, 0);
     const side = human === 'south' ? 1 : -1;
     const direction = new Vector3(
       0,
@@ -49,16 +69,17 @@ export function SceneCamera({
     camera.setViewOffset(area.width, area.height, -area.x, -area.y, size.width, size.height);
     if (initial.current || reduced) {
       camera.position.copy(destination.current);
-      camera.lookAt(0, 0, 0);
+      lookTarget.current.set(0, 0, 0);
+      camera.lookAt(lookTarget.current);
       initial.current = false;
     }
     camera.updateProjectionMatrix();
-  }, [camera, area, size.width, size.height, view, human, reduced, ceiling]);
+  }, [camera, area, size.width, size.height, view, human, reduced, ceiling, focusPiece]);
   useFrame((_, delta) => {
-    if (camera.position.distanceToSquared(destination.current) > 0.00001) {
-      camera.position.lerp(destination.current, 1 - Math.exp(-delta * 12));
-      camera.lookAt(0, 0, 0);
-    }
+    const blend = reduced ? 1 : 1 - Math.exp(-delta * (focusPiece ? 2.4 : 6));
+    camera.position.lerp(destination.current, blend);
+    lookTarget.current.lerp(targetDestination.current, blend);
+    camera.lookAt(lookTarget.current);
   });
   return null;
 }
