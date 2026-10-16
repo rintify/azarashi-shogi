@@ -453,3 +453,55 @@ it('keeps the red warning when every orca rotation is still unsafe', () => {
   expect(hook.result.current.transformationSafeCells).not.toContainEqual(meal.at);
   expect(hook.result.current.unsafeCells).toContainEqual(meal.at);
 });
+
+for (const [kind, promoted, width, height] of [
+  ['walrus', false, 2, 2],
+  ['orca', false, 1, 2],
+  ['orca', true, 2, 1],
+] as const) {
+  for (const owner of ['south', 'north'] as const) {
+    it(`uses the visible top-left corner for ${owner} ${kind} ${promoted ? 'horizontal' : 'base'}`, () => {
+      const mover: Piece = { id: 'large', kind, owner, promoted, at: { x: 4, y: 4 } };
+      const state = { ...createGame(), turn: owner, pieces: [mover] };
+      const submit = vi.fn();
+      const hook = renderHook(() => useBoardInteraction(state, owner, submit));
+      // A tap on a protruding model still selects the exact piece, regardless of ray hit cell.
+      act(() => hook.result.current.clickPiece(mover.id, { x: 0, y: 0 }));
+      expect(hook.result.current.selected?.id).toBe(mover.id);
+      const target = { x: 4, y: owner === 'south' ? 3 : 5 };
+      const tap =
+        owner === 'south' ? target : { x: target.x + width - 1, y: target.y + height - 1 };
+      expect(hook.result.current.legalCells).toContainEqual(tap);
+      act(() => hook.result.current.setHover(tap));
+      expect(hook.result.current.preview?.piece.at).toEqual(target);
+      expect(hook.result.current.preview?.footprint).toHaveLength(width * height);
+      expect(hook.result.current.reachableCells).toContainEqual(target);
+      act(() => hook.result.current.clickCell(tap));
+      expect(submit).toHaveBeenCalledWith({ type: 'move', pieceId: mover.id, to: target }, 0);
+    });
+  }
+}
+it('places a north-facing large piece at the shown corner without shifting its body', () => {
+  const state = { ...createGame(), turn: 'north' as const };
+  const submit = vi.fn();
+  const hook = renderHook(() => useBoardInteraction(state, 'north', submit));
+  act(() => hook.result.current.selectStock('orca'));
+  expect(hook.result.current.legalCells).toContainEqual({ x: 6, y: 3 });
+  act(() => hook.result.current.setHover({ x: 6, y: 3 }));
+  expect(hook.result.current.preview?.footprint).toEqual([
+    { x: 6, y: 2 },
+    { x: 6, y: 3 },
+  ]);
+  act(() => hook.result.current.clickCell({ x: 6, y: 3 }));
+  expect(submit).toHaveBeenCalledWith({ type: 'place', kind: 'orca', at: { x: 6, y: 2 } }, 0);
+});
+it('deselects a large model when tapping its unchanged anchor', () => {
+  const state = createGame(),
+    king = state.pieces[0],
+    submit = vi.fn();
+  const hook = renderHook(() => useBoardInteraction(state, 'south', submit));
+  act(() => hook.result.current.clickPiece(king.id, { x: 4, y: 8 }));
+  act(() => hook.result.current.clickPiece(king.id, { x: 4, y: 8 }));
+  expect(hook.result.current.selected).toBeNull();
+  expect(submit).not.toHaveBeenCalled();
+});

@@ -36,6 +36,7 @@ export interface BoardProps {
   reduced: boolean;
   focusResult?: boolean;
   onCell: (cell: Cell) => void;
+  onPiece: (id: string, cell: Cell) => void;
   onHover: (cell: Cell | null) => void;
   onThreat: (id: string) => void;
 }
@@ -142,7 +143,7 @@ function BoardContents(props: BoardProps & { htmlPortal: RefObject<HTMLDivElemen
           reduced={props.reduced}
           intro={game.revision === 0}
           htmlPortal={props.htmlPortal}
-          onCell={props.onCell}
+          onPiece={props.onPiece}
           onHover={props.onHover}
           onThreat={() => props.onThreat(piece.id)}
         />

@@ -259,6 +259,7 @@ export default function App() {
               busy={playback.busy || !handoffReady}
               reduced={reduced}
               onCell={interaction.clickCell}
+              onPiece={interaction.clickPiece}
               onHover={interaction.setHover}
               onThreat={interaction.inspectThreat}
             />

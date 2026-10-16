@@ -10,7 +10,7 @@ import {
 import { kingRescuers } from '../game/rescue';
 import { actionSafety } from '../game/safety';
 import { cellKey, sameCell, otherPlayer } from '../game/types';
-import { footprint } from '../game/pieces';
+import { displayAnchor } from '../presentation/boardAnchor';
 import type {
   ActionPreview,
   Cell,
@@ -43,16 +43,25 @@ export function useBoardInteraction(
     [game, inspectingEnemy, selected],
   );
   const activeKind = stockKind;
-  const legalCells = useMemo(() => {
+  const body = useMemo(
+    () => selected ?? (activeKind ? { kind: activeKind, promoted: false } : null),
+    [selected, activeKind],
+  );
+  // Rules use absolute anchors; guides and taps use the same visible corner for both sides.
+  const actionCells = useMemo(() => {
     if (!humanTurn || pending) return [];
     if (selected) return moveCells(game, selected);
     return activeKind ? placementCells(game, activeKind) : [];
   }, [game, humanTurn, pending, selected, activeKind]);
+  const legalCells = useMemo(
+    () => (body ? actionCells.map((at) => displayAnchor(at, body, human)) : []),
+    [actionCells, body, human],
+  );
   // Cache the exact actions offered by the UI, including automatic seal promotion.
   const destinations = useMemo(
     () =>
       new Map(
-        legalCells.map((at) => {
+        actionCells.map((at) => {
           const moves = selected ? moveOptions(analysisGame, selected, at) : [];
           const preferred =
             selected?.kind === 'seal' && !selected.promoted && moves.some((p) => p.piece.promoted)
@@ -67,10 +76,13 @@ export function useBoardInteraction(
             !selected && activeKind
               ? previewAction(game, { type: 'place', kind: activeKind, at })
               : null;
-          return [cellKey(at), placement ? [placement] : offered] as const;
+          return [
+            cellKey(body ? displayAnchor(at, body, human) : at),
+            placement ? [placement] : offered,
+          ] as const;
         }),
       ),
-    [game, analysisGame, legalCells, selected, activeKind],
+    [game, analysisGame, actionCells, selected, activeKind, body, human],
   );
   const destinationSafety = useMemo(
     () =>
@@ -126,18 +138,13 @@ export function useBoardInteraction(
   );
   // Destination markers use anchors; the pale guide covers each body's entire footprint.
   const reachableCells = useMemo(() => {
-    const body = selected ?? (activeKind ? { kind: activeKind, promoted: false } : null);
-    if (!body) return [];
     const cells = new Map<string, Cell>();
-    const options = pending ?? (selected?.kind === 'orca' ? [...destinations.values()].flat() : []);
+    const options = pending ?? [...destinations.values()].flat();
     for (const option of options)
       for (const cell of [...option.footprint, ...option.captureCells])
         cells.set(cellKey(cell), cell);
-    if (!pending)
-      for (const at of legalCells)
-        for (const cell of footprint({ ...body, at })) cells.set(cellKey(cell), cell);
     return [...cells.values()];
-  }, [selected, activeKind, legalCells, pending, destinations]);
+  }, [pending, destinations]);
   const threats = useMemo(() => getThreats(game, human), [game, human]);
   const kingCaptureIds = useMemo(() => {
     const enemy = otherPlayer(human);
@@ -211,7 +218,10 @@ export function useBoardInteraction(
           if (options.length > 1) onCaptureChoice?.(options[0]);
           setOptionIndex(0);
         } else if (options[0]) submit(options[0].action, game.revision);
-      } else if (activeKind) submit({ type: 'place', kind: activeKind, at: cell }, game.revision);
+      } else if (activeKind) {
+        const placement = destinations.get(cellKey(cell))?.[0];
+        if (placement) submit(placement.action, game.revision);
+      }
       return;
     }
     const piece = pieceAt(game, cell);
@@ -225,6 +235,17 @@ export function useBoardInteraction(
       setStockKind(null);
       setHover(null);
     }
+  }
+  function clickPiece(id: string, cell: Cell) {
+    if (!humanTurn || pending) return;
+    const piece = game.pieces.find((candidate) => candidate.id === id);
+    if (!piece) return;
+    if (!selected || inspectingEnemy || !legalCells.some((at) => sameCell(at, cell))) {
+      setSelectedId(selected?.id === id ? null : id);
+      setStockKind(null);
+      setInspectedThreat(null);
+      setHover(null);
+    } else clickCell(cell);
   }
   function inspectThreat(id: string) {
     setInspectedThreat(id);
@@ -260,6 +281,7 @@ export function useBoardInteraction(
     portrait,
     selectStock,
     clickCell,
+    clickPiece,
     inspectThreat,
     clearChoice,
     clearSelection,

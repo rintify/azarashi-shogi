@@ -100,12 +100,6 @@ export function SceneCamera({
     if (orbit.current) {
       const t = (performance.now() - orbit.current.startedAt) / TURN_ROTATION_MS;
       camera.position.copy(sampleCameraOrbit(orbit.current.from, orbit.current.to, t));
-      // Diagonal views need more room, especially on narrow phone screens.
-      if (camera instanceof PerspectiveCamera && area) {
-        const direction = camera.position.clone().normalize();
-        const needed = boardDistance(direction, camera.fov, area.width / area.height, ceiling);
-        camera.position.setLength(Math.max(camera.position.length(), needed));
-      }
       if (t >= 1) orbit.current = null;
     } else camera.position.lerp(destination.current, blend);
     lookTarget.current.lerp(targetDestination.current, blend);

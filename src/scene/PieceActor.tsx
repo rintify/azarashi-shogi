@@ -32,7 +32,7 @@ export interface ActorProps {
   reduced: boolean;
   intro: boolean;
   htmlPortal: RefObject<HTMLDivElement>;
-  onCell: (c: Cell) => void;
+  onPiece: (id: string, c: Cell) => void;
   onHover: (c: Cell | null) => void;
   onThreat: () => void;
 }
@@ -50,7 +50,7 @@ export function PieceActor({
   reduced,
   intro,
   htmlPortal,
-  onCell,
+  onPiece,
   onHover,
   onThreat,
 }: ActorProps) {
@@ -135,17 +135,17 @@ export function PieceActor({
       onClick={(e) => {
         e.stopPropagation();
         if (disabled || victim || e.delta > 6) return;
-        onCell({
-          x: Math.max(0, Math.min(9, Math.floor(e.point.x + 5))),
-          y: Math.max(0, Math.min(9, Math.floor(e.point.z + 5))),
+        onPiece(piece.id, {
+          x: Math.max(piece.at.x, Math.min(piece.at.x + w - 1, Math.floor(e.point.x + 5))),
+          y: Math.max(piece.at.y, Math.min(piece.at.y + h - 1, Math.floor(e.point.z + 5))),
         });
       }}
       onPointerMove={(e) => {
         e.stopPropagation();
         if (!disabled && !victim)
           onHover({
-            x: Math.max(0, Math.min(9, Math.floor(e.point.x + 5))),
-            y: Math.max(0, Math.min(9, Math.floor(e.point.z + 5))),
+            x: Math.max(piece.at.x, Math.min(piece.at.x + w - 1, Math.floor(e.point.x + 5))),
+            y: Math.max(piece.at.y, Math.min(piece.at.y + h - 1, Math.floor(e.point.z + 5))),
           });
       }}
       onPointerOut={() => onHover(null)}
