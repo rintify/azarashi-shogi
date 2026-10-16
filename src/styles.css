@@ -581,6 +581,13 @@ svg {
   animation: marker-breathe 2.8s ease-in-out infinite;
 }
 
+.threat-badge,
+.coordinate-king-capture {
+  filter: blur(0.3px) drop-shadow(0 0 3px var(--marker-color))
+    drop-shadow(0 0 8px color-mix(in srgb, var(--marker-color) 55%, transparent));
+  text-shadow: 0 0 4px color-mix(in srgb, var(--marker-color) 65%, transparent);
+}
+
 .coordinate-overlay {
   position: absolute;
   z-index: 20;
