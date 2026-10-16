@@ -32,7 +32,6 @@ export interface BoardProps {
   previewUnsafe: boolean;
   threats: Threat[];
   kingCaptureIds: string[];
-  threatSources: string[];
   view: 'perspective' | 'top';
   area: PlayArea | null;
   motion: MoveMotion | null;
@@ -150,7 +149,6 @@ function BoardContents(props: BoardProps & { htmlPortal: RefObject<HTMLDivElemen
           }
           selected={selectedId === piece.id}
           targeted={captured.has(piece.id)}
-          source={props.threatSources.includes(piece.id)}
           threatened={
             game.turn === props.human && props.threats.some((t) => t.targetId === piece.id)
           }

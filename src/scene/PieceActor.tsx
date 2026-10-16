@@ -25,7 +25,6 @@ export interface ActorProps {
   victim?: boolean;
   selected: boolean;
   targeted: boolean;
-  source: boolean;
   threatened: boolean;
   kingCapture: boolean;
   helper: boolean;
@@ -43,7 +42,6 @@ export function PieceActor({
   victim = false,
   selected,
   targeted,
-  source,
   threatened,
   kingCapture,
   helper,
@@ -77,7 +75,7 @@ export function PieceActor({
     [mark, disabled, victim],
   );
   const ownerColor = piece.owner === 'south' ? '#087fad' : '#e58e3f';
-  const color = targeted ? '#ef7049' : source ? '#f5b83b' : selected ? '#38d1df' : ownerColor;
+  const color = targeted ? '#ef7049' : selected ? '#38d1df' : ownerColor;
   useFrame(() => {
     if (!root.current || !model.current) return;
     let position = center(piece),
@@ -189,7 +187,7 @@ export function PieceActor({
         width={w}
         height={h}
         color={color}
-        active={(selected || targeted || source) && !moving}
+        active={(selected || targeted) && !moving}
         reduced={reduced}
       />
       <Html calculatePosition={locateMarker} center portal={htmlPortal} zIndexRange={[25, 20]}>

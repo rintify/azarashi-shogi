@@ -255,7 +255,6 @@ export default function App() {
               previewUnsafe={interaction.previewUnsafe}
               threats={interaction.threats}
               kingCaptureIds={interaction.kingCaptureIds}
-              threatSources={interaction.threat?.attackerIds ?? []}
               view={view}
               area={area}
               motion={playback.motion}
