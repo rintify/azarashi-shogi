@@ -5,7 +5,7 @@ import type { Difficulty, MatchSettings } from '../match/record';
 import type { Player } from '../game/types';
 import { aiDifficulty } from '../match/record';
 import { AnimalIcon } from './AnimalIcon';
-import { LEVELS } from '../ai/levels';
+import { LEVELS, MAX_DIFFICULTY } from '../ai/levels';
 export function NewGameDialog({
   current,
   close,
@@ -112,7 +112,7 @@ export function NewGameDialog({
               id="south-difficulty"
               type="range"
               min="1"
-              max="5"
+              max={MAX_DIFFICULTY}
               step="1"
               value={southLevel}
               onChange={(e) => setSouthLevel(Number(e.target.value) as Difficulty)}
@@ -135,7 +135,7 @@ export function NewGameDialog({
               id="difficulty"
               type="range"
               min="1"
-              max="5"
+              max={MAX_DIFFICULTY}
               step="1"
               value={difficulty}
               onChange={(e) => setDifficulty(Number(e.target.value) as Difficulty)}
@@ -147,9 +147,11 @@ export function NewGameDialog({
             <p className="difficulty-note">
               {watching
                 ? `先手は最大${LEVELS[southLevel].thinkingMs / 1000}秒、後手は最大${LEVELS[difficulty].thinkingMs / 1000}秒。同じルールで対局します。`
-                : difficulty === 5
-                  ? '最長10秒じっくり考える「極」。同じルールで、全力の一手を指します。'
-                  : `NPCの思考時間は最大${LEVELS[difficulty].thinkingMs / 1000}秒。${LEVELS[difficulty].name}レベルで対戦します。`}
+                : difficulty === 6
+                  ? '最大30秒、捕食の連鎖や王の救出まで深く読む「覇王」。同じルールで挑みます。'
+                  : difficulty === 5
+                    ? '最長10秒じっくり考える「極」。同じルールで、全力の一手を指します。'
+                    : `NPCの思考時間は最大${LEVELS[difficulty].thinkingMs / 1000}秒。${LEVELS[difficulty].name}レベルで対戦します。`}
             </p>
           </>
         )}

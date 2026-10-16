@@ -34,10 +34,25 @@ it('rejects unknown modes and malformed AI levels rather than starting an invali
     decodeRecord(
       JSON.stringify({
         ...record,
-        settings: { ...record.settings, aiLevels: { south: 6, north: 2 } },
+        settings: { ...record.settings, aiLevels: { south: 7, north: 2 } },
       }),
     ),
   ).toThrow();
+});
+
+it('saves and restores the highest AI level for solo and spectator matches', () => {
+  for (const mode of ['human-vs-ai', 'ai-vs-ai'] as const) {
+    const record = newRecord({
+      human: 'north',
+      mode,
+      difficulty: 6,
+      aiLevels: { south: 6, north: 5 },
+    });
+    record.actions = [{ type: 'place', kind: 'seal', at: { x: 3, y: 7 } }];
+    const restored = decodeRecord(JSON.stringify(record));
+    expect(restored.record.settings).toEqual(record.settings);
+    expect(restored.game.revision).toBe(1);
+  }
 });
 
 it('does not replay a record under a different rule version', () => {

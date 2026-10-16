@@ -1,10 +1,10 @@
-import { actionKey, applyPreview, getThreats, legalPreviews, moveCells } from '../game/engine';
+import { actionKey, applyPreview, legalPreviews } from '../game/engine';
 import { DEFINITIONS, KINDS } from '../game/pieces';
-import { otherPlayer } from '../game/types';
 import type { ActionPreview, GameAction, GameState, Player } from '../game/types';
 import type { Difficulty } from '../match/record';
 import { LEVELS, THINKING_MS } from './levels';
 import { randomSeed, seededValue } from '../shared/random';
+import { evaluatePosition, type PositionEvaluation } from './evaluation';
 export { THINKING_MS } from './levels';
 export interface SearchProgress {
   depth: number;
@@ -26,6 +26,11 @@ export interface SearchOptions {
 }
 const WIN = 1_000_000;
 const TIMEOUT = Symbol('search-timeout');
+// Store mate distances relative to the cached node, not the root path that reached it.
+const toTableScore = (score: number, ply: number) =>
+  score > WIN / 2 ? score + ply : score < -WIN / 2 ? score - ply : score;
+const fromTableScore = (score: number, ply: number) =>
+  score > WIN / 2 ? score - ply : score < -WIN / 2 ? score + ply : score;
 interface Entry {
   depth: number;
   score: number;
@@ -50,38 +55,6 @@ function terminal(state: GameState, root: Player, ply: number): number | null {
         ? WIN - ply
         : -WIN + ply;
 }
-function evaluate(state: GameState, root: Player): number {
-  let score = 0;
-  for (const side of [root, otherPlayer(root)]) {
-    const sign = side === root ? 1 : -1;
-    for (const kind of KINDS)
-      if (kind !== 'walrus')
-        score += sign * state.stocks[side][kind] * DEFINITIONS[kind].value * 0.72;
-    for (const p of state.pieces)
-      if (p.owner === side) {
-        const center = 9 - Math.abs(p.at.x - 4.5) - Math.abs(p.at.y - 4.5);
-        score +=
-          sign *
-          (DEFINITIONS[p.kind].value +
-            (p.promoted && p.kind === 'seal' ? 145 : p.promoted && p.kind === 'penguin' ? 30 : 0) +
-            center * (p.kind === 'walrus' ? 0.8 : 2.3) +
-            moveCells(state, p).length * 1.5);
-      }
-    // A royal threat matters far more than material. It includes orca rotation captures.
-    const threats = getThreats(state, side);
-    for (const t of threats) {
-      const target = state.pieces.find((p) => p.id === t.targetId)!;
-      const cost =
-        target.kind === 'walrus'
-          ? state.turn === side
-            ? 17000
-            : 35000
-          : DEFINITIONS[target.kind].value * 0.18;
-      score -= sign * cost;
-    }
-  }
-  return score;
-}
 function priority(preview: ActionPreview, turn: Player): number {
   const kings = preview.captured.filter((p) => p.kind === 'walrus');
   if (kings.length === 2) return 500;
@@ -100,14 +73,18 @@ export function searchBestAction(state: GameState, options: SearchOptions): Sear
   const start = now(),
     deadline = start + (options.budgetMs ?? THINKING_MS[options.difficulty]);
   const root = state.turn;
+  const config = LEVELS[options.difficulty];
   const seed = options.seed ?? randomSeed();
   const variety = (move: ActionPreview) =>
     seededValue(`${state.revision}:${actionKey(move.action)}`, seed);
   const table = new Map<string, Entry>();
+  const evaluations = new Map<string, PositionEvaluation>();
+  const killers = new Map<number, string[]>();
+  const history = new Map<string, number>();
   let nodes = 0,
     completedDepth = 0,
     timedOut = false;
-  // Vary equivalent move order even at Lv.5; its evaluation itself remains noise-free.
+  // Vary equivalent move order at every level; the top levels use no evaluation noise.
   let rootMoves = legalPreviews(state).sort(
     (a, b) => priority(b, root) - priority(a, root) || variety(b) - variety(a),
   );
@@ -116,12 +93,36 @@ export function searchBestAction(state: GameState, options: SearchOptions): Sear
   function check() {
     if (options.cancelled?.() || now() >= deadline) throw TIMEOUT;
   }
-  function ordered(moves: ActionPreview[], turn: Player, preferred?: string | null) {
-    return moves.sort(
-      (a, b) =>
-        (actionKey(b.action) === preferred ? WIN * 3 : priority(b, turn)) -
-        (actionKey(a.action) === preferred ? WIN * 3 : priority(a, turn)),
-    );
+  function evaluation(position: GameState): PositionEvaluation {
+    if (!config.advanced) return evaluatePosition(position, root);
+    const key = positionKey(position);
+    const cached = evaluations.get(key);
+    if (cached) return cached;
+    const value = evaluatePosition(position, root);
+    if (evaluations.size >= 20000) evaluations.clear();
+    evaluations.set(key, value);
+    return value;
+  }
+  function ordered(moves: ActionPreview[], turn: Player, ply: number, preferred?: string | null) {
+    return moves
+      .map((move) => {
+        const key = actionKey(move.action);
+        const learned = config.advanced
+          ? move.captured.length
+            ? 10000
+            : (killers.get(ply)?.includes(key) ? 5000 : 0) + (history.get(`${turn}/${key}`) ?? 0)
+          : 0;
+        return { move, score: key === preferred ? WIN * 3 : priority(move, turn) + learned };
+      })
+      .sort((a, b) => b.score - a.score)
+      .map(({ move }) => move);
+  }
+  function rememberCutoff(move: ActionPreview, turn: Player, ply: number, depth: number) {
+    if (!config.advanced || move.captured.length) return;
+    const key = actionKey(move.action);
+    killers.set(ply, [key, ...(killers.get(ply) ?? []).filter((old) => old !== key)].slice(0, 2));
+    const historyKey = `${turn}/${key}`;
+    history.set(historyKey, Math.min(3000, (history.get(historyKey) ?? 0) + depth * depth));
   }
   function tactical(
     position: GameState,
@@ -134,12 +135,13 @@ export function searchBestAction(state: GameState, options: SearchOptions): Sear
     check();
     const end = terminal(position, root, ply);
     if (end !== null) return end;
-    const standing = evaluate(position, root);
+    const assessed = evaluation(position);
+    if (config.advanced && assessed.canWinImmediately)
+      return position.turn === root ? WIN - ply - 1 : -WIN + ply + 1;
+    const standing = assessed.score;
     if (remaining === 0 || position.phase !== 'playing') return standing;
     const maximizing = position.turn === root;
-    const ownKing = position.pieces.find((p) => p.owner === position.turn && p.kind === 'walrus');
-    const inDanger =
-      ownKing && getThreats(position, position.turn).some((t) => t.targetId === ownKing.id);
+    const inDanger = assessed.kingInDanger;
     let value = inDanger ? (maximizing ? -Infinity : Infinity) : standing;
     if (!inDanger) {
       if (maximizing) {
@@ -153,6 +155,7 @@ export function searchBestAction(state: GameState, options: SearchOptions): Sear
     const moves = ordered(
       legalPreviews(position, !!inDanger).filter((m) => inDanger || m.captured.length > 0),
       position.turn,
+      ply,
     );
     if (!moves.length) return standing;
     for (const move of moves) {
@@ -175,36 +178,49 @@ export function searchBestAction(state: GameState, options: SearchOptions): Sear
     check();
     const end = terminal(position, root, ply);
     if (end !== null) return end;
-    if (depth === 0) return tactical(position, alpha, beta, options.difficulty >= 3 ? 2 : 0, ply);
+    if (depth === 0) return tactical(position, alpha, beta, config.tacticalDepth, ply);
     const key = positionKey(position),
       cached = table.get(key),
       originalAlpha = alpha,
       originalBeta = beta;
     if (cached && cached.depth >= depth) {
-      if (cached.bound === 'exact') return cached.score;
-      if (cached.bound === 'lower') alpha = Math.max(alpha, cached.score);
-      else beta = Math.min(beta, cached.score);
-      if (alpha >= beta) return cached.score;
+      const score = fromTableScore(cached.score, ply);
+      if (cached.bound === 'exact') return score;
+      if (cached.bound === 'lower') alpha = Math.max(alpha, score);
+      else beta = Math.min(beta, score);
+      if (alpha >= beta) return score;
     }
-    const moves = ordered(legalPreviews(position), position.turn, cached?.best);
-    if (!moves.length) return evaluate(position, root);
+    const moves = ordered(legalPreviews(position), position.turn, ply, cached?.best);
+    if (!moves.length) return evaluation(position).score;
     const maximizing = position.turn === root;
     let value = maximizing ? -Infinity : Infinity,
       chosen: string | null = null;
-    for (const move of moves) {
-      const score = visit(applyPreview(position, move), depth - 1, alpha, beta, ply + 1);
+    for (let index = 0; index < moves.length; index++) {
+      const move = moves[index];
+      const next = applyPreview(position, move);
+      let score: number;
+      if (config.advanced && index > 0 && Number.isFinite(maximizing ? alpha : beta)) {
+        // Probe later moves cheaply; any improvement inside the window gets a full re-search.
+        score = maximizing
+          ? visit(next, depth - 1, alpha, Math.min(beta, alpha + 1), ply + 1)
+          : visit(next, depth - 1, Math.max(alpha, beta - 1), beta, ply + 1);
+        if (score > alpha && score < beta) score = visit(next, depth - 1, alpha, beta, ply + 1);
+      } else score = visit(next, depth - 1, alpha, beta, ply + 1);
       if (maximizing ? score > value : score < value) {
         value = score;
         chosen = actionKey(move.action);
       }
       if (maximizing) alpha = Math.max(alpha, value);
       else beta = Math.min(beta, value);
-      if (alpha >= beta) break;
+      if (alpha >= beta) {
+        rememberCutoff(move, position.turn, ply, depth);
+        break;
+      }
     }
-    if (table.size > 50000) table.clear();
+    if (table.size > (config.advanced ? 150000 : 50000)) table.clear();
     table.set(key, {
       depth,
-      score: value,
+      score: toTableScore(value, ply),
       best: chosen,
       bound: value <= originalAlpha ? 'upper' : value >= originalBeta ? 'lower' : 'exact',
     });
@@ -223,9 +239,34 @@ export function searchBestAction(state: GameState, options: SearchOptions): Sear
       elapsedMs: now() - start,
       timedOut: false,
     };
-  const maxDepth = LEVELS[options.difficulty].maxDepth;
-  const variation = LEVELS[options.difficulty].noise;
+  const maxDepth = config.maxDepth;
+  const variation = config.noise;
   try {
+    if (config.advanced) {
+      // First inspect every root reply for an immediate royal loss. A long tactical branch
+      // must not consume the whole budget before an available saving move is even considered.
+      const prepared: { move: ActionPreview; score: number }[] = [];
+      let preparedScore = -Infinity;
+      for (const move of rootMoves) {
+        check();
+        nodes++;
+        const next = applyPreview(state, move);
+        const end = terminal(next, root, 1);
+        const assessed = end === null ? evaluation(next) : null;
+        const score = end ?? (assessed!.canWinImmediately ? -WIN + 2 : assessed!.score);
+        prepared.push({ move, score });
+        if (score > preparedScore) {
+          preparedScore = score;
+          best = move;
+          bestScore = score;
+        }
+      }
+      // Only proven immediate losses are discarded, and only when a better reply exists.
+      const candidates = prepared.some(({ score }) => score > -WIN / 2)
+        ? prepared.filter(({ score }) => score > -WIN / 2)
+        : prepared;
+      rootMoves = candidates.sort((a, b) => b.score - a.score).map(({ move }) => move);
+    }
     for (let depth = 1; depth <= maxDepth && rootMoves.length; depth++) {
       check();
       let iterationBest: ActionPreview | null = null,

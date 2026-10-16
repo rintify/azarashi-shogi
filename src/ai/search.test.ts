@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { applyAction, createGame, legalPreviews, previewAction } from '../game/engine';
+import {
+  applyAction,
+  applyPreview,
+  createGame,
+  legalPreviews,
+  previewAction,
+} from '../game/engine';
 import { searchBestAction, THINKING_MS } from './search';
+import { LEVELS } from './levels';
+import { evaluatePosition } from './evaluation';
 import type { GameState, Kind, Piece, Player } from '../game/types';
 const p = (id: string, kind: Kind, x: number, y: number, owner: Player = 'south'): Piece => ({
   id,
@@ -34,31 +42,34 @@ describe('fair NPC search', () => {
     expect(new Set(fallbacks.map((a) => JSON.stringify(a))).size).toBeGreaterThan(1);
     expect(fallbacks.every((a) => a && previewAction(state, a))).toBe(true);
   });
-  it('uses the specified five time budgets', () =>
-    expect(Object.values(THINKING_MS)).toEqual([100, 300, 1000, 3000, 10000]));
-  it('finds an immediate royal capture', () => {
+  it('adds a thirty-second budget above the existing five levels', () =>
+    expect(Object.values(THINKING_MS)).toEqual([100, 300, 1000, 3000, 10000, 30000]));
+  it.each([5, 6] as const)('finds an immediate royal capture at level %i', (difficulty) => {
     const state = board(
       p('own', 'walrus', 0, 8),
       p('enemy', 'walrus', 4, 1, 'north'),
       p('bear', 'bear', 4, 4),
     );
-    const result = searchBestAction(state, { difficulty: 5 });
+    const result = searchBestAction(state, { difficulty });
     expect(applyAction(state, result.action!).result?.winner).toBe('south');
   });
-  it('finds a winning L capture that needs friendly food to enable rotation', () => {
-    const state = board(
-      p('own', 'walrus', 0, 8),
-      p('enemy', 'walrus', 5, 3, 'north'),
-      p('orca', 'orca', 3, 6),
-      p('food', 'seal', 4, 4),
-    );
-    const result = searchBestAction(state, { difficulty: 5 });
-    expect(result.action?.type === 'move' && result.action.transformation?.type).toBe('rotate');
-    expect(applyAction(state, result.action!).result?.winner).toBe('south');
-  });
-  it('escapes royal danger instead of allowing an immediate loss', () => {
+  it.each([5, 6] as const)(
+    'finds a winning L capture with friendly food at level %i',
+    (difficulty) => {
+      const state = board(
+        p('own', 'walrus', 0, 8),
+        p('enemy', 'walrus', 5, 3, 'north'),
+        p('orca', 'orca', 3, 6),
+        p('food', 'seal', 4, 4),
+      );
+      const result = searchBestAction(state, { difficulty });
+      expect(result.action?.type === 'move' && result.action.transformation?.type).toBe('rotate');
+      expect(applyAction(state, result.action!).result?.winner).toBe('south');
+    },
+  );
+  it.each([5, 6] as const)('escapes royal danger at level %i', (difficulty) => {
     const state = board(p('own', 'walrus', 4, 6), p('enemy', 'walrus', 4, 2, 'north'));
-    const result = searchBestAction(state, { difficulty: 5, budgetMs: 200 });
+    const result = searchBestAction(state, { difficulty, budgetMs: 200, seed: 19 });
     const next = applyAction(state, result.action!);
     expect(legalPreviews(next).some((m) => m.captured.some((p) => p.id === 'own'))).toBe(false);
   });
@@ -72,20 +83,23 @@ describe('fair NPC search', () => {
     expect(previewAction(state, result.action!)).not.toBeNull();
     expect(state).toEqual(createGame());
   });
-  it('returns a legal fallback on timeout and honors cancellation', () => {
-    for (const cancelled of [false, true]) {
-      let tick = 0;
-      const result = searchBestAction(createGame(), {
-        difficulty: 5,
-        budgetMs: 8,
-        now: () => tick++,
-        cancelled: () => cancelled,
-      });
-      expect(result.timedOut).toBe(true);
-      expect(result.action && previewAction(createGame(), result.action)).not.toBeNull();
-      expect(result.elapsedMs).toBeLessThanOrEqual(9);
-    }
-  });
+  it.each([5, 6] as const)(
+    'returns a legal fallback on timeout and cancellation at level %i',
+    (difficulty) => {
+      for (const cancelled of [false, true]) {
+        let tick = 0;
+        const result = searchBestAction(createGame(), {
+          difficulty,
+          budgetMs: 8,
+          now: () => tick++,
+          cancelled: () => cancelled,
+        });
+        expect(result.timedOut).toBe(true);
+        expect(result.action && previewAction(createGame(), result.action)).not.toBeNull();
+        expect(result.elapsedMs).toBeLessThanOrEqual(9);
+      }
+    },
+  );
   it('returns no action for a finished match', () => {
     const state = {
       ...createGame(),
@@ -93,5 +107,45 @@ describe('fair NPC search', () => {
       result: { winner: 'south' as const, reason: 'king-captured' as const },
     };
     expect(searchBestAction(state, { difficulty: 5 }).action).toBeNull();
+  });
+  it('matches exhaustive minimax with PVS and cached positions for either side', () => {
+    const original = LEVELS[6];
+    // Fix the horizon for this comparison so the independent oracle can examine every move.
+    LEVELS[6] = { ...original, maxDepth: 3, tacticalDepth: 0 };
+    try {
+      for (const root of ['south', 'north'] as const) {
+        const state = {
+          ...board(p('own', 'walrus', 0, 8), p('enemy', 'walrus', 8, 0, 'north')),
+          turn: root,
+        };
+        const exhaustive = (position: GameState, depth: number, ply: number): number => {
+          if (position.result)
+            return position.result.winner === null
+              ? 0
+              : position.result.winner === root
+                ? 1000000 - ply
+                : -1000000 + ply;
+          if (!depth) {
+            const assessment = evaluatePosition(position, root);
+            return assessment.canWinImmediately
+              ? position.turn === root
+                ? 1000000 - ply - 1
+                : -1000000 + ply + 1
+              : assessment.score;
+          }
+          const scores = legalPreviews(position).map((move) =>
+            exhaustive(applyPreview(position, move), depth - 1, ply + 1),
+          );
+          return position.turn === root ? Math.max(...scores) : Math.min(...scores);
+        };
+        const expected = exhaustive(state, 3, 0);
+        const result = searchBestAction(state, { difficulty: 6, seed: 93, now: () => 0 });
+        expect(result.depth).toBe(3);
+        expect(result.score).toBeCloseTo(expected, 8);
+        expect(exhaustive(applyAction(state, result.action!), 2, 1)).toBeCloseTo(expected, 8);
+      }
+    } finally {
+      LEVELS[6] = original;
+    }
   });
 });

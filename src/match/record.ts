@@ -2,7 +2,8 @@ import { applyAction, createGame } from '../game/engine';
 import { RULES_VERSION } from '../game/types';
 import type { GameAction, GameState, Player } from '../game/types';
 import { randomSeed } from '../shared/random';
-export type Difficulty = 1 | 2 | 3 | 4 | 5;
+import { isDifficulty, type Difficulty } from '../ai/levels';
+export type { Difficulty } from '../ai/levels';
 export interface MatchSettings {
   mode?: 'human-vs-ai' | 'ai-vs-ai' | 'local-pvp';
   aiLevels?: Record<Player, Difficulty>;
@@ -91,11 +92,9 @@ function validSettings(settings: MatchSettings): boolean {
     (settings.mode === undefined ||
       ['human-vs-ai', 'ai-vs-ai', 'local-pvp'].includes(settings.mode)) &&
     (settings.aiLevels === undefined ||
-      ['south', 'north'].every((side) =>
-        [1, 2, 3, 4, 5].includes(settings.aiLevels![side as Player]),
-      )) &&
+      ['south', 'north'].every((side) => isDifficulty(settings.aiLevels![side as Player]))) &&
     ['south', 'north'].includes(settings.human) &&
-    [1, 2, 3, 4, 5].includes(settings.difficulty)
+    isDifficulty(settings.difficulty)
   );
 }
 export function loadMatch(): { record: GameRecord; game: GameState; warning: string | null } {

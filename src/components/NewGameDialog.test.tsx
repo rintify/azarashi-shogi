@@ -15,6 +15,24 @@ beforeEach(() => {
     },
   );
 });
+
+it('offers the new top level for an opponent and for either spectator side', () => {
+  const start = vi.fn();
+  render(<NewGameDialog current={DEFAULT_SETTINGS} close={() => {}} start={start} />);
+  const slider = screen.getByRole('slider');
+  expect(slider.getAttribute('max')).toBe('6');
+  fireEvent.change(slider, { target: { value: '6' } });
+  expect(screen.getByText('Lv.6 · 覇王')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: /この設定ではじめる/ }));
+  expect(start).toHaveBeenLastCalledWith(expect.objectContaining({ difficulty: 6 }));
+  fireEvent.click(screen.getByRole('button', { name: /AI vs AI/ }));
+  const sliders = screen.getAllByRole('slider');
+  fireEvent.change(sliders[0], { target: { value: '6' } });
+  fireEvent.click(screen.getByRole('button', { name: /この設定ではじめる/ }));
+  expect(start).toHaveBeenLastCalledWith(
+    expect.objectContaining({ aiLevels: { south: 6, north: 6 } }),
+  );
+});
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
