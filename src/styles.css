@@ -544,50 +544,35 @@ svg {
   pointer-events: none;
   user-select: none;
 }
-/* Presence animates the wrapper; the badge keeps its continuous opacity pulse. */
-.threat-marker-motion {
-  display: inline-flex;
-}
 .threat-badge {
-  --marker-color: #e34a50;
   width: 25px;
   height: 25px;
   display: grid;
   place-items: center;
   padding: 0;
-  border: 2px solid var(--marker-color);
+  border: 2px solid #fff3e7;
   border-radius: 50%;
-  background: color-mix(in srgb, var(--marker-color) 8%, transparent);
-  color: var(--marker-color);
+  background: #d56b37;
+  color: white;
   font-size: 16px;
   font-weight: 800;
-  opacity: 0.6;
-  animation: marker-breathe 2.8s ease-in-out infinite;
+  box-shadow: 0 3px 12px #2f160b55;
 }
 .threat-badge.king-capture-badge {
-  --marker-color: #b88a28;
+  background: #f7cc61;
+  color: #785122;
+  border-color: #fff9df;
+  box-shadow: 0 2px 8px #9b741b40;
 }
 .coordinate-king-capture {
-  --marker-color: #b88a28;
   position: absolute;
   top: 0;
   right: 0;
-  color: var(--marker-color);
-  background: color-mix(in srgb, var(--marker-color) 8%, transparent);
-  border: 1px solid var(--marker-color);
+  color: #785122;
+  background: #f7cc61;
   border-radius: 50%;
   padding: 1px;
-  opacity: 0.6;
-  animation: marker-breathe 2.8s ease-in-out infinite;
 }
-
-.threat-badge,
-.coordinate-king-capture {
-  filter: blur(0.3px) drop-shadow(0 0 3px var(--marker-color))
-    drop-shadow(0 0 8px color-mix(in srgb, var(--marker-color) 55%, transparent));
-  text-shadow: 0 0 4px color-mix(in srgb, var(--marker-color) 65%, transparent);
-}
-
 .coordinate-overlay {
   position: absolute;
   z-index: 20;
@@ -2333,23 +2318,6 @@ button:not(:disabled):focus-visible {
   }
   .catalog-description {
     align-self: center;
-  }
-}
-
-@keyframes marker-breathe {
-  0%,
-  100% {
-    opacity: 0.28;
-  }
-  50% {
-    opacity: 0.72;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .threat-badge,
-  .coordinate-king-capture {
-    animation: none;
-    opacity: 0.68;
   }
 }
 

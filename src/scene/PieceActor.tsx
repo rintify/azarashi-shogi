@@ -181,22 +181,18 @@ export function PieceActor({
       />
       <Html position={[w / 2 - 0.14, 1.5, 0]} center portal={htmlPortal} zIndexRange={[25, 20]}>
         <AnimatedPresence show={(kingCapture || threatened) && !disabled && !victim}>
-          <span className="threat-marker-motion">
-            <button
-              className={`threat-badge ${kingCapture ? 'king-capture-badge' : ''}`}
-              aria-label={
-                kingCapture
-                  ? '相手の王を捕食できます。この駒を選択'
-                  : 'この駒を捕食できる相手を表示'
-              }
-              onClick={(e) => {
-                e.stopPropagation();
-                onThreat();
-              }}
-            >
-              {kingCapture ? <Crown size={18} strokeWidth={2.7} /> : '!'}
-            </button>
-          </span>
+          <button
+            className={`threat-badge ${kingCapture ? 'king-capture-badge' : ''}`}
+            aria-label={
+              kingCapture ? '相手の王を捕食できます。この駒を選択' : 'この駒を捕食できる相手を表示'
+            }
+            onClick={(e) => {
+              e.stopPropagation();
+              onThreat();
+            }}
+          >
+            {kingCapture ? <Crown size={18} strokeWidth={2.7} /> : '!'}
+          </button>
         </AnimatedPresence>
       </Html>
     </group>
