@@ -7,10 +7,25 @@ import {
   Play,
   X,
 } from 'lucide-react';
+import type { GameState, Player } from '../game/types';
+import { StockItems } from './OpponentBar';
 import type { ReplayController } from '../match/useReplay';
-export function ReplayDock({ replay, busy }: { replay: ReplayController; busy: boolean }) {
+export function ReplayDock({
+  replay,
+  busy,
+  game,
+  human,
+}: {
+  replay: ReplayController;
+  busy: boolean;
+  game: GameState;
+  human: Player;
+}) {
   return (
     <aside className="replay-dock" aria-label="リプレイ操作">
+      <div className="replay-stock">
+        <StockItems game={game} player={human} />
+      </div>
       <input
         type="range"
         min={0}

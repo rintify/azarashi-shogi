@@ -10,6 +10,7 @@ import { IceWorld } from './IceWorld';
 import { PieceActor } from './PieceActor';
 import { CellGuide } from './CellGuide';
 import { PlacementGhost } from './PlacementGhost';
+import { CaptureTransfers } from './CaptureTransfers';
 import { ActionEffects } from './ActionEffects';
 export interface BoardProps {
   onReady: () => void;
@@ -141,6 +142,7 @@ function BoardContents(props: BoardProps & { htmlPortal: RefObject<HTMLDivElemen
         reduced={props.reduced}
       />
       {motion && motion.stage !== 'return' && <ActionEffects key={game.revision} motion={motion} />}
+      {motion && <CaptureTransfers motion={motion} />}
       <SceneCamera
         focusPiece={focusPiece}
         area={props.area}

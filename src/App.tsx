@@ -32,6 +32,7 @@ import { statusCopy } from './components/statusCopy';
 import { useBoardInteraction } from './components/useBoardInteraction';
 import { pieceName } from './game/pieces';
 import { coordinate } from './components/coordinates';
+import { useCaptureStocks } from './presentation/useCaptureStocks';
 import { usePlayback } from './presentation/usePlayback';
 import { usePlayArea } from './presentation/usePlayArea';
 import { useGameAudio } from './presentation/useGameAudio';
@@ -81,6 +82,7 @@ export default function App() {
   }, []);
   const playback = usePlayback(game, reduced, replay.epoch, replay.active ? replay.speed : 1),
     audio = useGameAudio(playback.motion);
+  const stockGame = useCaptureStocks(game, playback.motion);
   const interaction = useBoardInteraction(
     game,
     settings.human,
@@ -323,7 +325,7 @@ export default function App() {
       </header>
       <div className="opponent-hud">
         <OpponentBar
-          game={game}
+          game={stockGame}
           human={settings.human}
           difficulty={aiDifficulty(settings, otherPlayer(settings.human))}
           name={actorLabel(otherPlayer(settings.human))}
@@ -406,10 +408,15 @@ export default function App() {
       >
         <div className="bottom-hud">
           {replay.active ? (
-            <ReplayDock replay={replay} busy={playback.busy} />
+            <ReplayDock
+              replay={replay}
+              busy={playback.busy}
+              game={stockGame}
+              human={settings.human}
+            />
           ) : watching ? (
             <SpectatorDock
-              game={game}
+              game={stockGame}
               settings={settings}
               paused={paused}
               busy={playback.busy}
@@ -422,7 +429,7 @@ export default function App() {
             />
           ) : (
             <ActionDock
-              game={game}
+              game={stockGame}
               settings={settings}
               interaction={interaction}
               busy={playback.busy || !sceneReady}

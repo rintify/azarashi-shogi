@@ -2,6 +2,7 @@
 import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { applyAction, createGame, moveOptions } from '../game/engine';
+import { playbackDuration } from './captureTransfers';
 import { sampleMotion } from './motion';
 import { usePlayback } from './usePlayback';
 beforeEach(() => vi.useFakeTimers());
@@ -113,7 +114,10 @@ it('stages an uncommitted capture, waits for choice, and resolves from the air w
   hook.rerender({ game: applyAction(before, choices[1].action) });
   expect(hook.result.current.motion?.stage).toBe('resolve');
   expect(hook.result.current.choiceReady).toBe(false);
+  const finishAt = playbackDuration(hook.result.current.motion!);
   act(() => vi.advanceTimersByTime(1150));
+  expect(hook.result.current.busy).toBe(true);
+  act(() => vi.advanceTimersByTime(finishAt - 1150));
   expect(hook.result.current.busy).toBe(false);
 });
 it('cancels an airborne choice and discards its arrival timer on restart', () => {

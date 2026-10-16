@@ -1,3 +1,4 @@
+import { playbackDuration } from './captureTransfers';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { ActionPreview, GameState } from '../game/types';
 import { createMotion, hasTransformation, progress, sampleMotion, type MoveMotion } from './motion';
@@ -116,7 +117,7 @@ export function usePlayback(game: GameState, reduced = false, resetToken = 0, sp
     const timer = window.setTimeout(() => {
       setMotion(null);
       setSettled(game);
-    }, next.duration);
+    }, playbackDuration(next));
     return () => window.clearTimeout(timer);
   }, [game, settled, reduced, resetToken, speed]);
   return {
