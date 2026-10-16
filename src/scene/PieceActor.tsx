@@ -1,11 +1,12 @@
-import { useEffect, useRef, useState, type RefObject } from 'react';
+import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import { pieceMark, PieceMarkIcon, MARK_LABELS } from '../components/PieceMark';
-import { Color, MeshBasicMaterial, type Group } from 'three';
+import { Color, MeshBasicMaterial, type Group, type Object3D, type Camera } from 'three';
 import type { Cell, Piece } from '../game/types';
 import { dimensions } from '../game/pieces';
 import { AnimatedPresence } from '../components/AnimatedUI';
+import { pieceMarkerPosition } from './pieceMarkerPosition';
 import { Animal } from './Animals';
 import { bodyDynamics } from '../presentation/movement';
 import {
@@ -65,6 +66,13 @@ export function PieceActor({
   }, [intro]);
   const moving = !!motion && !victim && motion.action.piece.id === piece.id;
   const [w, h] = dimensions(moving && motion?.before ? motion.before : piece);
+  const markerHeight =
+    piece.kind === 'walrus' ? 1.45 : piece.kind === 'penguin' && !piece.promoted ? 1.05 : 0.95;
+  const locateMarker = useCallback(
+    (object: Object3D, camera: Camera, viewport: { width: number; height: number }) =>
+      pieceMarkerPosition(object, camera, viewport, w - 0.12, h - 0.12, markerHeight),
+    [w, h, markerHeight],
+  );
   const ownerColor = piece.owner === 'south' ? '#087fad' : '#e58e3f';
   const color = targeted ? '#ef7049' : source ? '#f5b83b' : selected ? '#38d1df' : ownerColor;
   useFrame(() => {
@@ -182,7 +190,7 @@ export function PieceActor({
         active={(selected || targeted || source) && !moving}
         reduced={reduced}
       />
-      <Html position={[w / 2 - 0.14, 1.5, 0]} center portal={htmlPortal} zIndexRange={[25, 20]}>
+      <Html calculatePosition={locateMarker} center portal={htmlPortal} zIndexRange={[25, 20]}>
         <AnimatedPresence show={!!mark && !disabled && !victim}>
           <button
             className={`threat-badge ${mark === 'king' ? 'king-capture-badge' : mark === 'helper' ? 'helper-badge' : ''}`}

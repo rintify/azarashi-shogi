@@ -1,3 +1,4 @@
+import { markerCell } from '../presentation/boardAnchor';
 import { GUIDE_COLORS } from '../presentation/guideStyle';
 import { useRef, useState, type CSSProperties } from 'react';
 import { pieceAt } from '../game/engine';
@@ -98,7 +99,7 @@ export function CoordinateBoard({
             onMouseEnter={() => onHover(cell)}
           >
             {piece ? <AnimalIcon kind={piece.kind} promoted={piece.promoted} /> : null}
-            {mark && (
+            {mark && piece && sameCell(cell, markerCell(piece, human)) && (
               <span
                 className={`coordinate-mark ${mark === 'king' ? 'king-capture-badge' : mark === 'helper' ? 'helper-badge' : ''}`}
                 aria-hidden="true"

@@ -10,3 +10,11 @@ export function displayAnchor(
   const [width, height] = dimensions(body);
   return viewer === 'north' ? { x: at.x + width - 1, y: at.y + height - 1 } : at;
 }
+
+/** One status badge at the visible top-right, including pieces occupying several cells. */
+export function markerCell(piece: Pick<Piece, 'kind' | 'promoted' | 'at'>, viewer: Player): Cell {
+  const [width, height] = dimensions(piece);
+  return viewer === 'north'
+    ? { x: piece.at.x, y: piece.at.y + height - 1 }
+    : { x: piece.at.x + width - 1, y: piece.at.y };
+}
