@@ -46,7 +46,7 @@ const extrude = (shape: Shape, depth: number) =>
 const dorsal = extrude(finShape, 0.035);
 const flipper = extrude(flipperShape, 0.025);
 const tail = extrude(tailShape, 0.025);
-const coat = '#242f39';
+const coat = '#263744';
 function Oval({
   at,
   scale,
@@ -60,9 +60,10 @@ function Oval({
     <mesh geometry={sphere} position={at} scale={scale} dispose={null} castShadow>
       <meshPhysicalMaterial
         color={color}
-        roughness={0.43}
-        clearcoat={0.18}
-        clearcoatRoughness={0.5}
+        roughness={0.3}
+        envMapIntensity={0.35}
+        clearcoat={0.45}
+        clearcoatRoughness={0.3}
       />
     </mesh>
   );
@@ -83,9 +84,10 @@ export function OrcaModel() {
       >
         <meshPhysicalMaterial
           color={coat}
-          roughness={0.42}
-          clearcoat={0.2}
-          clearcoatRoughness={0.5}
+          roughness={0.24}
+          envMapIntensity={0.35}
+          clearcoat={0.45}
+          clearcoatRoughness={0.3}
         />
       </mesh>
       <Oval at={[0, 0.285, 0.3]} scale={[0.255, 0.135, 0.46]} color="#f7f5e9" />
@@ -96,7 +98,7 @@ export function OrcaModel() {
         castShadow
         dispose={null}
       >
-        <meshStandardMaterial color={coat} roughness={0.48} />
+        <meshStandardMaterial color={coat} roughness={0.3} />
       </mesh>
       <mesh
         geometry={tail}
@@ -105,7 +107,7 @@ export function OrcaModel() {
         castShadow
         dispose={null}
       >
-        <meshStandardMaterial color={coat} roughness={0.48} />
+        <meshStandardMaterial color={coat} roughness={0.3} />
       </mesh>
       {[-1, 1].map((side) => (
         <group key={side}>
@@ -117,11 +119,9 @@ export function OrcaModel() {
             castShadow
             dispose={null}
           >
-            <meshStandardMaterial color={coat} roughness={0.48} />
+            <meshStandardMaterial color={coat} roughness={0.3} />
           </mesh>
           <Oval at={[side * 0.309, 0.55, 0.35]} scale={[0.035, 0.075, 0.145]} color="#faf8ee" />
-          <Oval at={[side * 0.252, 0.5, 0.61]} scale={[0.034, 0.04, 0.035]} color="#10212d" />
-          <Oval at={[side * 0.268, 0.514, 0.63]} scale={[0.009, 0.011, 0.009]} color="#ffffff" />
         </group>
       ))}
     </group>

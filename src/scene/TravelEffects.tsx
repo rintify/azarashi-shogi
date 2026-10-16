@@ -42,7 +42,7 @@ export function TravelEffects({ motion }: { motion: MoveMotion }) {
     const strength = Math.sin(clamp(t / end) * Math.PI);
     if (flame.current) {
       const thrust = bodyDynamics(motion, t).thrust;
-      flame.current.position.set(pose.position[0], pose.position[1] + 0.56, pose.position[2]);
+      flame.current.position.set(pose.position[0], pose.position[1] + 0.68, pose.position[2]);
       flame.current.rotation.y = facing(before);
       flame.current.visible = thrust > 0.01;
       flame.current.scale.set(
@@ -61,7 +61,7 @@ export function TravelEffects({ motion }: { motion: MoveMotion }) {
       const lateral = orca ? side * (0.35 + age * 0.45) : Math.sin(i * 7) * age * 0.22;
       mesh.position.set(
         old.position[0] + Math.cos(yaw) * lateral,
-        old.position[1] + (jet ? 0.52 : 0.2) + age * 0.08,
+        old.position[1] + (jet ? 0.64 : 0.2) + age * 0.08,
         old.position[2] - Math.sin(yaw) * lateral,
       );
       mesh.scale.setScalar((jet ? 0.09 : 0.06) * (1 - age) * (0.5 + strength));

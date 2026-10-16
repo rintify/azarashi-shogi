@@ -199,9 +199,9 @@ function Penguin({ jet, jetBlend }: { jet: boolean; jetBlend?: RefObject<number>
           <PenguinPart
             blend={blend}
             from={[side * 0.29, 0.43, -0.01]}
-            to={[side * 0.33, 0.2, -0.06]}
+            to={[side * 0.33, 0.2, -0.12]}
             startTurn={[0, 0, side * 0.25]}
-            turn={[0, side * -0.25, 0]}
+            turn={[0, side * 0.42, 0]}
             endScale={[0.25 / 0.07, 0.05 / 0.25, 0.13 / 0.12]}
           >
             <Blob scale={[0.07, 0.25, 0.12]} color="#263c4b" />
@@ -215,7 +215,7 @@ function Penguin({ jet, jetBlend }: { jet: boolean; jetBlend?: RefObject<number>
           </PenguinPart>
         </group>
       ))}
-      <PenguinPart blend={blend} from={[0, 0.78, -0.48]} to={[0, 0.48, -0.15]} engine>
+      <PenguinPart blend={blend} from={[0, 0.78, -0.48]} to={[0, 0.6, -0.12]} engine>
         <JetEngine />
       </PenguinPart>
     </group>
