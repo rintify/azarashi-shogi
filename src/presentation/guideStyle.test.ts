@@ -147,3 +147,40 @@ it('never lets yellow override king danger, transformation safety or enemy inspe
     }).fill,
   ).toBe(GUIDE_COLORS.danger);
 });
+
+it('uses destination colors for a non-movable current position without drawing dots on every occupied cell', () => {
+  for (const flags of [
+    {},
+    { unsafe: true },
+    { unsafe: true, kingDanger: true },
+    { unsafe: true, kingCaptureTrap: true },
+  ]) {
+    const destination = guideStyle({ ...base, ...flags });
+    const current = guideStyle({
+      ...base,
+      ...flags,
+      legal: false,
+      stationary: true,
+      stationaryAnchor: true,
+    });
+    expect(current.fill).toBe(destination.fill);
+    expect(current.fillOpacity).toBe(destination.fillOpacity);
+    expect(current.dot).toBe(destination.dot);
+    expect(current.dotOpacity).toBe(1);
+    expect(guideStyle({ ...base, ...flags, legal: false, stationary: true }).dotOpacity).toBe(0);
+  }
+});
+it('lets a hovered move replace the staying-put footprint color where they overlap', () => {
+  const style = guideStyle({
+    ...base,
+    legal: false,
+    stationary: true,
+    unsafe: true,
+    kingDanger: true,
+    active: true,
+    previewUnsafe: false,
+    previewKingDanger: false,
+  });
+  expect(style.fill).toBe(GUIDE_COLORS.fill);
+  expect(style.kingDanger).toBe(false);
+});

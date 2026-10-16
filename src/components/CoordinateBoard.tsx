@@ -1,5 +1,5 @@
 import { markerCell } from '../presentation/boardAnchor';
-import { GUIDE_COLORS } from '../presentation/guideStyle';
+import { GUIDE_COLORS, type StationaryGuide } from '../presentation/guideStyle';
 import { useRef, useState, type CSSProperties } from 'react';
 import { pieceAt } from '../game/engine';
 import { pieceName } from '../game/pieces';
@@ -13,6 +13,7 @@ export function CoordinateBoard({
   game,
   human,
   legalCells,
+  stationaryGuide = null,
   reachableCells = [],
   inspectingEnemy = false,
   unsafeCells = [],
@@ -28,6 +29,7 @@ export function CoordinateBoard({
   game: GameState;
   human: Player;
   legalCells: Cell[];
+  stationaryGuide?: StationaryGuide | null;
   reachableCells?: Cell[];
   inspectingEnemy?: boolean;
   unsafeCells?: Cell[];
@@ -62,14 +64,23 @@ export function CoordinateBoard({
         const cell = { x: i % 10, y: Math.floor(i / 10) };
         const piece = pieceAt(game, cell);
         const legal = legalCells.some((c) => sameCell(c, cell));
-        const reachable = reachableCells.some((c) => sameCell(c, cell));
+        const stationary = !legal && !!stationaryGuide?.cells.some((c) => sameCell(c, cell));
+        const stationarySafety = stationary ? stationaryGuide?.safety : null;
+        const reachable = stationary || reachableCells.some((c) => sameCell(c, cell));
         const transformationSafe =
           !inspectingEnemy && transformationSafeCells.some((c) => sameCell(c, cell));
         const kingCaptureTrap =
-          !inspectingEnemy && kingCaptureTrapCells.some((c) => sameCell(c, cell));
-        const unsafe = !inspectingEnemy && unsafeCells.some((c) => sameCell(c, cell));
+          !inspectingEnemy &&
+          (kingCaptureTrapCells.some((c) => sameCell(c, cell)) ||
+            !!stationarySafety?.kingCaptureTrap);
+        const unsafe =
+          !inspectingEnemy &&
+          (unsafeCells.some((c) => sameCell(c, cell)) ||
+            (!!stationarySafety?.unsafe && !stationarySafety.kingCaptureTrap));
         const kingCapture = game.turn === human && !!piece && kingCaptureIds.includes(piece.id);
-        const kingDanger = !inspectingEnemy && kingDangerCells.some((c) => sameCell(c, cell));
+        const kingDanger =
+          !inspectingEnemy &&
+          (kingDangerCells.some((c) => sameCell(c, cell)) || !!stationarySafety?.kingThreatened);
         const mark =
           game.turn === human && piece
             ? pieceMark(kingCapture, helperIds.includes(piece.id), threatenedIds.includes(piece.id))
@@ -95,7 +106,7 @@ export function CoordinateBoard({
                 ?.focus();
             }}
             className={`${reachable ? 'reachable' : ''} ${unsafe ? 'unsafe' : ''} ${kingDanger ? 'king-risk' : ''} ${transformationSafe ? 'transformation-safe' : ''} ${kingCaptureTrap ? 'king-capture-trap' : ''} ${legal && !inspectingEnemy ? 'legal' : ''} ${piece ? (piece.owner === human ? 'own' : 'enemy') : ''}`}
-            aria-label={`${coordinate(cell)}${piece ? ` ${pieceName(piece)}` : ''}${legal ? (inspectingEnemy ? ' 敵の移動範囲' : ' 選択可能') : ''}${unsafe ? ' 捕食の危険' : ''}${mark ? ` ${MARK_LABELS[mark]}` : ''}${kingDanger ? ' 王が捕食される危険' : ''}${transformationSafe ? ' 紫色：成って安全にできる向きがあります' : ''}${kingCaptureTrap ? ' 黄色：王だけが捕食でき、どの捕食後も次の手でその王を捕食できます' : ''}`}
+            aria-label={`${coordinate(cell)}${piece ? ` ${pieceName(piece)}` : ''}${legal ? (inspectingEnemy ? ' 敵の移動範囲' : ' 選択可能') : ''}${stationary ? ' 現在位置：動かさなかった場合' : ''}${unsafe ? ' 捕食の危険' : ''}${mark ? ` ${MARK_LABELS[mark]}` : ''}${kingDanger ? ' 王が捕食される危険' : ''}${transformationSafe ? ' 紫色：成って安全にできる向きがあります' : ''}${kingCaptureTrap ? ' 黄色：王だけが捕食でき、どの捕食後も次の手でその王を捕食できます' : ''}`}
             onClick={() => onCell(cell)}
             onFocus={() => {
               setFocused(index);

@@ -12,12 +12,14 @@ import { CellGuide } from './CellGuide';
 import { PlacementGhost } from './PlacementGhost';
 import { CaptureTransfers } from './CaptureTransfers';
 import { ActionEffects } from './ActionEffects';
+import type { StationaryGuide } from '../presentation/guideStyle';
 export interface BoardProps {
   onReady: () => void;
   game: GameState;
   human: Player;
   selectedId: string | null;
   legalCells: Cell[];
+  stationaryGuide: StationaryGuide | null;
   reachableCells: Cell[];
   unsafeCells: Cell[];
   kingDangerCells: Cell[];
@@ -56,6 +58,7 @@ function BoardContents(props: BoardProps & { htmlPortal: RefObject<HTMLDivElemen
     [props.focusResult, game.lastAction, game.pieces],
   );
   const legal = useMemo(() => new Set(props.legalCells.map(cellKey)), [props.legalCells]);
+  const stationaryCells = new Set(props.stationaryGuide?.cells.map(cellKey));
   const reachable = new Set(props.reachableCells.map(cellKey));
   const transformationSafe = new Set(props.transformationSafeCells.map(cellKey));
   const kingCaptureTrap = new Set(props.kingCaptureTrapCells.map(cellKey));
@@ -78,6 +81,9 @@ function BoardContents(props: BoardProps & { htmlPortal: RefObject<HTMLDivElemen
           key = cellKey(cell);
         const active = target.has(key),
           additional = extra.has(key) && !active;
+        // A real destination overlapping a large piece takes precedence over its current footprint.
+        const stationary = stationaryCells.has(key) && !legal.has(key) && !busy;
+        const stationarySafety = stationary ? props.stationaryGuide?.safety : null;
         return (
           <group key={key} position={[cell.x - 4.5, 0.16, cell.y - 4.5]}>
             <mesh
@@ -108,15 +114,21 @@ function BoardContents(props: BoardProps & { htmlPortal: RefObject<HTMLDivElemen
               inspectingEnemy={inspectingEnemy}
               active={active}
               additional={additional}
-              reachable={reachable.has(key)}
+              reachable={reachable.has(key) || stationary}
               last={last.has(key)}
               legal={legal.has(key) && !busy}
-              unsafe={unsafe.has(key)}
-              kingDanger={kingDanger.has(key)}
+              stationary={stationary}
+              stationaryAnchor={
+                stationary &&
+                !!props.stationaryGuide &&
+                cellKey(props.stationaryGuide.anchor) === key
+              }
+              unsafe={unsafe.has(key) || !!stationarySafety?.unsafe}
+              kingDanger={kingDanger.has(key) || !!stationarySafety?.kingThreatened}
               transformationSafe={transformationSafe.has(key)}
               previewKingDanger={!!preview && props.previewKingDanger}
               previewUnsafe={!!preview && props.previewUnsafe}
-              kingCaptureTrap={kingCaptureTrap.has(key)}
+              kingCaptureTrap={kingCaptureTrap.has(key) || !!stationarySafety?.kingCaptureTrap}
               previewKingCaptureTrap={!!preview && props.previewKingCaptureTrap}
               reduced={props.reduced}
             />

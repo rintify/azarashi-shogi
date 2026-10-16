@@ -1,6 +1,6 @@
 import { applyPreview, legalPreviews } from './engine';
 import { otherPlayer } from './types';
-import type { ActionPreview, GameState, Player } from './types';
+import type { ActionPreview, GameState, Piece, Player } from './types';
 
 export interface ActionSafety {
   unsafe: boolean;
@@ -34,7 +34,16 @@ function kingCapturesAreTrapped(
 /** Assess a complete action after all captures and transformations, using actual enemy replies. */
 export function actionSafety(state: GameState, preview: ActionPreview): ActionSafety {
   const next = applyPreview(state, preview);
-  const owner = preview.piece.owner;
+  return assessPosition(next, preview.piece);
+}
+
+/** Display-only analysis of staying put; this never creates a pass or changes the match. */
+export function stationarySafety(state: GameState, piece: Piece): ActionSafety {
+  return assessPosition({ ...state, turn: otherPlayer(piece.owner) }, piece);
+}
+
+function assessPosition(next: GameState, piece: Piece): ActionSafety {
+  const owner = piece.owner;
   const losesGame = next.phase === 'finished' && next.result?.winner === otherPlayer(owner);
   if (next.phase === 'finished')
     return {
@@ -46,7 +55,7 @@ export function actionSafety(state: GameState, preview: ActionPreview): ActionSa
     };
   const replies = legalPreviews(next, false);
   const pieceCaptures = replies.filter((reply) =>
-    reply.captured.some((piece) => piece.id === preview.piece.id),
+    reply.captured.some((victim) => victim.id === piece.id),
   );
   const pieceThreatened = pieceCaptures.length > 0;
   const kingThreatened = replies.some((reply) =>
@@ -59,7 +68,7 @@ export function actionSafety(state: GameState, preview: ActionPreview): ActionSa
     losesGame: false,
     kingCaptureTrap:
       !kingThreatened &&
-      preview.piece.kind !== 'walrus' &&
+      piece.kind !== 'walrus' &&
       kingCapturesAreTrapped(next, pieceCaptures, owner),
   };
 }

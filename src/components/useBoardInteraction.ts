@@ -8,7 +8,9 @@ import {
   previewAction,
 } from '../game/engine';
 import { kingRescuers } from '../game/rescue';
-import { actionSafety } from '../game/safety';
+import { actionSafety, stationarySafety } from '../game/safety';
+import { footprint } from '../game/pieces';
+import type { StationaryGuide } from '../presentation/guideStyle';
 import { cellKey, sameCell, otherPlayer } from '../game/types';
 import { displayAnchor } from '../presentation/boardAnchor';
 import type {
@@ -57,6 +59,14 @@ export function useBoardInteraction(
     () => (body ? actionCells.map((at) => displayAnchor(at, body, human)) : []),
     [actionCells, body, human],
   );
+  const stationaryGuide = useMemo<StationaryGuide | null>(() => {
+    if (!humanTurn || pending || !selected) return null;
+    return {
+      cells: footprint(selected),
+      anchor: displayAnchor(selected.at, selected, human),
+      safety: inspectingEnemy ? null : stationarySafety(game, selected),
+    };
+  }, [game, selected, human, humanTurn, pending, inspectingEnemy]);
   // Cache the exact actions offered by the UI, including automatic seal promotion.
   const destinations = useMemo(
     () =>
@@ -280,6 +290,7 @@ export function useBoardInteraction(
     optionIndex,
     humanTurn,
     legalCells,
+    stationaryGuide,
     reachableCells,
     unsafeCells,
     kingDangerCells,

@@ -1,3 +1,6 @@
+import type { ActionSafety } from '../game/safety';
+import type { Cell } from '../game/types';
+
 /** Shared, testable palette and precedence for the 3D board and accessible grid. */
 export const GUIDE_COLORS = {
   safe: '#087b9f',
@@ -10,7 +13,15 @@ export const GUIDE_COLORS = {
   last: '#6fa9be',
   enemy: '#b08be9',
 } as const;
+/** Occupied cells are display guides, never legal destinations or a pass action. */
+export interface StationaryGuide {
+  cells: Cell[];
+  anchor: Cell;
+  safety: ActionSafety | null;
+}
 export interface GuideState {
+  stationary?: boolean;
+  stationaryAnchor?: boolean;
   inspectingEnemy?: boolean;
   active: boolean;
   additional: boolean;
@@ -39,16 +50,16 @@ export function guideStyle(state: GuideState) {
       outlineOpacity: 0,
     };
   const preview = state.active || state.additional;
+  const guided = state.legal || state.stationary;
   const transformationSafe = !!state.transformationSafe && state.legal;
   const kingDanger =
-    !transformationSafe && !!(preview ? state.previewKingDanger : state.legal && state.kingDanger);
+    !transformationSafe && !!(preview ? state.previewKingDanger : guided && state.kingDanger);
   const kingCaptureTrap =
     !transformationSafe &&
     !kingDanger &&
-    !!(preview ? state.previewKingCaptureTrap : state.legal && state.kingCaptureTrap);
+    !!(preview ? state.previewKingCaptureTrap : guided && state.kingCaptureTrap);
   const danger =
-    !transformationSafe &&
-    (kingDanger || (preview ? state.previewUnsafe : state.legal && state.unsafe));
+    !transformationSafe && (kingDanger || (preview ? state.previewUnsafe : guided && state.unsafe));
   const dangerColor = kingDanger ? GUIDE_COLORS.kingDanger : GUIDE_COLORS.danger;
   return {
     kingDanger,
@@ -65,7 +76,7 @@ export function guideStyle(state: GuideState) {
       ? danger
         ? 0.32
         : 0.36
-      : state.legal && (state.unsafe || kingCaptureTrap) && !transformationSafe
+      : guided && (state.unsafe || kingCaptureTrap) && !transformationSafe
         ? 0.24
         : state.reachable
           ? 0.2
@@ -81,7 +92,7 @@ export function guideStyle(state: GuideState) {
           : state.unsafe
             ? GUIDE_COLORS.danger
             : GUIDE_COLORS.safe,
-    dotOpacity: state.legal ? 1 : 0,
+    dotOpacity: state.legal || state.stationaryAnchor ? 1 : 0,
     outline: kingCaptureTrap
       ? GUIDE_COLORS.kingCaptureTrap
       : danger

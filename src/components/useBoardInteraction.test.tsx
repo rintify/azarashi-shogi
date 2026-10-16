@@ -2,6 +2,7 @@
 import { act, cleanup, render, renderHook, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createGame } from '../game/engine';
+import { footprint } from '../game/pieces';
 import type { Piece } from '../game/types';
 import { useBoardInteraction } from './useBoardInteraction';
 import { ActionDock } from './ActionDock';
@@ -201,7 +202,16 @@ it('shows a blue safe destination after capturing its attacker rather than using
 it('marks ordinary moves and stock placements red, with matching hover previews', () => {
   const mover: Piece = { ...penguin, at: { x: 4, y: 5 } };
   const hunter: Piece = { ...food, id: 'hunter', kind: 'bear', owner: 'north', at: { x: 6, y: 4 } };
-  const game = { ...createGame(), pieces: [...createGame().pieces, mover, hunter] };
+  const game = {
+    ...createGame(),
+    pieces: [
+      ...createGame().pieces.map((piece) =>
+        piece.owner === 'south' ? { ...piece, at: { x: 0, y: 8 } } : piece,
+      ),
+      mover,
+      hunter,
+    ],
+  };
   const hook = renderHook(() => useBoardInteraction(game, 'south', vi.fn()));
   act(() => hook.result.current.clickCell(mover.at));
   expect(hook.result.current.unsafeCells).toContainEqual({ x: 4, y: 4 });
@@ -468,6 +478,11 @@ for (const [kind, promoted, width, height] of [
       // A tap on a protruding model still selects the exact piece, regardless of ray hit cell.
       act(() => hook.result.current.clickPiece(mover.id, { x: 0, y: 0 }));
       expect(hook.result.current.selected?.id).toBe(mover.id);
+      expect(hook.result.current.stationaryGuide?.cells).toEqual(footprint(mover));
+      const origin =
+        owner === 'south' ? mover.at : { x: mover.at.x + width - 1, y: mover.at.y + height - 1 };
+      expect(hook.result.current.stationaryGuide?.anchor).toEqual(origin);
+      expect(hook.result.current.legalCells).not.toContainEqual(origin);
       const target = { x: 4, y: owner === 'south' ? 3 : 5 };
       const tap =
         owner === 'south' ? target : { x: target.x + width - 1, y: target.y + height - 1 };
@@ -529,6 +544,7 @@ it('shows yellow for trapped king-only captures and updates it for every transfo
   expect(hook.result.current.previewKingCaptureTrap).toBe(true);
   act(() => hook.result.current.clickCell(meal.at));
   expect(hook.result.current.pending!.length).toBeGreaterThan(1);
+  expect(hook.result.current.stationaryGuide).toBeNull();
   expect(hook.result.current.previewKingCaptureTrap).toBe(true);
   const unprotected = hook.result.current.pendingSafety.findIndex(
     (option) => !option.kingCaptureTrap,
@@ -542,4 +558,41 @@ it('shows yellow for trapped king-only captures and updates it for every transfo
   act(() => hook.result.current.clickPiece('king-north', { x: 4, y: 2 }));
   expect(hook.result.current.kingCaptureTrapCells).toEqual([]);
   expect(hook.result.current.previewKingCaptureTrap).toBe(false);
+});
+
+it('keeps the current-position guide separate from legal moves and hovered destination safety', () => {
+  const mover: Piece = { ...penguin, at: { x: 4, y: 6 } };
+  const hunter: Piece = {
+    ...penguin,
+    id: 'hunter',
+    kind: 'bear',
+    owner: 'north',
+    at: { x: 6, y: 6 },
+  };
+  const game = {
+    ...createGame(),
+    pieces: [
+      ...createGame().pieces.map((piece) =>
+        piece.owner === 'south' ? { ...piece, at: { x: 0, y: 8 } } : piece,
+      ),
+      mover,
+      hunter,
+    ],
+  };
+  const original = structuredClone(game);
+  const submit = vi.fn();
+  const hook = renderHook(() => useBoardInteraction(game, 'south', submit));
+  expect(hook.result.current.stationaryGuide).toBeNull();
+  act(() => hook.result.current.clickPiece(mover.id, mover.at));
+  expect(hook.result.current.stationaryGuide?.safety?.pieceThreatened).toBe(true);
+  expect(hook.result.current.legalCells).not.toContainEqual(mover.at);
+  act(() => hook.result.current.setHover({ x: 5, y: 5 }));
+  expect(hook.result.current.previewUnsafe).toBe(false);
+  expect(hook.result.current.stationaryGuide?.safety?.pieceThreatened).toBe(true);
+  act(() => hook.result.current.clickCell(mover.at));
+  expect(submit).not.toHaveBeenCalled();
+  expect(hook.result.current.stationaryGuide).toBeNull();
+  act(() => hook.result.current.selectStock('seal'));
+  expect(hook.result.current.stationaryGuide).toBeNull();
+  expect(game).toEqual(original);
 });

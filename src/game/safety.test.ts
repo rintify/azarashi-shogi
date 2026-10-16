@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyPreview, createGame, legalPreviews, moveOptions, previewAction } from './engine';
-import { actionSafety } from './safety';
+import { actionSafety, stationarySafety } from './safety';
 import type { GameAction, GameState, Kind, Piece, Player } from './types';
 const p = (
   id: string,
@@ -346,5 +346,46 @@ describe('yellow king capture traps', () => {
       piece.id === 'enemy' ? p('enemy', 'walrus', 4, 4, 'north') : piece,
     );
     expect(safety(state, action).kingCaptureTrap).toBe(false);
+  });
+});
+
+describe('staying-put guide safety', () => {
+  it('evaluates the current piece without a move, capture, promotion or state mutation', () => {
+    const selected = p('m', 'seal', 4, 4);
+    const state = board(selected, p('hunter', 'bear', 6, 4, 'north'));
+    const original = structuredClone(state);
+    expect(stationarySafety(state, selected)).toMatchObject({
+      pieceThreatened: true,
+      unsafe: true,
+    });
+    expect(state).toEqual(original);
+    expect(
+      previewAction(state, { type: 'move', pieceId: selected.id, to: selected.at }),
+    ).toBeNull();
+  });
+  it('distinguishes a safe current position, king exposure and king-only capture traps', () => {
+    const selected = p('m', 'penguin', 4, 4);
+    const state = board(selected, p('guard', 'penguin', 4, 8, 'south', true));
+    expect(stationarySafety(state, selected).unsafe).toBe(false);
+    const trapped = {
+      ...state,
+      pieces: state.pieces.map((piece) =>
+        piece.id === 'enemy' ? p('enemy', 'walrus', 4, 2, 'north') : piece,
+      ),
+    };
+    expect(stationarySafety(trapped, selected).kingCaptureTrap).toBe(true);
+    const exposed = {
+      ...trapped,
+      pieces: [...trapped.pieces, p('hunter', 'penguin', 0, 0, 'north', true)],
+    };
+    expect(stationarySafety(exposed, selected)).toMatchObject({
+      kingThreatened: true,
+      kingCaptureTrap: false,
+    });
+  });
+  it('uses the opposing side for threats even when the selected piece is north', () => {
+    const selected = p('m', 'penguin', 4, 4, 'north');
+    const state = { ...board(selected, p('hunter', 'seal', 4, 5)), turn: 'north' as const };
+    expect(stationarySafety(state, selected).pieceThreatened).toBe(true);
   });
 });
