@@ -145,7 +145,7 @@ export function useBoardInteraction(
         ) {
           setPending(options);
           if (options.length > 1) onCaptureChoice?.(options[0]);
-          setOptionIndex(selected.kind === 'orca' && options.length > 1 ? 1 : 0);
+          setOptionIndex(0);
         } else if (options[0]) submit(options[0].action, game.revision);
       } else if (activeKind) submit({ type: 'place', kind: activeKind, at: cell }, game.revision);
       return;

@@ -229,6 +229,13 @@ it('updates danger for the exact airborne orca candidate rather than the unrotat
   expect(hook.result.current.unsafeCells).not.toContainEqual({ x: 4, y: 4 });
   act(() => hook.result.current.clickCell({ x: 4, y: 4 }));
   expect(hook.result.current.pending).toHaveLength(3);
+  expect(hook.result.current.optionIndex).toBe(0);
+  expect(
+    hook.result.current.preview?.action.type === 'move' &&
+      hook.result.current.preview.action.transformation,
+  ).toBeUndefined();
+  expect(hook.result.current.previewUnsafe).toBe(false);
+  act(() => hook.result.current.setOptionIndex(1));
   expect(hook.result.current.previewUnsafe).toBe(true);
   act(() => hook.result.current.setOptionIndex(2));
   expect(hook.result.current.previewUnsafe).toBe(false);

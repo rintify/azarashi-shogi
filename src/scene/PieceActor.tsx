@@ -13,6 +13,7 @@ import {
   facing,
   progress,
   sampleMotion,
+  transformationProgress,
   type MoveMotion,
 } from '../presentation/motion';
 
@@ -53,6 +54,7 @@ export function PieceActor({
     beforeModel = useRef<Group>(null),
     afterModel = useRef<Group>(null);
   const bornAt = useRef(performance.now());
+  const jetBlend = useRef(piece.promoted ? 1 : 0);
   useEffect(() => {
     if (intro) bornAt.current = performance.now();
   }, [intro]);
@@ -90,6 +92,17 @@ export function PieceActor({
     root.current.scale.setScalar(Math.max(0.001, scale));
     root.current.visible = scale > 0.005;
     model.current.rotation.y = yaw;
+    if (piece.kind === 'penguin') {
+      const from = motion?.before?.promoted ? 1 : 0;
+      jetBlend.current =
+        moving && motion
+          ? from +
+            ((motion.action.piece.promoted ? 1 : 0) - from) *
+              transformationProgress(motion, progress(motion, performance.now()))
+          : piece.promoted
+            ? 1
+            : 0;
+    }
     const dynamics =
       moving && motion ? bodyDynamics(motion, progress(motion, performance.now())) : null;
     model.current.rotation.x = dynamics?.pitch ?? 0;
@@ -101,7 +114,9 @@ export function PieceActor({
     );
     if (beforeModel.current)
       beforeModel.current.visible =
-        !moving || promoted === (motion?.before?.promoted ?? piece.promoted);
+        piece.kind === 'penguin' ||
+        !moving ||
+        promoted === (motion?.before?.promoted ?? piece.promoted);
     if (afterModel.current)
       afterModel.current.visible = !!moving && promoted !== motion?.before?.promoted;
   });
@@ -144,10 +159,11 @@ export function PieceActor({
             kind={piece.kind}
             promoted={initialPromoted}
             owner={piece.owner}
+            jetBlend={jetBlend}
             animate={selected && !disabled && !reduced}
           />
         </group>
-        {moving && motion?.before && (
+        {moving && motion?.before && piece.kind !== 'penguin' && (
           <group ref={afterModel} visible={false}>
             <Animal kind={piece.kind} promoted={!initialPromoted} owner={piece.owner} />
           </group>

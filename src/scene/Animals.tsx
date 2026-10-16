@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, type ReactNode, type RefObject } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { MeshPhysicalMaterial, SphereGeometry, type Group } from 'three';
 import { JET_POSE } from './animalPoses';
@@ -126,55 +126,95 @@ function Seal({ black }: { black: boolean }) {
     </group>
   );
 }
-function Penguin({ jet }: { jet: boolean }) {
-  if (jet) return <JetPenguin />;
+/** Shared anatomy is posed continuously instead of swapping two penguin models. */
+function PenguinPart({
+  blend,
+  from,
+  to,
+  turn = [0, 0, 0],
+  children,
+  engine = false,
+}: {
+  blend: RefObject<number>;
+  from: Vec3;
+  to: Vec3;
+  turn?: Vec3;
+  children: ReactNode;
+  engine?: boolean;
+}) {
+  const group = useRef<Group>(null);
+  useFrame(() => {
+    if (!group.current) return;
+    const progress = engine
+      ? Math.max(0, Math.min(1, (blend.current - 0.45) / 0.55))
+      : blend.current;
+    const t = progress * progress * (3 - 2 * progress);
+    group.current.position.set(...(from.map((v, i) => v + (to[i] - v) * t) as Vec3));
+    group.current.rotation.set(...(turn.map((v) => v * t) as Vec3));
+    if (engine) {
+      group.current.scale.setScalar(Math.max(0.001, t));
+      group.current.visible = t > 0.001;
+    }
+  });
   return (
-    <group>
-      <Blob at={[0, 0.43, 0]} scale={[0.29, 0.4, 0.26]} color="#263c4b" />
-      <Blob at={[0, 0.4, 0.175]} scale={[0.235, 0.3, 0.13]} color="#fffdf2" />
-      <Blob at={[0, 0.76, 0.015]} scale={[0.245, 0.25, 0.23]} color="#263c4b" />
-      {[-1, 1].map((s) => (
-        <group key={s}>
-          <Blob at={[s * 0.115, 0.755, 0.195]} scale={[0.106, 0.13, 0.045]} color="#fffdf2" />
-          <Blob
-            at={[s * 0.29, 0.43, -0.01]}
-            scale={[0.07, 0.25, 0.12]}
-            rotation={[0, 0, s * 0.25]}
-            color="#263c4b"
-          />
-          <Blob at={[s * 0.15, 0.1, 0.13]} scale={[0.12, 0.055, 0.17]} color="#f3b455" />
-        </group>
-      ))}
-      <Eyes y={0.79} z={0.238} spread={0.1} size={0.038} />
-      <Blob at={[0, 0.687, 0.26]} scale={[0.085, 0.055, 0.115]} color="#f3b455" />
+    <group ref={group} position={from}>
+      {children}
     </group>
   );
 }
-function JetPenguin() {
+function Penguin({ jet, jetBlend }: { jet: boolean; jetBlend?: RefObject<number> }) {
+  const fixed = useRef(jet ? 1 : 0);
+  fixed.current = jet ? 1 : 0;
+  const blend = jetBlend ?? fixed;
   return (
     <group>
-      <Blob at={JET_POSE.body} scale={JET_POSE.bodyScale} color="#263c4b" />
-      <Blob at={[0, 0.13, 0.02]} scale={[0.225, 0.1, 0.35]} color="#fffdf2" />
-      <Blob at={JET_POSE.head} scale={[0.225, 0.22, 0.23]} color="#263c4b" />
+      <PenguinPart blend={blend} from={[0, 0.43, 0]} to={JET_POSE.body} turn={[Math.PI / 2, 0, 0]}>
+        <Blob scale={[0.29, 0.4, 0.26]} color="#263c4b" />
+        <Blob at={[0, -0.03, 0.175]} scale={[0.235, 0.3, 0.13]} color="#fffdf2" />
+      </PenguinPart>
+      <PenguinPart blend={blend} from={[0, 0.76, 0.015]} to={JET_POSE.head}>
+        <Blob scale={[0.245, 0.25, 0.23]} color="#263c4b" />
+        {[-1, 1].map((side) => (
+          <Blob
+            key={side}
+            at={[side * 0.115, -0.005, 0.18]}
+            scale={[0.106, 0.13, 0.045]}
+            color="#fffdf2"
+          />
+        ))}
+        <Eyes y={0.03} z={0.223} spread={0.1} size={0.038} />
+        <Blob at={[0, -0.073, 0.245]} scale={[0.085, 0.055, 0.115]} color="#f3b455" />
+      </PenguinPart>
       {[-1, 1].map((side) => (
         <group key={side}>
-          <Blob at={[side * 0.108, 0.32, 0.473]} scale={[0.098, 0.115, 0.042]} color="#fffdf2" />
-          <Blob
-            at={[side * 0.33, 0.2, -0.06]}
-            scale={[0.25, 0.05, 0.13]}
-            rotation={[0, side * -0.25, 0]}
-            color="#263c4b"
-          />
-          <Blob at={[side * 0.14, 0.14, -0.49]} scale={[0.115, 0.05, 0.12]} color="#f3b455" />
+          <PenguinPart
+            blend={blend}
+            from={[side * 0.29, 0.43, -0.01]}
+            to={[side * 0.33, 0.2, -0.06]}
+            turn={[0, 0, (side * Math.PI) / 2]}
+          >
+            <Blob scale={[0.07, 0.25, 0.12]} color="#263c4b" />
+          </PenguinPart>
+          <PenguinPart
+            blend={blend}
+            from={[side * 0.15, 0.1, 0.13]}
+            to={[side * 0.14, 0.14, -0.49]}
+          >
+            <Blob scale={[0.12, 0.055, 0.17]} color="#f3b455" />
+          </PenguinPart>
         </group>
       ))}
-      <Eyes y={JET_POSE.eyes.y} z={JET_POSE.eyes.z} spread={0.1} size={0.036} />
-      <Blob at={JET_POSE.beak} scale={[0.08, 0.05, 0.115]} color="#f3b455" />
-      <Blob at={[0, 0.48, -0.15]} scale={[0.12, 0.115, 0.23]} color="#70c1c5" />
-      <mesh position={[0, 0.48, -0.49]} rotation={[-Math.PI / 2, 0, 0]}>
-        <coneGeometry args={[0.085, 0.25, 16]} />
-        <meshStandardMaterial color="#ffbd65" emissive="#e59a36" emissiveIntensity={0.4} />
-      </mesh>
+      <PenguinPart blend={blend} from={[0, 0.78, -0.48]} to={[0, 0.48, -0.15]} engine>
+        <Blob scale={[0.12, 0.115, 0.23]} color="#70c1c5" />
+        <mesh position={[0, 0, -0.25]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.075, 0.095, 0.12, 16]} />
+          <meshStandardMaterial color="#465b68" roughness={0.5} />
+        </mesh>
+        <mesh position={[0, 0, -0.34]} rotation={[-Math.PI / 2, 0, 0]}>
+          <coneGeometry args={[0.065, 0.15, 16]} />
+          <meshStandardMaterial color="#8feaff" emissive="#52bddd" emissiveIntensity={0.5} />
+        </mesh>
+      </PenguinPart>
     </group>
   );
 }
@@ -301,11 +341,13 @@ export function Animal({
   promoted = false,
   animate = false,
   owner,
+  jetBlend,
 }: {
   kind: Kind;
   promoted?: boolean;
   animate?: boolean;
   owner?: Player;
+  jetBlend?: RefObject<number>;
 }) {
   const group = useRef<Group>(null);
   useFrame(({ clock }) => {
@@ -317,7 +359,7 @@ export function Animal({
       {kind === 'seal' ? (
         <Seal black={promoted} />
       ) : kind === 'penguin' ? (
-        <Penguin jet={promoted} />
+        <Penguin jet={promoted} jetBlend={jetBlend} />
       ) : kind === 'bear' ? (
         <Bear />
       ) : kind === 'orca' ? (
@@ -325,13 +367,30 @@ export function Animal({
       ) : (
         <Walrus />
       )}
-      {owner && <OwnerBadge kind={kind} promoted={promoted} owner={owner} />}
+      {owner && <OwnerBadge kind={kind} promoted={promoted} owner={owner} jetBlend={jetBlend} />}
     </group>
   );
 }
 
 /** A small body badge replaces team-colored plinths without obscuring the animal. */
-function OwnerBadge({ kind, promoted, owner }: { kind: Kind; promoted: boolean; owner: Player }) {
+function OwnerBadge({
+  kind,
+  promoted,
+  owner,
+  jetBlend,
+}: {
+  kind: Kind;
+  promoted: boolean;
+  owner: Player;
+  jetBlend?: RefObject<number>;
+}) {
+  const badge = useRef<Group>(null);
+  useFrame(() => {
+    if (kind !== 'penguin' || !badge.current) return;
+    const t = jetBlend?.current ?? Number(promoted);
+    badge.current.position.set(0, 0.51 - 0.07 * t, 0.298 - 0.258 * t);
+    badge.current.rotation.x = (-Math.PI / 2) * t;
+  });
   const sites: Record<Kind, Vec3> = {
     seal: [0, 0.65, -0.22],
     penguin: [0, 0.51, 0.298],
@@ -342,6 +401,7 @@ function OwnerBadge({ kind, promoted, owner }: { kind: Kind; promoted: boolean; 
   const upright = kind === 'penguin' && !promoted;
   return (
     <group
+      ref={badge}
       position={kind === 'penguin' && promoted ? [0, 0.44, 0.04] : sites[kind]}
       rotation={[upright ? 0 : -Math.PI / 2, 0, 0]}
     >

@@ -86,7 +86,8 @@ export default function App() {
     playback.presentChoice,
   );
   useEffect(() => {
-    if (interaction.pending) playback.previewChoice(interaction.preview);
+    if (interaction.pending && interaction.optionIndex > 0)
+      playback.previewChoice(interaction.preview);
   }, [interaction.pending, interaction.preview, playback.previewChoice]);
   const { area, ref: playRef } = usePlayArea();
   const {
