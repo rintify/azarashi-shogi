@@ -35,9 +35,7 @@ interface Entry {
 /** Position identity omits history: this ruleset has no repetition adjudication. */
 export function positionKey(state: GameState): string {
   return `${state.phase}/${state.turn}/${state.pieces
-    .map(
-      (p) => `${p.id}:${p.owner}:${p.kind}:${+p.promoted}:${p.heading ?? '-'}:${p.at.x},${p.at.y}`,
-    )
+    .map((p) => `${p.id}:${p.owner}:${p.kind}:${+p.promoted}:${p.at.x},${p.at.y}`)
     .sort()
     .join(
       ';',

@@ -3,7 +3,6 @@ export const RULES_VERSION = 2 as const;
 /** Serializable contracts shared by the UI, worker, and a future match server. */
 export type Player = 'south' | 'north';
 export type Kind = 'seal' | 'penguin' | 'bear' | 'orca' | 'walrus';
-export type Heading = 'north' | 'east' | 'south' | 'west';
 export interface Cell {
   x: number;
   y: number;
@@ -13,8 +12,6 @@ export interface Piece {
   owner: Player;
   kind: Kind;
   promoted: boolean;
-  /** Jet heading in board coordinates. Missing on older records means the owner's forward. */
-  heading?: Heading;
   /** Top-left of the piece's footprint in absolute board coordinates. */
   at: Cell;
 }
@@ -31,7 +28,7 @@ export interface GameState {
   lastAction: ActionPreview | null;
 }
 export type Transformation =
-  { type: 'promote'; heading?: Heading } | { type: 'rotate'; pivot: 0 | 1; direction: -1 | 1 };
+  { type: 'promote' } | { type: 'rotate'; pivot: 0 | 1; direction: -1 | 1 };
 export type GameAction =
   | { type: 'place'; kind: Kind; at: Cell }
   | { type: 'move'; pieceId: string; to: Cell; transformation?: Transformation };

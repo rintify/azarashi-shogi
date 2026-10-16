@@ -136,31 +136,3 @@ it('returns from the current airborne preview to the source without consuming vi
   expect(sampleMotion(returning, 1).promoted).toBe(orca.promoted);
   expect(captureProgress(returning, food, 1)).toBe(0);
 });
-
-it('turns and poses the same penguin smoothly toward the selected jet heading', () => {
-  const penguin: Piece = {
-    id: 'p',
-    kind: 'penguin',
-    owner: 'south',
-    promoted: false,
-    at: { x: 4, y: 5 },
-  };
-  const meal: Piece = { ...penguin, id: 'food', kind: 'seal', at: { x: 4, y: 4 } };
-  const before = { ...createGame(), pieces: [penguin, meal] };
-  const after = applyAction(before, {
-    type: 'move',
-    pieceId: 'p',
-    to: meal.at,
-    transformation: { type: 'promote', heading: 'west' },
-  });
-  const motion = createMotion(before, after, 0)!;
-  const start = sampleMotion(motion, 0.4),
-    middle = sampleMotion(motion, 0.57),
-    end = sampleMotion(motion, 1);
-  expect(start.jetBlend).toBe(0);
-  expect(middle.jetBlend).toBeGreaterThan(0);
-  expect(middle.jetBlend).toBeLessThan(1);
-  expect(end.jetBlend).toBe(1);
-  expect(Math.sin(end.yaw)).toBeCloseTo(-1);
-  expect(Math.abs(middle.yaw - start.yaw)).toBeLessThan(Math.PI / 2);
-});

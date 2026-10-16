@@ -22,7 +22,7 @@ describe('guided board interaction', () => {
     act(() => hook.result.current.clickCell(penguin.at));
     act(() => hook.result.current.clickCell(food.at));
     expect(submit).not.toHaveBeenCalled();
-    expect(hook.result.current.pending).toHaveLength(5);
+    expect(hook.result.current.pending).toHaveLength(2);
     act(() => hook.result.current.setOptionIndex(1));
     expect(hook.result.current.preview?.piece.promoted).toBe(true);
     act(() => hook.result.current.chooseOption(hook.result.current.preview!));

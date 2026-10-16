@@ -1,5 +1,4 @@
-import { ArrowUp, Sparkles, X } from 'lucide-react';
-import { HEADING_LABEL, HEADING_VECTOR, jetHeading } from '../game/headings';
+import { Sparkles, X } from 'lucide-react';
 import type { ActionPreview, Player } from '../game/types';
 import { sameCell } from '../game/types';
 import { coordinate } from './coordinates';
@@ -23,36 +22,8 @@ export function CaptureChoice({
     ownKing && choice.captured.some((p) => p.kind === 'walrus' && p.owner !== human);
   const rotations =
     pending[1]?.action.type === 'move' && pending[1].action.transformation?.type === 'rotate';
-  const jetDirections =
-    pending[0].piece.kind === 'penguin' && !pending[0].piece.promoted && pending.length > 1;
   return (
     <aside className="promotion-controls" aria-label="対局の操作">
-      {jetDirections && (
-        <div className="rotation-choices" role="group" aria-label="ジェットの向きを選択">
-          {pending.slice(1).map((candidate, i) => {
-            const heading = jetHeading(candidate.piece);
-            const vector = HEADING_VECTOR[heading];
-            const angle =
-              (Math.atan2(vector.y, vector.x) * 180) / Math.PI + 90 + (human === 'north' ? 180 : 0);
-            return (
-              <button
-                key={heading}
-                className="rotation-choice"
-                aria-label={`ジェットの向き：${HEADING_LABEL[heading]}`}
-                aria-pressed={optionIndex === i + 1}
-                data-danger={interaction.pendingSafety[i + 1]?.unsafe || undefined}
-                onClick={() => setOptionIndex(i + 1)}
-              >
-                <ArrowUp
-                  size={28}
-                  style={{ transform: `rotate(${angle}deg)` }}
-                  aria-hidden="true"
-                />
-              </button>
-            );
-          })}
-        </div>
-      )}
       {rotations && (
         <div className="rotation-choices" role="group" aria-label="シャチの向きを選択">
           {pending.slice(1).map((candidate, i) => (
