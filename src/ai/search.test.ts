@@ -9,6 +9,7 @@ import {
 import { searchBestAction, THINKING_MS } from './search';
 import { LEVELS } from './levels';
 import { evaluatePosition } from './evaluation';
+import { positionIdentity } from '../game/position';
 import type { GameState, Kind, Piece, Player } from '../game/types';
 const p = (id: string, kind: Kind, x: number, y: number, owner: Player = 'south'): Piece => ({
   id,
@@ -27,6 +28,75 @@ const board = (...pieces: Piece[]): GameState => ({
   },
 });
 describe('fair NPC search', () => {
+  it.each([1, 2, 3, 4, 5, 6] as const)(
+    'breaks a played four-ply cycle at level %i',
+    (difficulty) => {
+      const original = LEVELS[difficulty];
+      LEVELS[difficulty] = { ...original, maxDepth: 1, tacticalDepth: 0 };
+      try {
+        const initial = board(p('own', 'walrus', 0, 8), p('enemy', 'walrus', 8, 0, 'north'));
+        const repeated = searchBestAction(initial, { difficulty, seed: 12, now: () => 0 }).action!;
+        let current = initial;
+        const positionHistory = [positionIdentity(current)];
+        const cycle = [
+          repeated,
+          { type: 'move', pieceId: 'enemy', to: { x: 6, y: 2 } },
+          { type: 'move', pieceId: 'own', to: { x: 0, y: 8 } },
+          { type: 'move', pieceId: 'enemy', to: { x: 8, y: 0 } },
+        ] as const;
+        for (let loop = 0; loop < 4; loop++)
+          for (const action of cycle) {
+            current = applyAction(current, action);
+            positionHistory.push(positionIdentity(current));
+          }
+        expect(positionIdentity(current)).toBe(positionIdentity(initial));
+        const result = searchBestAction(current, {
+          difficulty,
+          seed: 12,
+          now: () => 0,
+          positionHistory,
+        });
+        const next = applyAction(current, result.action!);
+        expect(positionHistory).not.toContain(positionIdentity(next));
+        expect(next.phase).toBe('playing');
+      } finally {
+        LEVELS[difficulty] = original;
+      }
+    },
+  );
+  it('does not sacrifice its king just to avoid repetition', () => {
+    const state = board(p('own', 'walrus', 4, 6), p('enemy', 'walrus', 4, 2, 'north'));
+    const isSafe = (next: GameState) =>
+      !legalPreviews(next).some((reply) => applyPreview(next, reply).result?.winner === 'north');
+    const safePositions = legalPreviews(state)
+      .map((move) => applyPreview(state, move))
+      .filter(isSafe);
+    expect(safePositions.length).toBeGreaterThan(0);
+    expect(safePositions.length).toBeLessThan(legalPreviews(state).length);
+    const positionHistory = Array.from({ length: 20 }, () =>
+      safePositions.map(positionIdentity),
+    ).flat();
+    const result = searchBestAction(state, {
+      difficulty: 1,
+      seed: 12,
+      now: () => 0,
+      positionHistory,
+    });
+    expect(isSafe(applyAction(state, result.action!))).toBe(true);
+  });
+  it('still takes an immediate win even if its resulting board has appeared before', () => {
+    const state = board(
+      p('own', 'walrus', 0, 8),
+      p('enemy', 'walrus', 4, 1, 'north'),
+      p('bear', 'bear', 4, 4),
+    );
+    const wins = legalPreviews(state)
+      .map((move) => applyPreview(state, move))
+      .filter((next) => next.result?.winner === 'south');
+    const positionHistory = Array.from({ length: 20 }, () => wins.map(positionIdentity)).flat();
+    const result = searchBestAction(state, { difficulty: 6, positionHistory });
+    expect(applyAction(state, result.action!).result?.winner).toBe('south');
+  });
   it('varies equivalent openings with the match seed and remains reproducible with an explicit seed', () => {
     const state = createGame();
     const think = (seed: number) =>
@@ -118,6 +188,7 @@ describe('fair NPC search', () => {
           ...board(p('own', 'walrus', 0, 8), p('enemy', 'walrus', 8, 0, 'north')),
           turn: root,
         };
+        const leafScores = new Map<string, number>();
         const exhaustive = (position: GameState, depth: number, ply: number): number => {
           if (position.result)
             return position.result.winner === null
@@ -126,12 +197,17 @@ describe('fair NPC search', () => {
                 ? 1000000 - ply
                 : -1000000 + ply;
           if (!depth) {
+            const key = `${ply}/${positionIdentity(position)}`;
+            const cached = leafScores.get(key);
+            if (cached !== undefined) return cached;
             const assessment = evaluatePosition(position, root);
-            return assessment.canWinImmediately
+            const score = assessment.canWinImmediately
               ? position.turn === root
                 ? 1000000 - ply - 1
                 : -1000000 + ply + 1
               : assessment.score;
+            leafScores.set(key, score);
+            return score;
           }
           const scores = legalPreviews(position).map((move) =>
             exhaustive(applyPreview(position, move), depth - 1, ply + 1),

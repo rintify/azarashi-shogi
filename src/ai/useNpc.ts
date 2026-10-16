@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { GameAction, GameState, Player } from '../game/types';
 import type { Difficulty } from '../match/record';
 import type { ThinkRequest, ThinkResponse } from './protocol';
+const EMPTY_HISTORY: readonly string[] = [];
 export function useNpc(
   game: GameState,
   human: Player | null,
@@ -9,6 +10,7 @@ export function useNpc(
   submit: (action: GameAction, revision: number) => void,
   enabled = true,
   seed = 0,
+  positionHistory: readonly string[] = EMPTY_HISTORY,
 ) {
   const [status, setStatus] = useState({ thinking: false, depth: 0, nodes: 0 });
   const [error, setError] = useState<string | null>(null);
@@ -48,12 +50,18 @@ export function useNpc(
         setStatus((s) => ({ ...s, thinking: false }));
       }
     };
-    const request: ThinkRequest = { state: game, difficulty, revision: game.revision, seed };
+    const request: ThinkRequest = {
+      state: game,
+      difficulty,
+      revision: game.revision,
+      seed,
+      positionHistory,
+    };
     worker.postMessage(request);
     return () => {
       active = false;
       worker.terminate();
     };
-  }, [game, human, difficulty, submit, attempt, enabled, seed]);
+  }, [game, human, difficulty, submit, attempt, enabled, seed, positionHistory]);
   return { status, error, retry: () => setAttempt((n) => n + 1) };
 }

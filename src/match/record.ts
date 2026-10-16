@@ -2,6 +2,7 @@ import { applyAction, createGame } from '../game/engine';
 import { RULES_VERSION } from '../game/types';
 import type { GameAction, GameState, Player } from '../game/types';
 import { randomSeed } from '../shared/random';
+import { positionIdentity } from '../game/position';
 import { isDifficulty, type Difficulty } from '../ai/levels';
 export type { Difficulty } from '../ai/levels';
 export interface MatchSettings {
@@ -54,10 +55,24 @@ export function newRecord(settings = DEFAULT_SETTINGS): GameRecord {
     actions: [],
   };
 }
-export function replayRecord(record: GameRecord): GameState {
-  return record.actions.reduce((state, action) => applyAction(state, action), createGame());
+export function replayRecord(
+  record: GameRecord,
+  onPosition?: (state: GameState) => void,
+): GameState {
+  const initial = createGame();
+  onPosition?.(initial);
+  return record.actions.reduce((state, action) => {
+    const next = applyAction(state, action);
+    onPosition?.(next);
+    return next;
+  }, initial);
 }
-export function decodeRecord(text: string): { record: GameRecord; game: GameState } {
+interface RestoredMatch {
+  record: GameRecord;
+  game: GameState;
+  positionHistory: string[];
+}
+export function decodeRecord(text: string): RestoredMatch {
   const record = JSON.parse(text) as GameRecord;
   if (
     !record ||
@@ -67,7 +82,8 @@ export function decodeRecord(text: string): { record: GameRecord; game: GameStat
     !Array.isArray(record.actions)
   )
     throw new Error('保存データの形式またはルールのバージョンが違います。');
-  const game = replayRecord(record);
+  const positionHistory: string[] = [];
+  const game = replayRecord(record, (position) => positionHistory.push(positionIdentity(position)));
   // Existing v2 records predate replay metadata. Upgrade without changing their actions.
   const defaults = newRecord(record.settings);
   return {
@@ -84,6 +100,7 @@ export function decodeRecord(text: string): { record: GameRecord; game: GameStat
           : defaults.seed,
     },
     game,
+    positionHistory,
   };
 }
 function validSettings(settings: MatchSettings): boolean {
@@ -97,25 +114,27 @@ function validSettings(settings: MatchSettings): boolean {
     isDifficulty(settings.difficulty)
   );
 }
-export function loadMatch(): { record: GameRecord; game: GameState; warning: string | null } {
+function freshMatch(settings = DEFAULT_SETTINGS, warning: string | null = null) {
+  const game = createGame();
+  return { record: newRecord(settings), game, positionHistory: [positionIdentity(game)], warning };
+}
+export function loadMatch(): RestoredMatch & { warning: string | null } {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) return { ...decodeRecord(saved), warning: null };
     const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
     if (legacy) {
       const settings = (JSON.parse(legacy) as { settings?: MatchSettings }).settings;
-      return {
-        record: newRecord(settings && validSettings(settings) ? settings : DEFAULT_SETTINGS),
-        game: createGame(),
-        warning: '新ルールで対局を始めました。以前の棋譜はこの端末に保管しています。',
-      };
+      return freshMatch(
+        settings && validSettings(settings) ? settings : DEFAULT_SETTINGS,
+        '新ルールで対局を始めました。以前の棋譜はこの端末に保管しています。',
+      );
     }
   } catch {
-    return {
-      record: newRecord(),
-      game: createGame(),
-      warning: '保存データを読み込めなかったため、新しい対局を始めました。',
-    };
+    return freshMatch(
+      DEFAULT_SETTINGS,
+      '保存データを読み込めなかったため、新しい対局を始めました。',
+    );
   }
-  return { record: newRecord(), game: createGame(), warning: null };
+  return freshMatch();
 }

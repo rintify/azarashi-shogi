@@ -3,6 +3,8 @@ import type { Difficulty } from '../match/record';
 import type { SearchProgress, SearchResult } from './search';
 export interface ThinkRequest {
   seed: number;
+  /** Canonical positions already played, including the current position. */
+  positionHistory: readonly string[];
   state: GameState;
   difficulty: Difficulty;
   revision: number;

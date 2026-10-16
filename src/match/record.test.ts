@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+import { positionIdentity } from '../game/position';
 import {
   aiDifficulty,
   decodeRecord,
@@ -57,6 +58,22 @@ it('saves and restores the highest AI level for solo and spectator matches', () 
 
 it('does not replay a record under a different rule version', () => {
   expect(() => decodeRecord(JSON.stringify({ ...newRecord(), rulesVersion: 1 }))).toThrow();
+});
+
+it('rebuilds repetition history from saved moves without adjudicating a draw', () => {
+  const record = newRecord({ human: 'south', difficulty: 3, mode: 'ai-vs-ai' });
+  record.actions = [
+    { type: 'move', pieceId: 'king-south', to: { x: 3, y: 8 } },
+    { type: 'move', pieceId: 'king-north', to: { x: 3, y: 0 } },
+    { type: 'move', pieceId: 'king-south', to: { x: 4, y: 8 } },
+    { type: 'move', pieceId: 'king-north', to: { x: 4, y: 0 } },
+  ];
+  const loaded = decodeRecord(JSON.stringify(record));
+  expect(loaded.positionHistory).toHaveLength(5);
+  expect(loaded.positionHistory[0]).toBe(loaded.positionHistory[4]);
+  expect(loaded.positionHistory[4]).toBe(positionIdentity(loaded.game));
+  expect(loaded.game.phase).toBe('playing');
+  expect(loaded.game.result).toBeNull();
 });
 
 it('restores local PvP and assigns both sides to human control without AI turns', () => {

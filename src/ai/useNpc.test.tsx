@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { applyAction, createGame } from '../game/engine';
 import type { ThinkResponse } from './protocol';
 import { useNpc } from './useNpc';
+import { positionIdentity } from '../game/position';
 class FakeWorker {
   static instances: FakeWorker[] = [];
   onmessage: ((event: MessageEvent<ThinkResponse>) => void) | null = null;
@@ -34,6 +35,23 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 describe('NPC worker lifecycle', () => {
+  it('sends the played history to either AI and replaces it for a new match', () => {
+    const game = createGame();
+    const submit = vi.fn();
+    const previous = [positionIdentity(game), 'earlier-position'];
+    const hook = renderHook(({ positions }) => useNpc(game, null, 3, submit, true, 12, positions), {
+      initialProps: { positions: previous },
+    });
+    expect(FakeWorker.instances[0].postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ positionHistory: previous }),
+    );
+    const fresh = [positionIdentity(game)];
+    hook.rerender({ positions: fresh });
+    expect(FakeWorker.instances[0].terminate).toHaveBeenCalledOnce();
+    expect(FakeWorker.instances[1].postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ positionHistory: fresh }),
+    );
+  });
   it('passes match entropy to the worker and cancels it when opening a replay', () => {
     const game = createGame(),
       submit = vi.fn();
@@ -46,6 +64,7 @@ describe('NPC worker lifecycle', () => {
       difficulty: 2,
       revision: 0,
       seed: 12345,
+      positionHistory: [],
     });
     hook.rerender({ enabled: false, seed: 12345 });
     expect(worker.terminate).toHaveBeenCalledOnce();
@@ -72,6 +91,7 @@ describe('NPC worker lifecycle', () => {
       difficulty: 3,
       revision: 0,
       seed: 0,
+      positionHistory: [],
     });
     act(() =>
       worker.send({
@@ -142,6 +162,7 @@ it('runs both armies in spectator mode and submits their ordinary placements in 
     difficulty: 2,
     revision: 0,
     seed: 0,
+    positionHistory: [],
   });
   act(() => first.send({ type: 'result', revision: 0, result }));
   expect(submit).toHaveBeenCalledWith(result.action, 0);
@@ -153,6 +174,7 @@ it('runs both armies in spectator mode and submits their ordinary placements in 
     difficulty: 4,
     revision: 1,
     seed: 0,
+    positionHistory: [],
   });
   const reply = {
     ...result,

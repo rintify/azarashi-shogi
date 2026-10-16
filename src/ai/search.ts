@@ -5,6 +5,7 @@ import type { Difficulty } from '../match/record';
 import { LEVELS, THINKING_MS } from './levels';
 import { randomSeed, seededValue } from '../shared/random';
 import { evaluatePosition, type PositionEvaluation } from './evaluation';
+import { positionIdentity } from '../game/position';
 export { THINKING_MS } from './levels';
 export interface SearchProgress {
   depth: number;
@@ -23,6 +24,8 @@ export interface SearchOptions {
   now?: () => number;
   onProgress?: (progress: SearchProgress) => void;
   cancelled?: () => boolean;
+  /** Previously played positions, including the current one; this is strategy, not a draw rule. */
+  positionHistory?: readonly string[];
 }
 const WIN = 1_000_000;
 const TIMEOUT = Symbol('search-timeout');
@@ -81,12 +84,27 @@ export function searchBestAction(state: GameState, options: SearchOptions): Sear
   const evaluations = new Map<string, PositionEvaluation>();
   const killers = new Map<number, string[]>();
   const history = new Map<string, number>();
+  const occurrences = new Map<string, number>();
+  for (const key of options.positionHistory ?? [])
+    occurrences.set(key, (occurrences.get(key) ?? 0) + 1);
   let nodes = 0,
     completedDepth = 0,
     timedOut = false;
   // Vary equivalent move order at every level; the top levels use no evaluation noise.
-  let rootMoves = legalPreviews(state).sort(
-    (a, b) => priority(b, root) - priority(a, root) || variety(b) - variety(a),
+  let rootMoves = legalPreviews(state);
+  const repetitionCosts = new Map<ActionPreview, number>();
+  for (const move of rootMoves) {
+    const count = occurrences.size
+      ? (occurrences.get(positionIdentity(applyPreview(state, move))) ?? 0)
+      : 0;
+    // Escalate repeated returns beyond a simple tie-break, but never beyond a proven royal win.
+    repetitionCosts.set(move, Math.min(25000, 80 * count * count));
+  }
+  const repetitionCost = (move: ActionPreview) => repetitionCosts.get(move) ?? 0;
+  rootMoves.sort(
+    (a, b) =>
+      priority(b, root) - repetitionCost(b) - priority(a, root) + repetitionCost(a) ||
+      variety(b) - variety(a),
   );
   let best: ActionPreview | null = rootMoves[0] ?? null;
   let bestScore = 0;
@@ -242,7 +260,7 @@ export function searchBestAction(state: GameState, options: SearchOptions): Sear
   const maxDepth = config.maxDepth;
   const variation = config.noise;
   try {
-    if (config.advanced) {
+    if (config.advanced || [...repetitionCosts.values()].some((cost) => cost > 0)) {
       // First inspect every root reply for an immediate royal loss. A long tactical branch
       // must not consume the whole budget before an available saving move is even considered.
       const prepared: { move: ActionPreview; score: number }[] = [];
@@ -253,7 +271,9 @@ export function searchBestAction(state: GameState, options: SearchOptions): Sear
         const next = applyPreview(state, move);
         const end = terminal(next, root, 1);
         const assessed = end === null ? evaluation(next) : null;
-        const score = end ?? (assessed!.canWinImmediately ? -WIN + 2 : assessed!.score);
+        const score =
+          (end ?? (assessed!.canWinImmediately ? -WIN + 2 : assessed!.score)) -
+          repetitionCost(move);
         prepared.push({ move, score });
         if (score > preparedScore) {
           preparedScore = score;
@@ -275,8 +295,10 @@ export function searchBestAction(state: GameState, options: SearchOptions): Sear
       const scored: { move: ActionPreview; score: number }[] = [];
       for (const move of rootMoves) {
         check();
-        const raw = visit(applyPreview(state, move), depth - 1, alpha - variation * 2, Infinity, 1);
-        const score = raw + (variety(move) * 2 - 1) * variation;
+        const bias = (variety(move) * 2 - 1) * variation - repetitionCost(move);
+        // Each root action has its own bias: translate the alpha bound into the child's scale.
+        const raw = visit(applyPreview(state, move), depth - 1, alpha - bias, Infinity, 1);
+        const score = raw + bias;
         scored.push({ move, score });
         if (score > iterationScore) {
           iterationScore = score;
@@ -296,7 +318,7 @@ export function searchBestAction(state: GameState, options: SearchOptions): Sear
       completedDepth = depth;
       options.onProgress?.({ depth, nodes, elapsedMs: now() - start });
       rootMoves = scored.sort((a, b) => b.score - a.score).map((v) => v.move);
-      if (bestScore > WIN - 100 || bestScore < -WIN + 100) break;
+      if (Math.abs(bestScore) > WIN / 2) break;
     }
   } catch (error) {
     if (error !== TIMEOUT) throw error;

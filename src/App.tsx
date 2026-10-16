@@ -143,6 +143,7 @@ export default function App() {
       !replay.active &&
       (!watching || !paused || stepRequested),
     match.record.seed,
+    match.positionHistory,
   );
   useEffect(() => {
     if (

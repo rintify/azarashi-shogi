@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { applyAction, createGame } from '../game/engine';
 import type { GameAction } from '../game/types';
+import { positionIdentity } from '../game/position';
 import { loadMatch, newRecord, STORAGE_KEY } from './record';
 import type { MatchSettings } from './record';
 export function useMatch() {
@@ -18,10 +19,12 @@ export function useMatch() {
     setMatch((current) => {
       if (current.game.revision !== revision) return current;
       try {
+        const game = applyAction(current.game, action, revision);
         return {
           ...current,
           warning: null,
-          game: applyAction(current.game, action, revision),
+          game,
+          positionHistory: [...current.positionHistory, positionIdentity(game)],
           record: { ...current.record, actions: [...current.record.actions, action] },
         };
       } catch {
@@ -29,11 +32,15 @@ export function useMatch() {
       }
     });
   }, []);
-  const restart = useCallback(
-    (settings: MatchSettings) =>
-      setMatch({ game: createGame(), record: newRecord(settings), warning: null }),
-    [],
-  );
+  const restart = useCallback((settings: MatchSettings) => {
+    const game = createGame();
+    setMatch({
+      game,
+      record: newRecord(settings),
+      warning: null,
+      positionHistory: [positionIdentity(game)],
+    });
+  }, []);
   return {
     game: match.game,
     settings: match.record.settings,
@@ -41,6 +48,7 @@ export function useMatch() {
     submit,
     restart,
     history: match.record.actions,
+    positionHistory: match.positionHistory,
     record: match.record,
   };
 }
