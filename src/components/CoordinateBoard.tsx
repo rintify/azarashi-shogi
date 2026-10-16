@@ -4,6 +4,7 @@ import { pieceAt } from '../game/engine';
 import { pieceName } from '../game/pieces';
 import { sameCell, type Cell, type GameState, type Player } from '../game/types';
 import { AnimalIcon } from './AnimalIcon';
+import { Crown } from 'lucide-react';
 import { coordinate } from './coordinates';
 
 /** Accessible alternative uses exactly the same cell intents as the 3D board. */
@@ -13,6 +14,7 @@ export function CoordinateBoard({
   legalCells,
   reachableCells = [],
   unsafeCells = [],
+  kingCaptureIds = [],
   onCell,
   onHover,
 }: {
@@ -21,6 +23,7 @@ export function CoordinateBoard({
   legalCells: Cell[];
   reachableCells?: Cell[];
   unsafeCells?: Cell[];
+  kingCaptureIds?: string[];
   onCell: (cell: Cell) => void;
   onHover: (cell: Cell) => void;
 }) {
@@ -40,6 +43,7 @@ export function CoordinateBoard({
         const legal = legalCells.some((c) => sameCell(c, cell));
         const reachable = reachableCells.some((c) => sameCell(c, cell));
         const unsafe = unsafeCells.some((c) => sameCell(c, cell));
+        const kingCapture = !!piece && kingCaptureIds.includes(piece.id);
         return (
           <button
             key={i}
@@ -61,7 +65,7 @@ export function CoordinateBoard({
                 ?.focus();
             }}
             className={`${reachable ? 'reachable' : ''} ${unsafe ? 'unsafe' : ''} ${legal ? 'legal' : ''} ${piece ? (piece.owner === human ? 'own' : 'enemy') : ''}`}
-            aria-label={`${coordinate(cell)}${piece ? ` ${pieceName(piece)}` : ''}${legal ? ' 選択可能' : ''}${unsafe ? ' 捕食の危険' : ''}`}
+            aria-label={`${coordinate(cell)}${piece ? ` ${pieceName(piece)}` : ''}${legal ? ' 選択可能' : ''}${unsafe ? ' 捕食の危険' : ''}${kingCapture ? ' 相手の王を捕食可能' : ''}`}
             onClick={() => onCell(cell)}
             onFocus={() => {
               setFocused(index);
@@ -70,6 +74,9 @@ export function CoordinateBoard({
             onMouseEnter={() => onHover(cell)}
           >
             {piece ? <AnimalIcon kind={piece.kind} promoted={piece.promoted} /> : null}
+            {kingCapture && (
+              <Crown className="coordinate-king-capture" size={13} aria-hidden="true" />
+            )}
           </button>
         );
       })}

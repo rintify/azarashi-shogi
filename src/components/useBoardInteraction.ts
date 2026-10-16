@@ -8,7 +8,7 @@ import {
   previewAction,
 } from '../game/engine';
 import { actionSafety } from '../game/safety';
-import { cellKey, sameCell } from '../game/types';
+import { cellKey, sameCell, otherPlayer } from '../game/types';
 import { footprint } from '../game/pieces';
 import type {
   ActionPreview,
@@ -93,6 +93,13 @@ export function useBoardInteraction(
     return [...cells.values()];
   }, [selected, activeKind, legalCells, pending, destinations]);
   const threats = useMemo(() => getThreats(game, human), [game, human]);
+  const kingCaptureIds = useMemo(() => {
+    const enemy = otherPlayer(human);
+    const king = game.pieces.find((p) => p.kind === 'walrus' && p.owner === enemy);
+    return king
+      ? (getThreats(game, enemy).find((t) => t.targetId === king.id)?.attackerIds ?? [])
+      : [];
+  }, [game, human]);
   const threat = threats.find((t) => t.targetId === (inspectedThreat ?? selectedId));
   const preview = useMemo(() => {
     if (pending) return pending[optionIndex];
@@ -185,6 +192,7 @@ export function useBoardInteraction(
     previewUnsafe,
     pendingSafety,
     threats,
+    kingCaptureIds,
     threat,
     preview,
     portrait,

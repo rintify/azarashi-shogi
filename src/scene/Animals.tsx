@@ -132,6 +132,8 @@ function PenguinPart({
   from,
   to,
   turn = [0, 0, 0],
+  startTurn = [0, 0, 0],
+  endScale = [1, 1, 1],
   children,
   engine = false,
 }: {
@@ -139,6 +141,8 @@ function PenguinPart({
   from: Vec3;
   to: Vec3;
   turn?: Vec3;
+  startTurn?: Vec3;
+  endScale?: Vec3;
   children: ReactNode;
   engine?: boolean;
 }) {
@@ -150,7 +154,10 @@ function PenguinPart({
       : blend.current;
     const t = progress * progress * (3 - 2 * progress);
     group.current.position.set(...(from.map((v, i) => v + (to[i] - v) * t) as Vec3));
-    group.current.rotation.set(...(turn.map((v) => v * t) as Vec3));
+    group.current.rotation.set(
+      ...(turn.map((v, i) => startTurn[i] + (v - startTurn[i]) * t) as Vec3),
+    );
+    group.current.scale.set(...(endScale.map((v) => 1 + (v - 1) * t) as Vec3));
     if (engine) {
       group.current.scale.setScalar(Math.max(0.001, t));
       group.current.visible = t > 0.001;
@@ -191,7 +198,9 @@ function Penguin({ jet, jetBlend }: { jet: boolean; jetBlend?: RefObject<number>
             blend={blend}
             from={[side * 0.29, 0.43, -0.01]}
             to={[side * 0.33, 0.2, -0.06]}
-            turn={[0, 0, (side * Math.PI) / 2]}
+            startTurn={[0, 0, side * 0.25]}
+            turn={[0, side * -0.25, 0]}
+            endScale={[0.25 / 0.07, 0.05 / 0.25, 0.13 / 0.12]}
           >
             <Blob scale={[0.07, 0.25, 0.12]} color="#263c4b" />
           </PenguinPart>

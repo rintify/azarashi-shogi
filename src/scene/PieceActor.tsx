@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
+import { Crown } from 'lucide-react';
 import { Color, MeshBasicMaterial, type Group } from 'three';
 import type { Cell, Piece } from '../game/types';
 import { dimensions } from '../game/pieces';
@@ -25,6 +26,7 @@ export interface ActorProps {
   targeted: boolean;
   source: boolean;
   threatened: boolean;
+  kingCapture: boolean;
   disabled: boolean;
   reduced: boolean;
   intro: boolean;
@@ -41,6 +43,7 @@ export function PieceActor({
   targeted,
   source,
   threatened,
+  kingCapture,
   disabled,
   reduced,
   intro,
@@ -177,16 +180,18 @@ export function PieceActor({
         reduced={reduced}
       />
       <Html position={[w / 2 - 0.14, 1.5, 0]} center portal={htmlPortal} zIndexRange={[25, 20]}>
-        <AnimatedPresence show={threatened && !disabled && !victim}>
+        <AnimatedPresence show={(kingCapture || threatened) && !disabled && !victim}>
           <button
-            className="threat-badge"
-            aria-label="この駒を捕食できる相手を表示"
+            className={`threat-badge ${kingCapture ? 'king-capture-badge' : ''}`}
+            aria-label={
+              kingCapture ? '相手の王を捕食できます。この駒を選択' : 'この駒を捕食できる相手を表示'
+            }
             onClick={(e) => {
               e.stopPropagation();
               onThreat();
             }}
           >
-            !
+            {kingCapture ? <Crown size={18} strokeWidth={2.7} /> : '!'}
           </button>
         </AnimatedPresence>
       </Html>

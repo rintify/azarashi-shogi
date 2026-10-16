@@ -240,3 +240,45 @@ it('updates danger for the exact airborne orca candidate rather than the unrotat
   act(() => hook.result.current.setOptionIndex(2));
   expect(hook.result.current.previewUnsafe).toBe(false);
 });
+
+it('marks a king capturer even when the same piece is threatened, and clears it when the king moves', () => {
+  const bear: Piece = { ...penguin, id: 'bear', kind: 'bear', at: { x: 4, y: 4 } };
+  const king: Piece = {
+    ...food,
+    id: 'enemy-king',
+    kind: 'walrus',
+    owner: 'north',
+    at: { x: 6, y: 4 },
+  };
+  const hunter: Piece = { ...food, id: 'hunter', kind: 'bear', owner: 'north', at: { x: 2, y: 4 } };
+  const game = { ...createGame(), pieces: [bear, king, hunter] };
+  const hook = renderHook(({ state }) => useBoardInteraction(state, 'south', vi.fn()), {
+    initialProps: { state: game },
+  });
+  expect(hook.result.current.kingCaptureIds).toEqual(['bear']);
+  expect(hook.result.current.threats.some((t) => t.targetId === bear.id)).toBe(true);
+  hook.rerender({ state: { ...game, pieces: [bear, hunter, { ...king, at: { x: 8, y: 0 } }] } });
+  expect(hook.result.current.kingCaptureIds).toEqual([]);
+});
+
+it('finds the king capture for a north-facing jet and suppresses markers after the game ends', () => {
+  const jet: Piece = { ...penguin, id: 'jet', owner: 'north', promoted: true, at: { x: 4, y: 2 } };
+  const king: Piece = { ...food, id: 'king', kind: 'walrus', at: { x: 4, y: 6 } };
+  const game = { ...createGame(), pieces: [jet, king] };
+  const hook = renderHook(({ state }) => useBoardInteraction(state, 'north', vi.fn()), {
+    initialProps: { state: game },
+  });
+  expect(hook.result.current.kingCaptureIds).toEqual(['jet']);
+  hook.rerender({ state: { ...game, phase: 'finished' } });
+  expect(hook.result.current.kingCaptureIds).toEqual([]);
+});
+
+it('includes king captures available only through the orca rotation extension', () => {
+  const orca: Piece = { ...penguin, id: 'orca', kind: 'orca', at: { x: 4, y: 6 } };
+  const king: Piece = { ...food, id: 'king', kind: 'walrus', owner: 'north', at: { x: 6, y: 3 } };
+  const meal: Piece = { ...food, at: { x: 5, y: 4 } };
+  const hook = renderHook(() =>
+    useBoardInteraction({ ...createGame(), pieces: [orca, king, meal] }, 'south', vi.fn()),
+  );
+  expect(hook.result.current.kingCaptureIds).toEqual(['orca']);
+});

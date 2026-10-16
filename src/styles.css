@@ -558,6 +558,21 @@ svg {
   font-weight: 800;
   box-shadow: 0 3px 12px #2f160b55;
 }
+.threat-badge.king-capture-badge {
+  background: #f7cc61;
+  color: #785122;
+  border-color: #fff9df;
+  box-shadow: 0 2px 8px #9b741b40;
+}
+.coordinate-king-capture {
+  position: absolute;
+  top: 0;
+  right: 0;
+  color: #785122;
+  background: #f7cc61;
+  border-radius: 50%;
+  padding: 1px;
+}
 .coordinate-overlay {
   position: absolute;
   z-index: 20;
@@ -578,6 +593,7 @@ svg {
   box-shadow: 0 20px 50px #06283a33;
 }
 .coordinate-board button {
+  position: relative;
   display: grid;
   place-items: center;
   min-width: 0;

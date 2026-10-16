@@ -204,6 +204,7 @@ export default function App() {
               preview={interaction.preview}
               previewUnsafe={interaction.previewUnsafe}
               threats={interaction.threats}
+              kingCaptureIds={interaction.kingCaptureIds}
               threatSources={interaction.threat?.attackerIds ?? []}
               view={view}
               area={area}
@@ -355,6 +356,7 @@ export default function App() {
           }
         >
           <CoordinateBoard
+            kingCaptureIds={interaction.kingCaptureIds}
             unsafeCells={interaction.unsafeCells}
             game={game}
             human={settings.human}
