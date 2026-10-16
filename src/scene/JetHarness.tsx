@@ -1,62 +1,46 @@
-import { ExtrudeGeometry, Shape } from 'three';
+import { ExtrudeGeometry, Path, Shape } from 'three';
+import { JET_EQUIPMENT_COLOR } from './animalPoses';
 
-// Broad shoulder braces wrap from the upper pack mount to a cradle below the
-// chest. A defined side profile keeps their width visible from the game camera.
-const shoulder = new Shape();
-shoulder.moveTo(0.1, -0.09);
-shoulder.lineTo(0.28, -0.18);
-shoulder.quadraticCurveTo(0.35, -0.25, 0.34, -0.37);
-shoulder.lineTo(0.3, -0.49);
-shoulder.lineTo(0.17, -0.6);
-shoulder.lineTo(0.04, -0.54);
-shoulder.lineTo(0.17, -0.43);
-shoulder.lineTo(0.2, -0.32);
-shoulder.quadraticCurveTo(0.22, -0.25, 0.16, -0.23);
-shoulder.lineTo(-0.01, -0.16);
-shoulder.closePath();
-const brace = new ExtrudeGeometry(shoulder, {
-  depth: 0.035,
+// Wide fitted bands have a rectangular cross section, rather than reading as cables.
+const outline = new Shape();
+outline.absellipse(0, 0, 0.313, 0.278, 0, Math.PI * 2, false, 0);
+const inside = new Path();
+inside.absellipse(0, 0, 0.29, 0.255, 0, Math.PI * 2, true, 0);
+outline.holes.push(inside);
+const band = new ExtrudeGeometry(outline, {
+  depth: 0.065,
   bevelEnabled: true,
-  bevelThickness: 0.009,
-  bevelSize: 0.009,
-  bevelSegments: 2,
-  curveSegments: 12,
+  bevelSize: 0.004,
+  bevelThickness: 0.004,
+  bevelSegments: 1,
+  curveSegments: 24,
 });
 
-/** A sturdy light-blue chest cradle supports the wide backpack on both sides. */
+/** Coordinates are relative to the jet pack; two chest bands secure it around the torso. */
 export function JetHarness() {
   return (
     <group>
+      {[-0.14, 0.12].map((z) => (
+        <mesh key={z} geometry={band} position={[0, -0.37, z]} castShadow dispose={null}>
+          <meshStandardMaterial color={JET_EQUIPMENT_COLOR} roughness={0.72} />
+        </mesh>
+      ))}
       {[-1, 1].map((side) => (
         <group key={side}>
-          <mesh
-            geometry={brace}
-            position={[side * 0.285, 0, 0]}
-            rotation={[0, -Math.PI / 2, 0]}
-            scale={[1, 1, side]}
-            castShadow
-            dispose={null}
-          >
-            <meshStandardMaterial color="#91d1e9" roughness={0.6} />
+          <mesh position={[side * 0.29, -0.28, 0.025]} rotation={[0, 0, side * 0.2]} castShadow>
+            <boxGeometry args={[0.03, 0.065, 0.31]} />
+            <meshStandardMaterial color={JET_EQUIPMENT_COLOR} roughness={0.72} />
           </mesh>
-          <mesh position={[side * 0.292, -0.39, 0.265]} castShadow>
-            <boxGeometry args={[0.028, 0.1, 0.09]} />
-            <meshStandardMaterial color="#d5f1fb" metalness={0.2} roughness={0.45} />
+          <mesh position={[side * 0.317, -0.37, 0.153]} castShadow>
+            <boxGeometry args={[0.025, 0.09, 0.085]} />
+            <meshStandardMaterial color="#e8b866" metalness={0.4} roughness={0.45} />
           </mesh>
-          <mesh position={[side * 0.31, -0.39, 0.265]}>
-            <boxGeometry args={[0.012, 0.048, 0.046]} />
-            <meshStandardMaterial color="#62accb" roughness={0.55} />
-          </mesh>
-          <mesh position={[side * 0.17, -0.14, -0.07]} castShadow>
-            <boxGeometry args={[0.085, 0.1, 0.27]} />
-            <meshStandardMaterial color="#91d1e9" roughness={0.6} />
+          <mesh position={[side * 0.332, -0.37, 0.153]}>
+            <boxGeometry args={[0.009, 0.045, 0.035]} />
+            <meshStandardMaterial color={JET_EQUIPMENT_COLOR} roughness={0.7} />
           </mesh>
         </group>
       ))}
-      <mesh position={[0, -0.565, 0.11]} rotation={[-0.25, 0, 0]} castShadow>
-        <boxGeometry args={[0.49, 0.045, 0.13]} />
-        <meshStandardMaterial color="#91d1e9" roughness={0.6} />
-      </mesh>
     </group>
   );
 }

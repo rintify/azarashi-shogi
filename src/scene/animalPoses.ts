@@ -1,5 +1,7 @@
 import type { Vec3 } from '../presentation/motion';
 
+export const JET_EQUIPMENT_COLOR = '#5babb4';
+
 /** Jet anatomy is authored prone, with head and beak along local +Z, just like every animal. */
 export const JET_POSE: {
   body: Vec3;
