@@ -322,7 +322,7 @@ export function Animal({
       group.current.position.y = animate ? Math.sin(clock.elapsedTime * 2.2) * 0.018 : 0;
   });
   return (
-    <group ref={group}>
+    <group ref={group} scale={kind === 'seal' && !promoted ? 0.9 : 1}>
       {kind === 'seal' ? (
         <Seal black={promoted} />
       ) : kind === 'penguin' ? (

@@ -1,4 +1,5 @@
 import { DoubleSide, ExtrudeGeometry, Shape } from 'three';
+import { JetHarness } from './JetHarness';
 
 // A clipped-corner housing keeps the mechanical silhouette legible at board scale.
 const housing = new Shape();
@@ -23,6 +24,7 @@ const geometry = new ExtrudeGeometry(housing, {
 export function JetEngine() {
   return (
     <group>
+      <JetHarness />
       <mesh geometry={geometry} position={[0, 0, -0.18]} castShadow dispose={null}>
         <meshStandardMaterial color="#5babb4" roughness={0.48} metalness={0.28} flatShading />
       </mesh>
