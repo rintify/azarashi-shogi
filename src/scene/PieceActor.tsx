@@ -66,10 +66,15 @@ export function PieceActor({
   }, [intro]);
   const moving = !!motion && !victim && motion.action.piece.id === piece.id;
   const [w, h] = dimensions(moving && motion?.before ? motion.before : piece);
+  const mark = pieceMark(kingCapture, helper, threatened);
+  const lastMarkerPosition = useRef<[number, number]>([0, 0]);
   const locateMarker = useCallback(
-    (object: Object3D, camera: Camera, viewport: { width: number; height: number }) =>
-      pieceMarkerPosition(model.current ?? object, camera, viewport),
-    [],
+    (object: Object3D, camera: Camera, viewport: { width: number; height: number }) => {
+      if (mark && !disabled && !victim)
+        lastMarkerPosition.current = pieceMarkerPosition(model.current ?? object, camera, viewport);
+      return lastMarkerPosition.current;
+    },
+    [mark, disabled, victim],
   );
   const ownerColor = piece.owner === 'south' ? '#087fad' : '#e58e3f';
   const color = targeted ? '#ef7049' : source ? '#f5b83b' : selected ? '#38d1df' : ownerColor;
@@ -131,7 +136,6 @@ export function PieceActor({
     if (afterModel.current)
       afterModel.current.visible = !!moving && promoted !== motion?.before?.promoted;
   });
-  const mark = pieceMark(kingCapture, helper, threatened);
   const initialPromoted = moving && motion?.before ? motion.before.promoted : piece.promoted;
   const modelScale = piece.kind === 'walrus' ? 1 : piece.kind === 'orca' ? 0.9 : 0.86;
   return (
