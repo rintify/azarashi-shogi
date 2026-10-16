@@ -6,9 +6,9 @@ import {
   legalPreviews,
   previewAction,
 } from '../game/engine';
-import { searchBestAction, THINKING_MS } from './search';
+import { searchBestAction, THINKING_MS } from './reference/search';
 import { LEVELS } from './levels';
-import { evaluatePosition } from './evaluation';
+import { evaluatePosition } from './reference/evaluation';
 import { positionIdentity } from '../game/position';
 import type { GameState, Kind, Piece, Player } from '../game/types';
 const p = (id: string, kind: Kind, x: number, y: number, owner: Player = 'south'): Piece => ({

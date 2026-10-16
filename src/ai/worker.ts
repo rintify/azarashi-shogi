@@ -1,20 +1,21 @@
-import { searchBestAction } from './search';
+import { loadEngine } from './wasmRuntime';
 import type { ThinkRequest, ThinkResponse } from './protocol';
 const respond = (message: ThinkResponse) => self.postMessage(message);
-self.onmessage = ({ data }: MessageEvent<ThinkRequest>) => {
+self.onmessage = async ({ data }: MessageEvent<ThinkRequest>) => {
   try {
-    const result = searchBestAction(data.state, {
-      difficulty: data.difficulty,
+    const engine = await loadEngine({
+      onProgress: (progress) => respond({ type: 'progress', revision: data.revision, progress }),
+    });
+    const result = engine.search(data.state, data.difficulty, {
       seed: data.seed,
       positionHistory: data.positionHistory,
-      onProgress: (progress) => respond({ type: 'progress', revision: data.revision, progress }),
     });
     respond({ type: 'result', revision: data.revision, result });
   } catch {
     respond({
       type: 'error',
       revision: data.revision,
-      message: 'NPCの思考に失敗しました。「もう一度考える」で再試行できます。',
+      message: 'NPCの読み込みか思考に失敗しました。「もう一度考える」で再試行できます。',
     });
   }
 };

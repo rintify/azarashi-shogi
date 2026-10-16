@@ -1,22 +1,14 @@
-import { actionKey, applyPreview, legalPreviews } from '../game/engine';
-import { DEFINITIONS, KINDS } from '../game/pieces';
-import type { ActionPreview, GameAction, GameState, Player } from '../game/types';
-import type { Difficulty } from '../match/record';
-import { LEVELS, THINKING_MS } from './levels';
-import { randomSeed, seededValue } from '../shared/random';
+/** TypeScript reference for differential checks. The production Worker runs Rust/WASM. */
+import { actionKey, applyPreview, legalPreviews } from '../../game/engine';
+import { DEFINITIONS, KINDS } from '../../game/pieces';
+import type { ActionPreview, GameState, Player } from '../../game/types';
+import type { Difficulty } from '../../match/record';
+import { LEVELS, THINKING_MS } from '../levels';
+import { randomSeed, seededValue } from '../../shared/random';
 import { evaluatePosition, type PositionEvaluation } from './evaluation';
-import { positionIdentity } from '../game/position';
-export { THINKING_MS } from './levels';
-export interface SearchProgress {
-  depth: number;
-  nodes: number;
-  elapsedMs: number;
-}
-export interface SearchResult extends SearchProgress {
-  action: GameAction | null;
-  score: number;
-  timedOut: boolean;
-}
+import { positionIdentity } from '../../game/position';
+export { THINKING_MS } from '../levels';
+import type { SearchProgress, SearchResult } from '../searchTypes';
 export interface SearchOptions {
   seed?: number;
   difficulty: Difficulty;

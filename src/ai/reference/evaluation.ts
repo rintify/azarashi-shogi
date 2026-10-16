@@ -1,6 +1,6 @@
-import { legalPreviews, moveCells } from '../game/engine';
-import { DEFINITIONS, KINDS } from '../game/pieces';
-import { otherPlayer, type GameState, type Piece, type Player } from '../game/types';
+import { legalPreviews, moveCells } from '../../game/engine';
+import { DEFINITIONS, KINDS } from '../../game/pieces';
+import { otherPlayer, type GameState, type Piece, type Player } from '../../game/types';
 
 export interface PositionEvaluation {
   score: number;

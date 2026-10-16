@@ -1,6 +1,6 @@
 # アザラシ将棋
 
-青空と南極の雪氷を舞台に、立体の動物たちで遊ぶオリジナル将棋です。React 19 / TypeScript / Vite / Three.js / React Three Fiber 9 で実装しています。
+青空と南極の雪氷を舞台に、立体の動物たちで遊ぶオリジナル将棋です。React 19 / TypeScript / Vite / Three.js / React Three Fiber 9 を使い、AIの計算はRust / WebAssemblyで実行します。
 
 ## 起動
 
@@ -11,7 +11,7 @@ npm ci
 npm run dev
 ```
 
-表示されたURL（通常は http://127.0.0.1:5173 ）をブラウザーで開いてください。3D表示にはWebGL 2対応のブラウザーが必要です。3Dを開始できない環境でも「マス一覧であそぶ」から操作できます。
+表示されたURL（通常は http://127.0.0.1:5173 ）をブラウザーで開いてください。3D表示にはWebGL 2、AIにはWebAssembly対応のブラウザーが必要です。3Dを開始できない環境でも「マス一覧であそぶ」から操作できます。ビルド済みWASMを同梱しているため、通常の起動・TypeScript編集・本番ビルドにRustの導入は不要です。
 
 ```sh
 npm test          # ルール・探索・Worker・操作のテスト
@@ -19,7 +19,12 @@ npm run typecheck # TypeScriptの型チェック
 npm run build     # dist/ に本番用ファイルを生成
 npm run preview   # ビルド結果をローカル確認
 npm run format    # ソースの整形
+npm run wasm:build # Rustを変更した後、WASMとソースハッシュを更新
+npm run test:rust  # Rustコアの単体テスト
+npm run benchmark:ai # 同じ局面・探索深さでTypeScript参照実装と速度比較
 ```
+
+Rust側を編集する場合は[rustup](https://rustup.rs/)を導入し、`npm run wasm:build`を実行してください。`rust-toolchain.toml`で固定したRustと`wasm32-unknown-unknown`ターゲットを使用します。`wasm-pack`や`wasm-bindgen`のCLIは不要です。変更後は生成された`.wasm`と`build.json`もコミットします。起動・ビルド・テスト前にRustソースとWASMの整合性を確認し、古いWASMの使い回しを防ぎます。詳細は[WASMエンジン](docs/WASM_ENGINE.md)を参照してください。
 
 ## あそびかた
 
@@ -94,7 +99,7 @@ npm run format    # ソースの整形
 | 5      | 極       |           10秒 |
 | 6      | 覇王     |           30秒 |
 
-Web Workerで反復深化・αβ探索・局面キャッシュ・捕食の延長探索を実行します。配置、変身、味方捕食を含め、人間と同じルールエンジンで手を生成します。低難度の評価には揺らぎを加え、「極」「覇王」では除去します。探索時間の上限まで必ず待つわけではなく、勝ちが見つかれば早く指します。機種によって探索できる深さは異なり、無敗を保証するものではありません。
+Web Worker内のRust/WASMで、合法手生成・局面適用・評価・反復深化・αβ探索・局面キャッシュ・捕食の延長探索を実行します。探索中はTypeScriptのルール処理を呼び出しません。配置、変身、味方捕食を含めて同じ確定ルールを実装し、返された手は対局を管理するTypeScriptのルールエンジンでも検証します。低難度の評価には揺らぎを加え、「極」「覇王」では除去します。探索時間の上限まで必ず待つわけではなく、勝ちが見つかれば早く指します。機種によって探索できる深さは異なり、無敗を保証するものではありません。
 
 「覇王」は通常探索を最大16手先、捕食と王の退避の延長探索を最大4手分まで行います。有効だった静かな手を次の探索で優先し、主変化探索（PVS）と局面評価のキャッシュで読みを効率化します。探索の末端でも直ちに王を捕食できる手を見落とさず、シャチの回転による捕食と両王同時捕食を区別します。どのレベルでも王を助ける配置を探索でき、ルールやストックの優遇はありません。
 
@@ -109,7 +114,11 @@ Web Workerで反復深化・αβ探索・局面キャッシュ・捕食の延長
 ```text
 src/game/       React非依存の型、駒定義、合法手・捕食・変身・脅威判定
 src/match/      対局状態の所有、アクション履歴、棋譜一覧の保存・復元・リプレイ
-src/ai/         難易度定義、探索、Worker通信とライフサイクル
+rust/azarashi-engine/ Rustの合法手生成・局面評価・探索・WASM ABI
+src/ai/         難易度定義、WASM接続、Worker通信とライフサイクル
+src/ai/reference/ TypeScript参照実装（比較検証用。本番の探索では使用しない）
+src/ai/wasm/    同梱WASMと生成元ハッシュ
+scripts/        WASMの再ビルドと生成物の整合性チェック
 src/components/ 操作選択の状態、ストック、説明、設定ダイアログ
 src/presentation/ 確定済みの手の時間軸・再生・効果音・表示領域
 src/scene/      3Dの盤面・環境・動物メッシュ・カメラ

@@ -1,6 +1,6 @@
 import type { GameState } from '../game/types';
 import type { Difficulty } from '../match/record';
-import type { SearchProgress, SearchResult } from './search';
+import type { SearchProgress, SearchResult } from './searchTypes';
 export interface ThinkRequest {
   seed: number;
   /** Canonical positions already played, including the current position. */
