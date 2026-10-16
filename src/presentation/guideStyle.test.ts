@@ -184,3 +184,10 @@ it('lets a hovered move replace the staying-put footprint color where they overl
   expect(style.fill).toBe(GUIDE_COLORS.fill);
   expect(style.kingDanger).toBe(false);
 });
+
+it('shows the previous move as a faint white fill without any outline', () => {
+  const style = guideStyle({ ...base, legal: false, last: true, reachable: false });
+  expect(style.fill).toBe('#ffffff');
+  expect(style.fillOpacity).toBe(0.1);
+  expect(style.outlineOpacity).toBe(0);
+});

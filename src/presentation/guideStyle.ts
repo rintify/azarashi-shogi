@@ -10,7 +10,7 @@ export const GUIDE_COLORS = {
   kingDanger: '#8f2038',
   fill: '#42b9d8',
   active: '#098bba',
-  last: '#6fa9be',
+  last: '#ffffff',
   enemy: '#b08be9',
 } as const;
 /** Occupied cells are display guides, never legal destinations or a pass action. */
@@ -71,7 +71,9 @@ export function guideStyle(state: GuideState) {
         ? GUIDE_COLORS.kingCaptureTrap
         : danger
           ? dangerColor
-          : GUIDE_COLORS.fill,
+          : state.last && !state.reachable
+            ? GUIDE_COLORS.last
+            : GUIDE_COLORS.fill,
     fillOpacity: preview
       ? danger
         ? 0.32
@@ -100,6 +102,6 @@ export function guideStyle(state: GuideState) {
         : preview
           ? GUIDE_COLORS.active
           : GUIDE_COLORS.last,
-    outlineOpacity: preview ? 0.9 : state.last ? 0.45 : 0,
+    outlineOpacity: preview ? 0.9 : 0,
   };
 }
