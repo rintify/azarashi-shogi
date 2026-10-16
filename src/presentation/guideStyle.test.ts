@@ -17,6 +17,21 @@ it('uses red for dangerous dots and fill without an outline', () => {
   expect(danger.fillOpacity).toBeGreaterThan(0);
   expect(danger.outlineOpacity).toBe(0);
 });
+it('uses the same hover outline visibility for safe, dangerous and king-danger cells', () => {
+  for (const key of ['active', 'additional'] as const) {
+    const safe = guideStyle({ ...base, [key]: true });
+    const danger = guideStyle({ ...base, [key]: true, previewUnsafe: true });
+    const fatal = guideStyle({
+      ...base,
+      [key]: true,
+      previewUnsafe: true,
+      previewKingDanger: true,
+    });
+    expect(safe.outlineOpacity).toBeGreaterThan(0);
+    expect(danger.outlineOpacity).toBe(safe.outlineOpacity);
+    expect(fatal.outlineOpacity).toBe(safe.outlineOpacity);
+  }
+});
 it('never replaces dangerous hover or L-shape preview with the old blue fill', () => {
   for (const key of ['active', 'additional'] as const) {
     const danger = guideStyle({ ...base, [key]: true, legal: false, previewUnsafe: true });

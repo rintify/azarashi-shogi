@@ -70,6 +70,6 @@ export function guideStyle(state: GuideState) {
           : GUIDE_COLORS.safe,
     dotOpacity: state.legal ? 1 : 0,
     outline: danger ? dangerColor : preview ? GUIDE_COLORS.active : GUIDE_COLORS.last,
-    outlineOpacity: danger ? 0 : preview ? 0.9 : state.last ? 0.45 : 0,
+    outlineOpacity: preview ? 0.9 : state.last ? 0.45 : 0,
   };
 }
