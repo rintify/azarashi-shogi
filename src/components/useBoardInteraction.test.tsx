@@ -396,7 +396,7 @@ it('separates moves exposing the king from danger to the moving piece, and updat
   expect(hook.result.current.previewKingDanger).toBe(false);
 });
 
-it('marks dangerous orca landings blue with a note only if a legal rotation makes the complete action safe', () => {
+it('marks conditional safety for dangerous orca landings only if a legal rotation makes the complete action safe', () => {
   const orca: Piece = { ...penguin, kind: 'orca', at: { x: 4, y: 6 } };
   const meal: Piece = { ...food, at: { x: 4, y: 4 } };
   const hunter: Piece = { ...penguin, id: 'hunter', owner: 'north', at: { x: 5, y: 4 } };

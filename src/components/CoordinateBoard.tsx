@@ -49,6 +49,7 @@ export function CoordinateBoard({
           '--danger-color': GUIDE_COLORS.danger,
           '--king-danger-color': GUIDE_COLORS.kingDanger,
           '--enemy-guide-color': GUIDE_COLORS.enemy,
+          '--transformation-color': GUIDE_COLORS.transformation,
         } as CSSProperties
       }
     >
@@ -88,7 +89,7 @@ export function CoordinateBoard({
                 ?.focus();
             }}
             className={`${reachable ? 'reachable' : ''} ${unsafe ? 'unsafe' : ''} ${kingDanger ? 'king-risk' : ''} ${transformationSafe ? 'transformation-safe' : ''} ${legal && !inspectingEnemy ? 'legal' : ''} ${piece ? (piece.owner === human ? 'own' : 'enemy') : ''}`}
-            aria-label={`${coordinate(cell)}${piece ? ` ${pieceName(piece)}` : ''}${legal ? (inspectingEnemy ? ' 敵の移動範囲' : ' 選択可能') : ''}${unsafe ? ' 捕食の危険' : ''}${mark ? ` ${MARK_LABELS[mark]}` : ''}${kingDanger ? ' 王が捕食される危険' : ''}${transformationSafe ? ' ※成って安全にできる向きがあります' : ''}`}
+            aria-label={`${coordinate(cell)}${piece ? ` ${pieceName(piece)}` : ''}${legal ? (inspectingEnemy ? ' 敵の移動範囲' : ' 選択可能') : ''}${unsafe ? ' 捕食の危険' : ''}${mark ? ` ${MARK_LABELS[mark]}` : ''}${kingDanger ? ' 王が捕食される危険' : ''}${transformationSafe ? ' 紫色：成って安全にできる向きがあります' : ''}`}
             onClick={() => onCell(cell)}
             onFocus={() => {
               setFocused(index);
@@ -96,11 +97,6 @@ export function CoordinateBoard({
             }}
             onMouseEnter={() => onHover(cell)}
           >
-            {transformationSafe && (
-              <span className="transformation-note" aria-hidden="true">
-                ※
-              </span>
-            )}
             {piece ? <AnimalIcon kind={piece.kind} promoted={piece.promoted} /> : null}
             {mark && (
               <span

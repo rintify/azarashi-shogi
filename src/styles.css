@@ -2504,32 +2504,13 @@ button:not(:disabled):focus-visible {
   background: color-mix(in srgb, var(--king-danger-color) 48%, #e3f0f5);
   color: #65172b;
   box-shadow: none;
-  animation: king-risk-breathe 2.8s ease-in-out infinite;
-}
-@keyframes king-risk-breathe {
-  0%,
-  100% {
-    background: color-mix(in srgb, var(--king-danger-color) 25%, #e3f0f5);
-  }
-  50% {
-    background: color-mix(in srgb, var(--king-danger-color) 55%, #e3f0f5);
-  }
-}
-
-.coordinate-board button.transformation-safe {
-  background: #a4dce7;
-  color: #087b9f;
-  box-shadow: none;
   animation: none;
 }
-.transformation-note {
-  position: absolute;
-  right: 2px;
-  bottom: 1px;
-  color: #087b9f;
-  font-size: 12px;
-  font-weight: 800;
-  pointer-events: none;
+.coordinate-board button.transformation-safe {
+  background: color-mix(in srgb, var(--transformation-color) 30%, #e3f0f5);
+  color: #77509e;
+  box-shadow: none;
+  animation: none;
 }
 
 .mode-options {

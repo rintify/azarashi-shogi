@@ -2,6 +2,7 @@
 export const GUIDE_COLORS = {
   safe: '#087b9f',
   danger: '#df2946',
+  transformation: '#9263bb',
   kingDanger: '#8f2038',
   fill: '#42b9d8',
   active: '#098bba',
@@ -44,7 +45,11 @@ export function guideStyle(state: GuideState) {
   return {
     kingDanger,
     transformationSafe,
-    fill: danger ? dangerColor : GUIDE_COLORS.fill,
+    fill: transformationSafe
+      ? GUIDE_COLORS.transformation
+      : danger
+        ? dangerColor
+        : GUIDE_COLORS.fill,
     fillOpacity: preview
       ? danger
         ? 0.32
@@ -57,7 +62,7 @@ export function guideStyle(state: GuideState) {
             ? 0.1
             : 0,
     dot: transformationSafe
-      ? GUIDE_COLORS.safe
+      ? GUIDE_COLORS.transformation
       : state.kingDanger
         ? GUIDE_COLORS.kingDanger
         : state.unsafe

@@ -79,10 +79,10 @@ it('uses the exact preview for king exposure, including transformation choices',
   expect(guideStyle({ ...base, inspectingEnemy: true, kingDanger: true }).kingDanger).toBe(false);
 });
 
-it('shows conditional transformation safety in blue with a reference note', () => {
+it('shows conditional transformation safety in purple', () => {
   const style = guideStyle({ ...base, transformationSafe: true, unsafe: true, kingDanger: true });
-  expect(style.fill).toBe(GUIDE_COLORS.fill);
-  expect(style.dot).toBe(GUIDE_COLORS.safe);
+  expect(style.fill).toBe(GUIDE_COLORS.transformation);
+  expect(style.dot).toBe(GUIDE_COLORS.transformation);
   expect(style.transformationSafe).toBe(true);
   expect(style.kingDanger).toBe(false);
   expect(

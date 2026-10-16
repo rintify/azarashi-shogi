@@ -1,9 +1,30 @@
 import { useLayoutEffect, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { PerspectiveCamera, Quaternion, Vector3 } from 'three';
+import { sampleCameraOrbit, TURN_ROTATION_MS } from '../presentation/cameraOrbit';
 import { resultCameraFrame } from '../presentation/resultCamera';
 import type { Piece, Player } from '../game/types';
 import type { PlayArea } from '../presentation/usePlayArea';
+
+function boardDistance(direction: Vector3, fov: number, aspect: number, ceiling: number) {
+  const temp = new PerspectiveCamera(fov, aspect);
+  temp.position.copy(direction);
+  temp.lookAt(0, 0, 0);
+  const inverse = temp.quaternion.clone().invert() as Quaternion;
+  const tangent = Math.tan((fov * Math.PI) / 360);
+  let distance = 1;
+  for (const x of [-5.4, 5.4])
+    for (const y of [0, ceiling])
+      for (const z of [-5.4, 5.4]) {
+        const v = new Vector3(x, y, z).applyQuaternion(inverse);
+        distance = Math.max(
+          distance,
+          Math.abs(v.x) / (tangent * aspect) + v.z,
+          Math.abs(v.y) / tangent + v.z,
+        );
+      }
+  return distance * 1.015;
+}
 
 /** Projects into the unobscured HUD rectangle while rendering the world edge to edge. */
 export function SceneCamera({
@@ -24,11 +45,15 @@ export function SceneCamera({
   const { camera, size } = useThree();
   const destination = useRef(new Vector3(0, 20, 9));
   const initial = useRef(true);
+  const previousHuman = useRef(human);
+  const orbit = useRef<{ from: Vector3; to: Vector3; startedAt: number } | null>(null);
   const lookTarget = useRef(new Vector3());
   const targetDestination = useRef(new Vector3());
   useLayoutEffect(() => {
     if (!(camera instanceof PerspectiveCamera) || !area || area.height < 1) return;
     if (focusPiece) {
+      orbit.current = null;
+      previousHuman.current = human;
       const frame = resultCameraFrame(focusPiece, size.width / size.height);
       destination.current.copy(frame.position);
       targetDestination.current.copy(frame.target);
@@ -49,35 +74,40 @@ export function SceneCamera({
       view === 'top' ? 1 : 1.9,
       view === 'top' ? side * 0.001 : side,
     ).normalize();
-    const temp = new PerspectiveCamera(camera.fov, area.width / area.height);
-    temp.position.copy(direction);
-    temp.lookAt(0, 0, 0);
-    const inverse = temp.quaternion.clone().invert() as Quaternion;
-    const tangent = Math.tan((camera.fov * Math.PI) / 360);
-    let distance = 1;
-    for (const x of [-5.4, 5.4])
-      for (const y of [0, ceiling])
-        for (const z of [-5.4, 5.4]) {
-          const v = new Vector3(x, y, z).applyQuaternion(inverse);
-          distance = Math.max(
-            distance,
-            Math.abs(v.x) / ((tangent * area.width) / area.height) + v.z,
-            Math.abs(v.y) / tangent + v.z,
-          );
-        }
-    destination.current.copy(direction.multiplyScalar(distance * 1.015));
+    const distance = boardDistance(direction, camera.fov, area.width / area.height, ceiling);
+    destination.current.copy(direction.multiplyScalar(distance));
     camera.setViewOffset(area.width, area.height, -area.x, -area.y, size.width, size.height);
     if (initial.current || reduced) {
+      orbit.current = null;
       camera.position.copy(destination.current);
       lookTarget.current.set(0, 0, 0);
       camera.lookAt(lookTarget.current);
       initial.current = false;
+    } else if (previousHuman.current !== human) {
+      orbit.current = {
+        from: camera.position.clone(),
+        to: destination.current.clone(),
+        startedAt: performance.now(),
+      };
+    } else if (orbit.current) {
+      orbit.current.to.copy(destination.current);
     }
+    previousHuman.current = human;
     camera.updateProjectionMatrix();
   }, [camera, area, size.width, size.height, view, human, reduced, ceiling, focusPiece]);
   useFrame((_, delta) => {
     const blend = reduced ? 1 : 1 - Math.exp(-delta * (focusPiece ? 2.4 : 6));
-    camera.position.lerp(destination.current, blend);
+    if (orbit.current) {
+      const t = (performance.now() - orbit.current.startedAt) / TURN_ROTATION_MS;
+      camera.position.copy(sampleCameraOrbit(orbit.current.from, orbit.current.to, t));
+      // Diagonal views need more room, especially on narrow phone screens.
+      if (camera instanceof PerspectiveCamera && area) {
+        const direction = camera.position.clone().normalize();
+        const needed = boardDistance(direction, camera.fov, area.width / area.height, ceiling);
+        camera.position.setLength(Math.max(camera.position.length(), needed));
+      }
+      if (t >= 1) orbit.current = null;
+    } else camera.position.lerp(destination.current, blend);
     lookTarget.current.lerp(targetDestination.current, blend);
     camera.lookAt(lookTarget.current);
   });

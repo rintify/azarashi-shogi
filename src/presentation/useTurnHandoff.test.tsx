@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
+import { TURN_ROTATION_MS } from './cameraOrbit';
 import { useTurnHandoff } from './useTurnHandoff';
 import type { Player } from '../game/types';
 afterEach(() => {
@@ -15,7 +16,7 @@ it('blocks input only during local camera handoff, and cancels stale timers', ()
   expect(hook.result.current).toBe(true);
   hook.rerender({ player: 'north', local: true, reduced: false });
   expect(hook.result.current).toBe(false);
-  act(() => vi.advanceTimersByTime(650));
+  act(() => vi.advanceTimersByTime(TURN_ROTATION_MS));
   expect(hook.result.current).toBe(true);
   hook.rerender({ player: 'south', local: true, reduced: false });
   hook.rerender({ player: 'south', local: false, reduced: false });
