@@ -2,15 +2,14 @@ import { BufferGeometry, Float32BufferAttribute } from 'three';
 
 const POINTS = 5;
 const RADIUS = 0.265;
-// Broad rounded lobes and a thick band fill the existing silhouette like a toy crown.
+// Broad flat panels and five crisp peaks keep the small crown readable.
 function crownGeometry() {
   const positions: number[] = [];
   const indices: number[] = [];
-  const segments = 128;
+  const segments = POINTS * 2;
   for (let i = 0; i <= segments; i++) {
     const angle = (i / segments) * Math.PI * 2;
-    const tip = (1 + Math.cos(angle * POINTS)) / 2;
-    const height = 0.17 + tip * 0.08;
+    const height = i % 2 === 0 ? 0.283 : 0.17;
     for (const [radius, y] of [
       [RADIUS - 0.095, 0],
       [RADIUS, 0],
@@ -38,23 +37,8 @@ export function RoyalCrown() {
   return (
     <group position={[0, 1.09, 0.3]} rotation={[0, 0, -0.06]} scale={0.6}>
       <mesh geometry={band} dispose={null} castShadow>
-        <meshStandardMaterial color="#f5c354" metalness={0.05} roughness={0.55} />
+        <meshStandardMaterial color="#f5c354" metalness={0.05} roughness={0.55} flatShading />
       </mesh>
-      <mesh position={[0, 0.025, 0]} rotation={[Math.PI / 2, 0, 0]} castShadow>
-        <torusGeometry args={[RADIUS - 0.014, 0.024, 8, 64]} />
-        <meshStandardMaterial color="#f5c354" metalness={0.05} roughness={0.55} />
-      </mesh>
-      {Array.from({ length: POINTS }, (_, i) => {
-        const angle = (i / POINTS) * Math.PI * 2;
-        return (
-          <group key={i} rotation={[0, angle, 0]}>
-            <mesh position={[0, 0.25, RADIUS + 0.007]} castShadow>
-              <sphereGeometry args={[0.033, 12, 8]} />
-              <meshStandardMaterial color="#f5c354" metalness={0.05} roughness={0.55} />
-            </mesh>
-          </group>
-        );
-      })}
     </group>
   );
 }
