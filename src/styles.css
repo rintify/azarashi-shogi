@@ -544,6 +544,10 @@ svg {
   pointer-events: none;
   user-select: none;
 }
+/* Presence animates the wrapper; the badge keeps its continuous opacity pulse. */
+.threat-marker-motion {
+  display: inline-flex;
+}
 .threat-badge {
   --marker-color: #e34a50;
   width: 25px;
