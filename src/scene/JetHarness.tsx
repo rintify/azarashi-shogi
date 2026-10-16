@@ -1,52 +1,62 @@
-import { CatmullRomCurve3, ExtrudeGeometry, Shape, Vector3 } from 'three';
+import { ExtrudeGeometry, Shape } from 'three';
 
-const strapSection = new Shape();
-strapSection.moveTo(-0.038, -0.012);
-strapSection.lineTo(0.038, -0.012);
-strapSection.lineTo(0.038, 0.012);
-strapSection.lineTo(-0.038, 0.012);
-strapSection.closePath();
-
-// Each shoulder strap leaves the pack, wraps around a flipper, and returns to
-// the lower mounting point. The belly stays open, like a pair of backpack straps.
-const straps = [-1, 1].map((side) => {
-  const path = new CatmullRomCurve3([
-    new Vector3(side * 0.1, -0.1, 0.14),
-    new Vector3(side * 0.22, -0.21, 0.28),
-    new Vector3(side * 0.275, -0.37, 0.27),
-    new Vector3(side * 0.24, -0.51, 0.14),
-    new Vector3(side * 0.19, -0.49, -0.09),
-    new Vector3(side * 0.105, -0.13, -0.15),
-  ]);
-  return {
-    side,
-    geometry: new ExtrudeGeometry(strapSection, {
-      extrudePath: path,
-      steps: 48,
-      bevelEnabled: false,
-    }),
-  };
+// Broad shoulder braces wrap from the upper pack mount to a cradle below the
+// chest. A defined side profile keeps their width visible from the game camera.
+const shoulder = new Shape();
+shoulder.moveTo(0.1, -0.09);
+shoulder.lineTo(0.28, -0.18);
+shoulder.quadraticCurveTo(0.35, -0.25, 0.34, -0.37);
+shoulder.lineTo(0.3, -0.49);
+shoulder.lineTo(0.17, -0.6);
+shoulder.lineTo(0.04, -0.54);
+shoulder.lineTo(0.17, -0.43);
+shoulder.lineTo(0.2, -0.32);
+shoulder.quadraticCurveTo(0.22, -0.25, 0.16, -0.23);
+shoulder.lineTo(-0.01, -0.16);
+shoulder.closePath();
+const brace = new ExtrudeGeometry(shoulder, {
+  depth: 0.035,
+  bevelEnabled: true,
+  bevelThickness: 0.009,
+  bevelSize: 0.009,
+  bevelSegments: 2,
+  curveSegments: 12,
 });
 
-/** Two light-blue shoulder loops fasten the jet pack without a torso belt. */
+/** A sturdy light-blue chest cradle supports the wide backpack on both sides. */
 export function JetHarness() {
   return (
     <group>
-      {straps.map(({ side, geometry }) => (
+      {[-1, 1].map((side) => (
         <group key={side}>
-          <mesh geometry={geometry} castShadow dispose={null}>
-            <meshStandardMaterial color="#8dcfe8" roughness={0.72} />
+          <mesh
+            geometry={brace}
+            position={[side * 0.285, 0, 0]}
+            rotation={[0, -Math.PI / 2, 0]}
+            scale={[1, 1, side]}
+            castShadow
+            dispose={null}
+          >
+            <meshStandardMaterial color="#91d1e9" roughness={0.6} />
           </mesh>
-          <mesh position={[side * 0.278, -0.37, 0.27]} castShadow>
-            <boxGeometry args={[0.024, 0.075, 0.075]} />
-            <meshStandardMaterial color="#d6f2fc" metalness={0.15} roughness={0.5} />
+          <mesh position={[side * 0.292, -0.39, 0.265]} castShadow>
+            <boxGeometry args={[0.028, 0.1, 0.09]} />
+            <meshStandardMaterial color="#d5f1fb" metalness={0.2} roughness={0.45} />
           </mesh>
-          <mesh position={[side * 0.293, -0.37, 0.27]}>
-            <boxGeometry args={[0.008, 0.032, 0.035]} />
-            <meshStandardMaterial color="#68b4d5" roughness={0.65} />
+          <mesh position={[side * 0.31, -0.39, 0.265]}>
+            <boxGeometry args={[0.012, 0.048, 0.046]} />
+            <meshStandardMaterial color="#62accb" roughness={0.55} />
+          </mesh>
+          <mesh position={[side * 0.17, -0.14, -0.07]} castShadow>
+            <boxGeometry args={[0.085, 0.1, 0.27]} />
+            <meshStandardMaterial color="#91d1e9" roughness={0.6} />
           </mesh>
         </group>
       ))}
+      <mesh position={[0, -0.565, 0.11]} rotation={[-0.25, 0, 0]} castShadow>
+        <boxGeometry args={[0.49, 0.045, 0.13]} />
+        <meshStandardMaterial color="#91d1e9" roughness={0.6} />
+      </mesh>
     </group>
   );
 }
