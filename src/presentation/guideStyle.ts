@@ -9,6 +9,7 @@ export const GUIDE_COLORS = {
   kingCaptureTrap: '#e9ad18',
   kingDanger: '#8f2038',
   fill: '#42b9d8',
+  active: '#098bba',
   last: '#ffffff',
   enemy: '#b08be9',
 } as const;
@@ -45,6 +46,8 @@ export function guideStyle(state: GuideState) {
       fillOpacity: state.reachable ? 0.32 : 0,
       dot: GUIDE_COLORS.enemy,
       dotOpacity: 0,
+      outline: GUIDE_COLORS.enemy,
+      outlineOpacity: 0,
     };
   const preview = state.active || state.additional;
   const guided = state.legal || state.stationary;
@@ -81,7 +84,7 @@ export function guideStyle(state: GuideState) {
           ? 0.2
           : state.last
             ? 0.1
-            : 0,
+          : 0,
     dot: transformationSafe
       ? GUIDE_COLORS.transformation
       : kingCaptureTrap
@@ -92,5 +95,11 @@ export function guideStyle(state: GuideState) {
             ? GUIDE_COLORS.danger
             : GUIDE_COLORS.safe,
     dotOpacity: state.legal || state.stationaryAnchor ? 1 : 0,
+    outline: kingCaptureTrap
+      ? GUIDE_COLORS.kingCaptureTrap
+      : danger
+        ? dangerColor
+        : GUIDE_COLORS.active,
+    outlineOpacity: preview ? 0.9 : 0,
   };
 }

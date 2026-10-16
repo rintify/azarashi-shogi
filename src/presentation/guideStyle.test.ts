@@ -13,9 +13,11 @@ it('uses red for dangerous dots and fill without an outline', () => {
   const danger = guideStyle({ ...base, unsafe: true });
   expect(danger.dot).toBe(GUIDE_COLORS.danger);
   expect(danger.fill).toBe(GUIDE_COLORS.danger);
+  expect(danger.outline).toBe(GUIDE_COLORS.danger);
   expect(danger.fillOpacity).toBeGreaterThan(0);
+  expect(danger.outlineOpacity).toBe(0);
 });
-it('shows safe, dangerous and king-danger previews using their fill colors', () => {
+it('uses the same hover outline visibility for safe, dangerous and king-danger cells', () => {
   for (const key of ['active', 'additional'] as const) {
     const safe = guideStyle({ ...base, [key]: true });
     const danger = guideStyle({ ...base, [key]: true, previewUnsafe: true });
@@ -25,18 +27,16 @@ it('shows safe, dangerous and king-danger previews using their fill colors', () 
       previewUnsafe: true,
       previewKingDanger: true,
     });
-    expect(safe.fill).toBe(GUIDE_COLORS.fill);
-    expect(danger.fill).toBe(GUIDE_COLORS.danger);
-    expect(fatal.fill).toBe(GUIDE_COLORS.kingDanger);
-    expect(safe.fillOpacity).toBeGreaterThan(0);
-    expect(danger.fillOpacity).toBeGreaterThan(0);
-    expect(fatal.fillOpacity).toBeGreaterThan(0);
+    expect(safe.outlineOpacity).toBeGreaterThan(0);
+    expect(danger.outlineOpacity).toBe(safe.outlineOpacity);
+    expect(fatal.outlineOpacity).toBe(safe.outlineOpacity);
   }
 });
 it('never replaces dangerous hover or L-shape preview with the old blue fill', () => {
   for (const key of ['active', 'additional'] as const) {
     const danger = guideStyle({ ...base, [key]: true, legal: false, previewUnsafe: true });
     expect(danger.fill).toBe(GUIDE_COLORS.danger);
+    expect(danger.outline).toBe(GUIDE_COLORS.danger);
   }
 });
 it('uses the selected action for overlapping footprint cells instead of another anchor’s danger', () => {
@@ -58,6 +58,7 @@ it('shows enemy coverage in its own color without danger, dots or outlines', () 
   expect(style.fill).not.toBe(GUIDE_COLORS.fill);
   expect(style.fillOpacity).toBeGreaterThan(0);
   expect(style.dotOpacity).toBe(0);
+  expect(style.outlineOpacity).toBe(0);
   expect(guideStyle({ ...base, inspectingEnemy: true, reachable: false }).fillOpacity).toBe(0);
 });
 
@@ -66,6 +67,7 @@ it('uses dark red specifically for king exposure while preserving ordinary piece
   expect(fatal.fill).toBe(GUIDE_COLORS.kingDanger);
   expect(fatal.dot).toBe(GUIDE_COLORS.kingDanger);
   expect(fatal.kingDanger).toBe(true);
+  expect(fatal.outlineOpacity).toBe(0);
   expect(guideStyle({ ...base, unsafe: true }).kingDanger).toBe(false);
 });
 it('uses the exact preview for king exposure, including transformation choices', () => {
@@ -101,10 +103,11 @@ it('shows conditional transformation safety in purple', () => {
   ).toBe(false);
 });
 
-it('colors trapped king captures yellow, including their hovered footprint', () => {
+it('colors trapped king captures yellow, including their hovered footprint and outline', () => {
   const idle = guideStyle({ ...base, kingCaptureTrap: true });
   expect(idle.fill).toBe(GUIDE_COLORS.kingCaptureTrap);
   expect(idle.dot).toBe(GUIDE_COLORS.kingCaptureTrap);
+  expect(idle.outlineOpacity).toBe(0);
   for (const key of ['active', 'additional'] as const) {
     const hovered = guideStyle({
       ...base,
@@ -113,6 +116,8 @@ it('colors trapped king captures yellow, including their hovered footprint', () 
       previewKingCaptureTrap: true,
     });
     expect(hovered.fill).toBe(GUIDE_COLORS.kingCaptureTrap);
+    expect(hovered.outline).toBe(GUIDE_COLORS.kingCaptureTrap);
+    expect(hovered.outlineOpacity).toBe(guideStyle({ ...base, active: true }).outlineOpacity);
   }
 });
 it('never lets yellow override king danger, transformation safety or enemy inspection', () => {
@@ -182,4 +187,5 @@ it('shows previous-move cells as a faint white fill without a border', () => {
   const style = guideStyle({ ...base, legal: false, reachable: false, last: true });
   expect(style.fill).toBe(GUIDE_COLORS.last);
   expect(style.fillOpacity).toBe(0.1);
+  expect(style.outlineOpacity).toBe(0);
 });
