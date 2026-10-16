@@ -367,3 +367,31 @@ it('captures the enemy king without asking for an orca rotation', () => {
   expect(present).not.toHaveBeenCalled();
   expect(submit).toHaveBeenCalledWith({ type: 'move', pieceId: orca.id, to: { x: 5, y: 5 } }, 0);
 });
+
+it('separates moves exposing the king from danger to the moving piece, and updates exact previews', () => {
+  const mover: Piece = { ...penguin, at: { x: 4, y: 6 } };
+  const jet: Piece = { ...penguin, id: 'jet', owner: 'north', promoted: true, at: { x: 4, y: 0 } };
+  const state = {
+    ...createGame(),
+    pieces: [
+      ...createGame().pieces.map((piece) =>
+        piece.owner === 'north' ? { ...piece, at: { x: 8, y: 0 } } : piece,
+      ),
+      mover,
+      jet,
+    ],
+  };
+  const hook = renderHook(() => useBoardInteraction(state, 'south', vi.fn()));
+  act(() => hook.result.current.clickCell(mover.at));
+  expect(hook.result.current.kingDangerCells).toContainEqual({ x: 3, y: 6 });
+  expect(hook.result.current.kingDangerCells).not.toContainEqual({ x: 4, y: 5 });
+  expect(hook.result.current.unsafeCells).toContainEqual({ x: 4, y: 5 });
+  act(() => hook.result.current.setHover({ x: 3, y: 6 }));
+  expect(hook.result.current.previewKingDanger).toBe(true);
+  act(() => hook.result.current.setHover({ x: 4, y: 5 }));
+  expect(hook.result.current.previewKingDanger).toBe(false);
+  act(() => hook.result.current.clearSelection());
+  act(() => hook.result.current.clickCell(jet.at));
+  expect(hook.result.current.kingDangerCells).toEqual([]);
+  expect(hook.result.current.previewKingDanger).toBe(false);
+});

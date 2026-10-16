@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
-import { Crown } from 'lucide-react';
+import { pieceMark, PieceMarkIcon, MARK_LABELS } from '../components/PieceMark';
 import { Color, MeshBasicMaterial, type Group } from 'three';
 import type { Cell, Piece } from '../game/types';
 import { dimensions } from '../game/pieces';
@@ -27,6 +27,7 @@ export interface ActorProps {
   source: boolean;
   threatened: boolean;
   kingCapture: boolean;
+  helper: boolean;
   disabled: boolean;
   reduced: boolean;
   intro: boolean;
@@ -44,6 +45,7 @@ export function PieceActor({
   source,
   threatened,
   kingCapture,
+  helper,
   disabled,
   reduced,
   intro,
@@ -123,6 +125,7 @@ export function PieceActor({
     if (afterModel.current)
       afterModel.current.visible = !!moving && promoted !== motion?.before?.promoted;
   });
+  const mark = pieceMark(kingCapture, helper, threatened);
   const initialPromoted = moving && motion?.before ? motion.before.promoted : piece.promoted;
   const modelScale = piece.kind === 'walrus' ? 1 : piece.kind === 'orca' ? 0.9 : 0.86;
   return (
@@ -180,18 +183,17 @@ export function PieceActor({
         reduced={reduced}
       />
       <Html position={[w / 2 - 0.14, 1.5, 0]} center portal={htmlPortal} zIndexRange={[25, 20]}>
-        <AnimatedPresence show={(kingCapture || threatened) && !disabled && !victim}>
+        <AnimatedPresence show={!!mark && !disabled && !victim}>
           <button
-            className={`threat-badge ${kingCapture ? 'king-capture-badge' : ''}`}
-            aria-label={
-              kingCapture ? '相手の王を捕食できます。この駒を選択' : 'この駒を捕食できる相手を表示'
-            }
+            className={`threat-badge ${mark === 'king' ? 'king-capture-badge' : mark === 'helper' ? 'helper-badge' : ''}`}
+            aria-label={mark ? MARK_LABELS[mark] : undefined}
+            title={mark ? MARK_LABELS[mark] : undefined}
             onClick={(e) => {
               e.stopPropagation();
               onThreat();
             }}
           >
-            {kingCapture ? <Crown size={18} strokeWidth={2.7} /> : '!'}
+            {mark && <PieceMarkIcon mark={mark} />}
           </button>
         </AnimatedPresence>
       </Html>

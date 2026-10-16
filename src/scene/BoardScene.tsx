@@ -20,6 +20,9 @@ export interface BoardProps {
   legalCells: Cell[];
   reachableCells: Cell[];
   unsafeCells: Cell[];
+  kingDangerCells: Cell[];
+  previewKingDanger: boolean;
+  helperIds: string[];
   preview: ActionPreview | null;
   previewUnsafe: boolean;
   threats: Threat[];
@@ -50,6 +53,7 @@ function BoardContents(props: BoardProps & { htmlPortal: RefObject<HTMLDivElemen
   );
   const legal = useMemo(() => new Set(props.legalCells.map(cellKey)), [props.legalCells]);
   const reachable = new Set(props.reachableCells.map(cellKey));
+  const kingDanger = new Set(props.kingDangerCells.map(cellKey));
   const unsafe = new Set(props.unsafeCells.map(cellKey));
   const shownAction = preview ?? (motion?.stage === 'return' ? null : motion?.action);
   const target = new Set(shownAction?.footprint.map(cellKey));
@@ -102,6 +106,8 @@ function BoardContents(props: BoardProps & { htmlPortal: RefObject<HTMLDivElemen
               last={last.has(key)}
               legal={legal.has(key) && !busy}
               unsafe={unsafe.has(key)}
+              kingDanger={kingDanger.has(key)}
+              previewKingDanger={!!preview && props.previewKingDanger}
               previewUnsafe={!!preview && props.previewUnsafe}
               reduced={props.reduced}
             />
@@ -127,6 +133,7 @@ function BoardContents(props: BoardProps & { htmlPortal: RefObject<HTMLDivElemen
           threatened={
             game.turn === props.human && props.threats.some((t) => t.targetId === piece.id)
           }
+          helper={game.turn === props.human && props.helperIds.includes(piece.id)}
           kingCapture={game.turn === props.human && props.kingCaptureIds.includes(piece.id)}
           disabled={busy}
           reduced={props.reduced}

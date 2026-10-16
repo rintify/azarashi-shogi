@@ -218,6 +218,9 @@ export default function App() {
               legalCells={interaction.legalCells}
               reachableCells={interaction.reachableCells}
               unsafeCells={interaction.unsafeCells}
+              kingDangerCells={interaction.kingDangerCells}
+              previewKingDanger={interaction.previewKingDanger}
+              helperIds={interaction.helperIds}
               preview={interaction.preview}
               previewUnsafe={interaction.previewUnsafe}
               threats={interaction.threats}
@@ -393,6 +396,9 @@ export default function App() {
           <CoordinateBoard
             inspectingEnemy={interaction.inspectingEnemy}
             kingCaptureIds={interaction.kingCaptureIds}
+            helperIds={interaction.helperIds}
+            threatenedIds={interaction.threats.map((threat) => threat.targetId)}
+            kingDangerCells={interaction.kingDangerCells}
             unsafeCells={interaction.unsafeCells}
             game={game}
             human={settings.human}

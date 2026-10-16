@@ -7,6 +7,7 @@ import {
   placementCells,
   previewAction,
 } from '../game/engine';
+import { kingRescuers } from '../game/rescue';
 import { actionSafety } from '../game/safety';
 import { cellKey, sameCell, otherPlayer } from '../game/types';
 import { footprint } from '../game/pieces';
@@ -87,6 +88,15 @@ export function useBoardInteraction(
     () => legalCells.filter((at) => destinationSafety.get(cellKey(at))?.unsafe),
     [legalCells, destinationSafety],
   );
+  const kingDangerCells = useMemo(
+    () =>
+      legalCells.filter((at) => {
+        const safety = destinationSafety.get(cellKey(at));
+        return safety?.kingThreatened || safety?.losesGame;
+      }),
+    [legalCells, destinationSafety],
+  );
+  const helperIds = useMemo(() => kingRescuers(game, human), [game, human]);
   const pendingSafety = useMemo(
     () => pending?.map((option) => actionSafety(game, option)) ?? [],
     [game, pending],
@@ -123,6 +133,12 @@ export function useBoardInteraction(
   const previewUnsafe = pending
     ? !!pendingSafety[optionIndex]?.unsafe
     : !!hover && !!destinationSafety.get(cellKey(hover))?.unsafe;
+  const previewSafety = pending
+    ? pendingSafety[optionIndex]
+    : hover
+      ? destinationSafety.get(cellKey(hover))
+      : undefined;
+  const previewKingDanger = !!(previewSafety?.kingThreatened || previewSafety?.losesGame);
   const portrait: Piece | null =
     selected ??
     (activeKind
@@ -204,6 +220,9 @@ export function useBoardInteraction(
     legalCells,
     reachableCells,
     unsafeCells,
+    kingDangerCells,
+    previewKingDanger,
+    helperIds,
     previewUnsafe,
     pendingSafety,
     threats,

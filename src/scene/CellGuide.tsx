@@ -36,11 +36,12 @@ export function CellGuide(props: GuideState & { reduced: boolean }) {
       mesh.visible = material.opacity > 0.002;
     };
     const pulse =
-      props.inspectingEnemy && !props.reduced
-        ? 0.75 + 0.25 * Math.sin((clock.elapsedTime * Math.PI * 2) / 2.8)
+      (props.inspectingEnemy || style.kingDanger || props.kingDanger) && !props.reduced
+        ? (props.inspectingEnemy ? 0.75 : 0.65) +
+          (props.inspectingEnemy ? 0.25 : 0.35) * Math.sin((clock.elapsedTime * Math.PI * 2) / 2.8)
         : 1;
-    fade(fill.current, style.fillOpacity * pulse);
-    fade(dot.current, style.dotOpacity);
+    fade(fill.current, style.fillOpacity * (props.inspectingEnemy || style.kingDanger ? pulse : 1));
+    fade(dot.current, style.dotOpacity * (props.kingDanger ? pulse : 1));
     fade(outline.current, style.outlineOpacity);
     if (dot.current) {
       const material = dot.current.material as MeshBasicMaterial;

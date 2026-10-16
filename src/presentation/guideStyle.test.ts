@@ -48,3 +48,33 @@ it('shows enemy coverage in its own color without danger, dots or outlines', () 
     guideStyle({ ...base, inspectingEnemy: true, reachable: false, last: true }).fillOpacity,
   ).toBe(0);
 });
+
+it('uses dark red specifically for king exposure while preserving ordinary piece danger', () => {
+  const fatal = guideStyle({ ...base, unsafe: true, kingDanger: true });
+  expect(fatal.fill).toBe(GUIDE_COLORS.kingDanger);
+  expect(fatal.dot).toBe(GUIDE_COLORS.kingDanger);
+  expect(fatal.kingDanger).toBe(true);
+  expect(fatal.outlineOpacity).toBe(0);
+  expect(guideStyle({ ...base, unsafe: true }).kingDanger).toBe(false);
+});
+it('uses the exact preview for king exposure, including transformation choices', () => {
+  const safe = guideStyle({
+    ...base,
+    active: true,
+    unsafe: true,
+    kingDanger: true,
+    previewUnsafe: false,
+    previewKingDanger: false,
+  });
+  expect(safe.fill).toBe(GUIDE_COLORS.fill);
+  expect(safe.kingDanger).toBe(false);
+  const fatal = guideStyle({
+    ...base,
+    additional: true,
+    previewUnsafe: true,
+    previewKingDanger: true,
+  });
+  expect(fatal.fill).toBe(GUIDE_COLORS.kingDanger);
+  expect(fatal.kingDanger).toBe(true);
+  expect(guideStyle({ ...base, inspectingEnemy: true, kingDanger: true }).kingDanger).toBe(false);
+});

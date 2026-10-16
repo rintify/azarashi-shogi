@@ -4,7 +4,7 @@ import { pieceAt } from '../game/engine';
 import { pieceName } from '../game/pieces';
 import { sameCell, type Cell, type GameState, type Player } from '../game/types';
 import { AnimalIcon } from './AnimalIcon';
-import { Crown } from 'lucide-react';
+import { pieceMark, PieceMarkIcon, MARK_LABELS } from './PieceMark';
 import { coordinate } from './coordinates';
 
 /** Accessible alternative uses exactly the same cell intents as the 3D board. */
@@ -16,6 +16,9 @@ export function CoordinateBoard({
   inspectingEnemy = false,
   unsafeCells = [],
   kingCaptureIds = [],
+  helperIds = [],
+  threatenedIds = [],
+  kingDangerCells = [],
   onCell,
   onHover,
 }: {
@@ -26,6 +29,9 @@ export function CoordinateBoard({
   inspectingEnemy?: boolean;
   unsafeCells?: Cell[];
   kingCaptureIds?: string[];
+  helperIds?: string[];
+  threatenedIds?: string[];
+  kingDangerCells?: Cell[];
   onCell: (cell: Cell) => void;
   onHover: (cell: Cell) => void;
 }) {
@@ -39,6 +45,7 @@ export function CoordinateBoard({
       style={
         {
           '--danger-color': GUIDE_COLORS.danger,
+          '--king-danger-color': GUIDE_COLORS.kingDanger,
           '--enemy-guide-color': GUIDE_COLORS.enemy,
         } as CSSProperties
       }
@@ -51,6 +58,11 @@ export function CoordinateBoard({
         const reachable = reachableCells.some((c) => sameCell(c, cell));
         const unsafe = !inspectingEnemy && unsafeCells.some((c) => sameCell(c, cell));
         const kingCapture = game.turn === human && !!piece && kingCaptureIds.includes(piece.id);
+        const kingDanger = !inspectingEnemy && kingDangerCells.some((c) => sameCell(c, cell));
+        const mark =
+          game.turn === human && piece
+            ? pieceMark(kingCapture, helperIds.includes(piece.id), threatenedIds.includes(piece.id))
+            : null;
         return (
           <button
             key={i}
@@ -71,8 +83,8 @@ export function CoordinateBoard({
                 ?.querySelector<HTMLButtonElement>(`button[data-index="${next}"]`)
                 ?.focus();
             }}
-            className={`${reachable ? 'reachable' : ''} ${unsafe ? 'unsafe' : ''} ${legal && !inspectingEnemy ? 'legal' : ''} ${piece ? (piece.owner === human ? 'own' : 'enemy') : ''}`}
-            aria-label={`${coordinate(cell)}${piece ? ` ${pieceName(piece)}` : ''}${legal ? (inspectingEnemy ? ' 敵の移動範囲' : ' 選択可能') : ''}${unsafe ? ' 捕食の危険' : ''}${kingCapture ? ' 相手の王を捕食可能' : ''}`}
+            className={`${reachable ? 'reachable' : ''} ${unsafe ? 'unsafe' : ''} ${kingDanger ? 'king-risk' : ''} ${legal && !inspectingEnemy ? 'legal' : ''} ${piece ? (piece.owner === human ? 'own' : 'enemy') : ''}`}
+            aria-label={`${coordinate(cell)}${piece ? ` ${pieceName(piece)}` : ''}${legal ? (inspectingEnemy ? ' 敵の移動範囲' : ' 選択可能') : ''}${unsafe ? ' 捕食の危険' : ''}${mark ? ` ${MARK_LABELS[mark]}` : ''}${kingDanger ? ' 王が捕食される危険' : ''}`}
             onClick={() => onCell(cell)}
             onFocus={() => {
               setFocused(index);
@@ -81,8 +93,13 @@ export function CoordinateBoard({
             onMouseEnter={() => onHover(cell)}
           >
             {piece ? <AnimalIcon kind={piece.kind} promoted={piece.promoted} /> : null}
-            {kingCapture && (
-              <Crown className="coordinate-king-capture" size={13} aria-hidden="true" />
+            {mark && (
+              <span
+                className={`coordinate-mark ${mark === 'king' ? 'king-capture-badge' : mark === 'helper' ? 'helper-badge' : ''}`}
+                aria-hidden="true"
+              >
+                <PieceMarkIcon mark={mark} size={13} />
+              </span>
             )}
           </button>
         );

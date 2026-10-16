@@ -2,6 +2,7 @@
 export const GUIDE_COLORS = {
   safe: '#087b9f',
   danger: '#df2946',
+  kingDanger: '#8f2038',
   fill: '#42b9d8',
   active: '#098bba',
   last: '#6fa9be',
@@ -16,10 +17,13 @@ export interface GuideState {
   legal: boolean;
   unsafe: boolean;
   previewUnsafe: boolean;
+  kingDanger?: boolean;
+  previewKingDanger?: boolean;
 }
 export function guideStyle(state: GuideState) {
   if (state.inspectingEnemy)
     return {
+      kingDanger: false,
       fill: GUIDE_COLORS.enemy,
       fillOpacity: state.reachable ? 0.32 : 0,
       dot: GUIDE_COLORS.enemy,
@@ -28,9 +32,12 @@ export function guideStyle(state: GuideState) {
       outlineOpacity: 0,
     };
   const preview = state.active || state.additional;
-  const danger = preview ? state.previewUnsafe : state.legal && state.unsafe;
+  const kingDanger = !!(preview ? state.previewKingDanger : state.legal && state.kingDanger);
+  const danger = kingDanger || (preview ? state.previewUnsafe : state.legal && state.unsafe);
+  const dangerColor = kingDanger ? GUIDE_COLORS.kingDanger : GUIDE_COLORS.danger;
   return {
-    fill: danger ? GUIDE_COLORS.danger : GUIDE_COLORS.fill,
+    kingDanger,
+    fill: danger ? dangerColor : GUIDE_COLORS.fill,
     fillOpacity: preview
       ? danger
         ? 0.32
@@ -42,9 +49,13 @@ export function guideStyle(state: GuideState) {
           : state.last
             ? 0.1
             : 0,
-    dot: state.unsafe ? GUIDE_COLORS.danger : GUIDE_COLORS.safe,
+    dot: state.kingDanger
+      ? GUIDE_COLORS.kingDanger
+      : state.unsafe
+        ? GUIDE_COLORS.danger
+        : GUIDE_COLORS.safe,
     dotOpacity: state.legal ? 1 : 0,
-    outline: danger ? GUIDE_COLORS.danger : preview ? GUIDE_COLORS.active : GUIDE_COLORS.last,
+    outline: danger ? dangerColor : preview ? GUIDE_COLORS.active : GUIDE_COLORS.last,
     outlineOpacity: danger ? 0 : preview ? 0.9 : state.last ? 0.45 : 0,
   };
 }

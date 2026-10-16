@@ -564,15 +564,6 @@ svg {
   border-color: #fff9df;
   box-shadow: 0 2px 8px #9b741b40;
 }
-.coordinate-king-capture {
-  position: absolute;
-  top: 0;
-  right: 0;
-  color: #785122;
-  background: #f7cc61;
-  border-radius: 50%;
-  padding: 1px;
-}
 .coordinate-overlay {
   position: absolute;
   z-index: 20;
@@ -2476,4 +2467,51 @@ button:not(:disabled):focus-visible {
 }
 .replay-stock .stock-gain {
   top: -8px;
+}
+
+.threat-badge.helper-badge {
+  color: #206c53;
+  background: #bce7ce;
+  border-color: #edfff2;
+  box-shadow: 0 2px 8px #1c6c3830;
+}
+.coordinate-mark {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 17px;
+  height: 17px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #fff3e7;
+  border-radius: 50%;
+  background: #d56b37;
+  color: white;
+  font-size: 12px;
+  font-weight: 800;
+}
+.coordinate-mark.king-capture-badge {
+  color: #785122;
+  background: #f7cc61;
+  border-color: #fff9df;
+}
+.coordinate-mark.helper-badge {
+  color: #206c53;
+  background: #bce7ce;
+  border-color: #edfff2;
+}
+.coordinate-board button.king-risk {
+  background: color-mix(in srgb, var(--king-danger-color) 48%, #e3f0f5);
+  color: #65172b;
+  box-shadow: none;
+  animation: king-risk-breathe 2.8s ease-in-out infinite;
+}
+@keyframes king-risk-breathe {
+  0%,
+  100% {
+    background: color-mix(in srgb, var(--king-danger-color) 25%, #e3f0f5);
+  }
+  50% {
+    background: color-mix(in srgb, var(--king-danger-color) 55%, #e3f0f5);
+  }
 }
