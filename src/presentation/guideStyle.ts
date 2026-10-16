@@ -10,6 +10,7 @@ export const GUIDE_COLORS = {
   kingDanger: '#8f2038',
   fill: '#42b9d8',
   active: '#098bba',
+  last: '#ffffff',
   enemy: '#b08be9',
 } as const;
 /** Occupied cells are display guides, never legal destinations or a pass action. */
@@ -25,6 +26,7 @@ export interface GuideState {
   active: boolean;
   additional: boolean;
   reachable: boolean;
+  last: boolean;
   legal: boolean;
   unsafe: boolean;
   previewUnsafe: boolean;
@@ -69,7 +71,9 @@ export function guideStyle(state: GuideState) {
         ? GUIDE_COLORS.kingCaptureTrap
         : danger
           ? dangerColor
-          : GUIDE_COLORS.fill,
+          : state.last && !state.reachable
+            ? GUIDE_COLORS.last
+            : GUIDE_COLORS.fill,
     fillOpacity: preview
       ? danger
         ? 0.32
@@ -78,6 +82,8 @@ export function guideStyle(state: GuideState) {
         ? 0.24
         : state.reachable
           ? 0.2
+          : state.last
+            ? 0.1
           : 0,
     dot: transformationSafe
       ? GUIDE_COLORS.transformation

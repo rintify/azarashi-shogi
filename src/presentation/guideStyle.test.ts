@@ -4,6 +4,7 @@ const base: GuideState = {
   active: false,
   additional: false,
   reachable: true,
+  last: false,
   legal: true,
   unsafe: false,
   previewUnsafe: false,
@@ -182,8 +183,9 @@ it('lets a hovered move replace the staying-put footprint color where they overl
   expect(style.kingDanger).toBe(false);
 });
 
-it('leaves previous-move cells clear when no other guide is active', () => {
-  const style = guideStyle({ ...base, legal: false, reachable: false });
-  expect(style.fillOpacity).toBe(0);
+it('shows previous-move cells as a faint white fill without a border', () => {
+  const style = guideStyle({ ...base, legal: false, reachable: false, last: true });
+  expect(style.fill).toBe(GUIDE_COLORS.last);
+  expect(style.fillOpacity).toBe(0.1);
   expect(style.outlineOpacity).toBe(0);
 });
