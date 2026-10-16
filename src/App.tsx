@@ -460,6 +460,13 @@ export default function App() {
       </div>
       <AnimatedPresence show={ended && !resultDismissed}>
         <MatchResult
+          outcome={
+            game.result?.winner == null
+              ? 'draw'
+              : watching || game.result.winner === settings.human
+                ? 'victory'
+                : 'defeat'
+          }
           title={resultTitle}
           detail={
             game.result?.reason === 'both-kings'

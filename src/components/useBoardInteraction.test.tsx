@@ -332,3 +332,38 @@ it('shows enemy orca rotation coverage and clears inspection on a second tap or 
   expect(hook.result.current.activeKind).toBe('seal');
   expect(submit).not.toHaveBeenCalled();
 });
+
+it('captures the enemy king immediately without a penguin transformation prompt', () => {
+  const king: Piece = { ...food, id: 'king', kind: 'walrus', owner: 'north', at: { x: 4, y: 5 } };
+  const submit = vi.fn(),
+    present = vi.fn();
+  const hook = renderHook(() =>
+    useBoardInteraction(
+      { ...createGame(), pieces: [penguin, king] },
+      'south',
+      submit,
+      true,
+      present,
+    ),
+  );
+  act(() => hook.result.current.clickCell(penguin.at));
+  act(() => hook.result.current.clickCell({ x: 4, y: 6 }));
+  expect(hook.result.current.pending).toBeNull();
+  expect(present).not.toHaveBeenCalled();
+  expect(submit).toHaveBeenCalledWith({ type: 'move', pieceId: penguin.id, to: { x: 4, y: 6 } }, 0);
+});
+
+it('captures the enemy king without asking for an orca rotation', () => {
+  const orca: Piece = { ...penguin, kind: 'orca', at: { x: 4, y: 7 } };
+  const king: Piece = { ...food, id: 'king', kind: 'walrus', owner: 'north', at: { x: 5, y: 5 } };
+  const submit = vi.fn(),
+    present = vi.fn();
+  const hook = renderHook(() =>
+    useBoardInteraction({ ...createGame(), pieces: [orca, king] }, 'south', submit, true, present),
+  );
+  act(() => hook.result.current.clickCell(orca.at));
+  act(() => hook.result.current.clickCell({ x: 5, y: 5 }));
+  expect(hook.result.current.pending).toBeNull();
+  expect(present).not.toHaveBeenCalled();
+  expect(submit).toHaveBeenCalledWith({ type: 'move', pieceId: orca.id, to: { x: 5, y: 5 } }, 0);
+});

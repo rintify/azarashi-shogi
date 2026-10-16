@@ -53,10 +53,15 @@ export function useBoardInteraction(
       new Map(
         legalCells.map((at) => {
           const moves = selected ? moveOptions(analysisGame, selected, at) : [];
-          const offered =
+          const preferred =
             selected?.kind === 'seal' && !selected.promoted && moves.some((p) => p.piece.promoted)
               ? moves.filter((p) => p.piece.promoted)
               : moves;
+          // A king captured on landing ends the match; no transformation decision remains.
+          // Keep the existing loss warning if the landing also captures our own king.
+          const offered = preferred[0]?.captured.some((piece) => piece.kind === 'walrus')
+            ? preferred.slice(0, 1)
+            : preferred;
           const placement =
             !selected && activeKind
               ? previewAction(game, { type: 'place', kind: activeKind, at })
