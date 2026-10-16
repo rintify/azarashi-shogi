@@ -1,17 +1,20 @@
 import { useRef, useState } from 'react';
-import { Download, Film, Play, Upload, X } from 'lucide-react';
+import { Download, FileText, Film, Play, Upload, X } from 'lucide-react';
 import { GameDialog } from './AnimatedUI';
 import { AnimalIcon } from './AnimalIcon';
 import { isSpectator, type GameRecord } from '../match/record';
 import { replayTimeline, type SavedReplay } from '../match/replayLibrary';
+import { replayText } from '../match/replayText';
 
-function downloadRecord(record: GameRecord) {
+function downloadRecord(record: GameRecord, text = false) {
   const url = URL.createObjectURL(
-    new Blob([JSON.stringify(record, null, 2)], { type: 'application/json' }),
+    new Blob([text ? replayText(record) : JSON.stringify(record, null, 2)], {
+      type: text ? 'text/plain;charset=utf-8' : 'application/json',
+    }),
   );
   const link = document.createElement('a');
   link.href = url;
-  link.download = `azarashi-${record.createdAt.slice(0, 10)}-${record.id.slice(0, 8)}.json`;
+  link.download = `azarashi-${record.createdAt.slice(0, 10)}-${record.id.slice(0, 8)}.${text ? 'txt' : 'json'}`;
   link.click();
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
@@ -49,26 +52,35 @@ function ReplayCard({
           })}{' '}
           · {record.actions.length}手
         </span>
-        <small>
-          {current ? 'いまの対局' : caption}
-        </small>
+        <small>{current ? 'いまの対局' : caption}</small>
       </div>
-      <button
-        className="replay-watch"
-        onClick={watch}
-        aria-label={`${record.actions.length}手の棋譜を再生`}
-      >
-        <Play size={18} fill="currentColor" />
-        再生
-      </button>
-      <button
-        className="icon-button"
-        onClick={() => downloadRecord(record)}
-        aria-label="棋譜をファイルに保存"
-        title="棋譜をファイルに保存"
-      >
-        <Download size={19} />
-      </button>
+      <div className="replay-card-actions">
+        <button
+          className="replay-watch"
+          onClick={watch}
+          aria-label={`${record.actions.length}手の棋譜を再生`}
+        >
+          <Play size={18} fill="currentColor" />
+          再生
+        </button>
+        <button
+          className="icon-button"
+          onClick={() => downloadRecord(record)}
+          aria-label="棋譜をファイルに保存"
+          title="棋譜をファイルに保存"
+        >
+          <Download size={19} />
+        </button>
+        <button
+          className="icon-button replay-text-download"
+          onClick={() => downloadRecord(record, true)}
+          aria-label="実況・解説用テキストをダウンロード"
+          title="実況・解説用テキストをダウンロード"
+        >
+          <FileText size={19} />
+          <span>解説用</span>
+        </button>
+      </div>
     </article>
   );
 }
