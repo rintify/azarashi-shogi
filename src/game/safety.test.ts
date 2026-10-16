@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createGame, moveOptions, previewAction } from './engine';
+import { applyPreview, createGame, legalPreviews, moveOptions, previewAction } from './engine';
 import { actionSafety } from './safety';
 import type { GameAction, GameState, Kind, Piece, Player } from './types';
 const p = (
@@ -182,5 +182,169 @@ describe('complete action danger', () => {
     const original = structuredClone(state);
     safety(state, { type: 'move', pieceId: 'm', to: { x: 4, y: 4 } });
     expect(state).toEqual(original);
+  });
+});
+
+describe('yellow king capture traps', () => {
+  const action: GameAction = { type: 'move', pieceId: 'bait', to: { x: 4, y: 4 } };
+  const trapBoard = (...extra: Piece[]): GameState => ({
+    ...createGame(),
+    pieces: [
+      p('own', 'walrus', 0, 8),
+      p('enemy', 'walrus', 4, 2, 'north'),
+      p('bait', 'penguin', 3, 4),
+      p('guard', 'penguin', 4, 8, 'south', true),
+      ...extra,
+    ],
+  });
+  const kingReplies = (state: GameState) => {
+    const next = applyPreview(state, previewAction(state, action)!);
+    return legalPreviews(next, false)
+      .filter((reply) => reply.captured.some((victim) => victim.id === 'bait'))
+      .map((reply) => applyPreview(next, reply));
+  };
+  it('requires every king capture footprint to allow a winning reply on the resulting board', () => {
+    const state = trapBoard();
+    const original = structuredClone(state);
+    const result = safety(state, action);
+    expect(result).toMatchObject({
+      unsafe: true,
+      pieceThreatened: true,
+      kingThreatened: false,
+      kingCaptureTrap: true,
+    });
+    const replies = kingReplies(state);
+    expect(replies.length).toBeGreaterThan(1);
+    for (const reply of replies)
+      expect(
+        legalPreviews(reply, false).some(
+          (counter) => applyPreview(reply, counter).result?.winner === 'south',
+        ),
+      ).toBe(true);
+    expect(state).toEqual(original);
+  });
+  it('stays red if even one king capture is safe, despite other punished captures', () => {
+    const state = trapBoard();
+    state.pieces = state.pieces.map((piece) =>
+      piece.id === 'guard' ? p('guard', 'seal', 4, 6) : piece,
+    );
+    const punished = kingReplies(state).map((reply) =>
+      legalPreviews(reply, false).some(
+        (counter) => applyPreview(reply, counter).result?.winner === 'south',
+      ),
+    );
+    expect(punished).toContain(true);
+    expect(punished).toContain(false);
+    expect(safety(state, action)).toMatchObject({ unsafe: true, kingCaptureTrap: false });
+  });
+  it('removes guards captured together with the bait before looking for retaliation', () => {
+    const state = trapBoard();
+    state.pieces = state.pieces.map((piece) =>
+      piece.id === 'guard' ? p('guard', 'penguin', 4, 5, 'south', true) : piece,
+    );
+    expect(
+      kingReplies(state).some((reply) => !reply.pieces.some((piece) => piece.id === 'guard')),
+    ).toBe(true);
+    expect(safety(state, action)).toMatchObject({ pieceThreatened: true, kingCaptureTrap: false });
+  });
+  it('stays red when a non-king attacker can also capture the bait', () => {
+    expect(safety(trapBoard(p('bear', 'bear', 6, 4, 'north')), action)).toMatchObject({
+      pieceThreatened: true,
+      kingCaptureTrap: false,
+    });
+  });
+  it('includes an enemy orca capturing the bait only through its L-shaped rotation', () => {
+    const state = trapBoard(p('orca', 'orca', 6, 6, 'north'), p('food', 'seal', 5, 4, 'north'));
+    const next = applyPreview(state, previewAction(state, action)!);
+    const orcaCaptures = legalPreviews(next, false).filter(
+      (reply) => reply.piece.id === 'orca' && reply.captured.some((piece) => piece.id === 'bait'),
+    );
+    expect(orcaCaptures.length).toBeGreaterThan(0);
+    expect(
+      orcaCaptures.every(
+        (reply) => reply.action.type === 'move' && reply.action.transformation?.type === 'rotate',
+      ),
+    ).toBe(true);
+    expect(safety(state, action).kingCaptureTrap).toBe(false);
+  });
+  it('never masks a threat to our king, even from an unrelated enemy piece', () => {
+    const state = trapBoard(p('hunter', 'penguin', 0, 0, 'north', true));
+    expect(safety(state, action)).toMatchObject({ kingThreatened: true, kingCaptureTrap: false });
+  });
+  it('does not promise a reply after the capturing king has already won the game', () => {
+    const state = trapBoard();
+    state.pieces = state.pieces.map((piece) =>
+      piece.id === 'own' ? p('own', 'walrus', 3, 5) : piece,
+    );
+    expect(
+      kingReplies(state).some(
+        (reply) => reply.phase === 'finished' && reply.result?.winner === 'north',
+      ),
+    ).toBe(true);
+    expect(safety(state, action).kingCaptureTrap).toBe(false);
+  });
+  it('includes a legal L-shaped winning recapture and rejects it when its enabling food is missing', () => {
+    const state = trapBoard(p('food', 'seal', 3, 4));
+    // Move the bait from another empty square; the food must stay to enable the guard rotation.
+    state.pieces = state.pieces.map((piece) =>
+      piece.id === 'guard'
+        ? p('guard', 'orca', 2, 6)
+        : piece.id === 'bait'
+          ? p('bait', 'penguin', 3, 3)
+          : piece,
+    );
+    const replies = kingReplies(state);
+    const rotationOnly = replies.find((reply) => {
+      const winning = legalPreviews(reply, false).filter(
+        (counter) => applyPreview(reply, counter).result?.winner === 'south',
+      );
+      return (
+        winning.length > 0 &&
+        winning.every(
+          (counter) =>
+            counter.action.type === 'move' && counter.action.transformation?.type === 'rotate',
+        )
+      );
+    });
+    expect(rotationOnly).toBeDefined();
+    expect(safety(state, action).kingCaptureTrap).toBe(true);
+    expect(
+      safety({ ...state, pieces: state.pieces.filter((piece) => piece.id !== 'food') }, action)
+        .kingCaptureTrap,
+    ).toBe(false);
+  });
+  it('checks the final footprint of large placed pieces, including partial king contact', () => {
+    const state = trapBoard(p('neighbor', 'seal', 3, 6));
+    state.pieces = state.pieces.filter((piece) => piece.id !== 'bait');
+    expect(safety(state, { type: 'place', kind: 'orca', at: { x: 4, y: 4 } })).toMatchObject({
+      pieceThreatened: true,
+      kingCaptureTrap: true,
+    });
+  });
+  it('works for the north player using its own forward direction', () => {
+    const state = trapBoard();
+    state.turn = 'north';
+    state.pieces = state.pieces.map((piece) => ({
+      ...piece,
+      owner: piece.owner === 'south' ? 'north' : 'south',
+      at: {
+        x: 10 - (piece.kind === 'walrus' ? 2 : 1) - piece.at.x,
+        y: 10 - (piece.kind === 'walrus' ? 2 : 1) - piece.at.y,
+      },
+    }));
+    expect(
+      safety(state, { type: 'move', pieceId: 'bait', to: { x: 5, y: 5 } }).kingCaptureTrap,
+    ).toBe(true);
+  });
+  it('keeps safe actions, own king moves and completed games out of yellow', () => {
+    expect(safety(board(p('bait', 'penguin', 3, 4)), action).kingCaptureTrap).toBe(false);
+    const state = trapBoard();
+    expect(
+      safety(state, { type: 'move', pieceId: 'own', to: { x: 0, y: 7 } }).kingCaptureTrap,
+    ).toBe(false);
+    state.pieces = state.pieces.map((piece) =>
+      piece.id === 'enemy' ? p('enemy', 'walrus', 4, 4, 'north') : piece,
+    );
+    expect(safety(state, action).kingCaptureTrap).toBe(false);
   });
 });

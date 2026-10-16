@@ -25,6 +25,8 @@ export function statusCopy(game: GameState, human: Player, interaction: BoardInt
     text = `${pieceName(interaction.portrait)}を${interaction.selected ? '動かす' : '配置する'}場所を選んでください。`;
   if (interaction.unsafeCells.length)
     text = '赤いマスは、この手の後に動かす駒か自分の王が捕食される危険があります。';
+  if (interaction.kingCaptureTrapCells.length)
+    text += ' 黄色は、王だけが捕食でき、どの捕食後も次の手でその王を捕食できるマスです。';
   const title = interaction.portrait
     ? `${pieceName(interaction.portrait)}${interaction.selected ? '' : 'を配置'}`
     : 'あなたの番です';

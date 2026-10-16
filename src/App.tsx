@@ -246,6 +246,8 @@ export default function App() {
               unsafeCells={interaction.unsafeCells}
               kingDangerCells={interaction.kingDangerCells}
               transformationSafeCells={interaction.transformationSafeCells}
+              kingCaptureTrapCells={interaction.kingCaptureTrapCells}
+              previewKingCaptureTrap={interaction.previewKingCaptureTrap}
               previewKingDanger={interaction.previewKingDanger}
               helperIds={interaction.helperIds}
               preview={interaction.preview}
@@ -432,6 +434,7 @@ export default function App() {
             threatenedIds={interaction.threats.map((threat) => threat.targetId)}
             kingDangerCells={interaction.kingDangerCells}
             transformationSafeCells={interaction.transformationSafeCells}
+            kingCaptureTrapCells={interaction.kingCaptureTrapCells}
             unsafeCells={interaction.unsafeCells}
             game={game}
             human={player}

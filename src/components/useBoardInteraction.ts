@@ -112,12 +112,23 @@ export function useBoardInteraction(
     () => new Set(transformationSafeCells.map(cellKey)),
     [transformationSafeCells],
   );
+  const kingCaptureTrapCells = useMemo(
+    () =>
+      legalCells.filter(
+        (at) =>
+          !transformationSafeKeys.has(cellKey(at)) &&
+          destinationSafety.get(cellKey(at))?.kingCaptureTrap,
+      ),
+    [legalCells, destinationSafety, transformationSafeKeys],
+  );
   // Red marks risk, never illegality. Empty drops and non-royal moves need the same analysis.
   const unsafeCells = useMemo(
     () =>
       legalCells.filter(
         (at) =>
-          !transformationSafeKeys.has(cellKey(at)) && destinationSafety.get(cellKey(at))?.unsafe,
+          !transformationSafeKeys.has(cellKey(at)) &&
+          !destinationSafety.get(cellKey(at))?.kingCaptureTrap &&
+          destinationSafety.get(cellKey(at))?.unsafe,
       ),
     [legalCells, destinationSafety, transformationSafeKeys],
   );
@@ -170,6 +181,9 @@ export function useBoardInteraction(
     : hover
       ? destinationSafety.get(cellKey(hover))
       : undefined;
+  const previewKingCaptureTrap =
+    !(hover && !pending && transformationSafeKeys.has(cellKey(hover))) &&
+    !!previewSafety?.kingCaptureTrap;
   const previewKingDanger =
     !(hover && !pending && transformationSafeKeys.has(cellKey(hover))) &&
     !!(previewSafety?.kingThreatened || previewSafety?.losesGame);
@@ -270,6 +284,8 @@ export function useBoardInteraction(
     unsafeCells,
     kingDangerCells,
     transformationSafeCells,
+    kingCaptureTrapCells,
+    previewKingCaptureTrap,
     previewKingDanger,
     helperIds,
     previewUnsafe,

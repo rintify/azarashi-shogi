@@ -3,6 +3,7 @@ export const GUIDE_COLORS = {
   safe: '#087b9f',
   danger: '#df2946',
   transformation: '#9263bb',
+  kingCaptureTrap: '#e9ad18',
   kingDanger: '#8f2038',
   fill: '#42b9d8',
   active: '#098bba',
@@ -21,12 +22,15 @@ export interface GuideState {
   kingDanger?: boolean;
   previewKingDanger?: boolean;
   transformationSafe?: boolean;
+  kingCaptureTrap?: boolean;
+  previewKingCaptureTrap?: boolean;
 }
 export function guideStyle(state: GuideState) {
   if (state.inspectingEnemy)
     return {
       kingDanger: false,
       transformationSafe: false,
+      kingCaptureTrap: false,
       fill: GUIDE_COLORS.enemy,
       fillOpacity: state.reachable ? 0.32 : 0,
       dot: GUIDE_COLORS.enemy,
@@ -38,6 +42,10 @@ export function guideStyle(state: GuideState) {
   const transformationSafe = !!state.transformationSafe && state.legal;
   const kingDanger =
     !transformationSafe && !!(preview ? state.previewKingDanger : state.legal && state.kingDanger);
+  const kingCaptureTrap =
+    !transformationSafe &&
+    !kingDanger &&
+    !!(preview ? state.previewKingCaptureTrap : state.legal && state.kingCaptureTrap);
   const danger =
     !transformationSafe &&
     (kingDanger || (preview ? state.previewUnsafe : state.legal && state.unsafe));
@@ -45,16 +53,19 @@ export function guideStyle(state: GuideState) {
   return {
     kingDanger,
     transformationSafe,
+    kingCaptureTrap,
     fill: transformationSafe
       ? GUIDE_COLORS.transformation
-      : danger
-        ? dangerColor
-        : GUIDE_COLORS.fill,
+      : kingCaptureTrap
+        ? GUIDE_COLORS.kingCaptureTrap
+        : danger
+          ? dangerColor
+          : GUIDE_COLORS.fill,
     fillOpacity: preview
       ? danger
         ? 0.32
         : 0.36
-      : state.legal && state.unsafe && !transformationSafe
+      : state.legal && (state.unsafe || kingCaptureTrap) && !transformationSafe
         ? 0.24
         : state.reachable
           ? 0.2
@@ -63,13 +74,21 @@ export function guideStyle(state: GuideState) {
             : 0,
     dot: transformationSafe
       ? GUIDE_COLORS.transformation
-      : state.kingDanger
-        ? GUIDE_COLORS.kingDanger
-        : state.unsafe
-          ? GUIDE_COLORS.danger
-          : GUIDE_COLORS.safe,
+      : kingCaptureTrap
+        ? GUIDE_COLORS.kingCaptureTrap
+        : state.kingDanger
+          ? GUIDE_COLORS.kingDanger
+          : state.unsafe
+            ? GUIDE_COLORS.danger
+            : GUIDE_COLORS.safe,
     dotOpacity: state.legal ? 1 : 0,
-    outline: danger ? dangerColor : preview ? GUIDE_COLORS.active : GUIDE_COLORS.last,
+    outline: kingCaptureTrap
+      ? GUIDE_COLORS.kingCaptureTrap
+      : danger
+        ? dangerColor
+        : preview
+          ? GUIDE_COLORS.active
+          : GUIDE_COLORS.last,
     outlineOpacity: preview ? 0.9 : state.last ? 0.45 : 0,
   };
 }

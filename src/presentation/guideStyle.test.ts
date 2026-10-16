@@ -104,3 +104,46 @@ it('shows conditional transformation safety in purple', () => {
     guideStyle({ ...base, inspectingEnemy: true, transformationSafe: true }).transformationSafe,
   ).toBe(false);
 });
+
+it('colors trapped king captures yellow, including their hovered footprint and outline', () => {
+  const idle = guideStyle({ ...base, kingCaptureTrap: true });
+  expect(idle.fill).toBe(GUIDE_COLORS.kingCaptureTrap);
+  expect(idle.dot).toBe(GUIDE_COLORS.kingCaptureTrap);
+  expect(idle.outlineOpacity).toBe(0);
+  for (const key of ['active', 'additional'] as const) {
+    const hovered = guideStyle({
+      ...base,
+      [key]: true,
+      previewUnsafe: true,
+      previewKingCaptureTrap: true,
+    });
+    expect(hovered.fill).toBe(GUIDE_COLORS.kingCaptureTrap);
+    expect(hovered.outline).toBe(GUIDE_COLORS.kingCaptureTrap);
+    expect(hovered.outlineOpacity).toBe(guideStyle({ ...base, active: true }).outlineOpacity);
+  }
+});
+it('never lets yellow override king danger, transformation safety or enemy inspection', () => {
+  expect(guideStyle({ ...base, kingCaptureTrap: true, unsafe: true, kingDanger: true }).fill).toBe(
+    GUIDE_COLORS.kingDanger,
+  );
+  expect(
+    guideStyle({ ...base, active: true, previewKingCaptureTrap: true, previewKingDanger: true })
+      .fill,
+  ).toBe(GUIDE_COLORS.kingDanger);
+  expect(guideStyle({ ...base, kingCaptureTrap: true, transformationSafe: true }).fill).toBe(
+    GUIDE_COLORS.transformation,
+  );
+  expect(guideStyle({ ...base, kingCaptureTrap: true, inspectingEnemy: true }).fill).toBe(
+    GUIDE_COLORS.enemy,
+  );
+  // A particular rotation can be unsafe even if the default landing is yellow.
+  expect(
+    guideStyle({
+      ...base,
+      kingCaptureTrap: true,
+      active: true,
+      previewUnsafe: true,
+      previewKingCaptureTrap: false,
+    }).fill,
+  ).toBe(GUIDE_COLORS.danger);
+});

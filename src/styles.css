@@ -2500,6 +2500,11 @@ button:not(:disabled):focus-visible {
   background: #bce7ce;
   border-color: #edfff2;
 }
+.coordinate-board button.king-capture-trap {
+  background: color-mix(in srgb, var(--king-capture-trap-color) 35%, #e3f0f5);
+  color: #886214;
+  box-shadow: none;
+}
 .coordinate-board button.king-risk {
   background: color-mix(in srgb, var(--king-danger-color) 48%, #e3f0f5);
   color: #65172b;

@@ -505,3 +505,41 @@ it('deselects a large model when tapping its unchanged anchor', () => {
   expect(hook.result.current.selected).toBeNull();
   expect(submit).not.toHaveBeenCalled();
 });
+
+it('shows yellow for trapped king-only captures and updates it for every transformation preview', () => {
+  const orca: Piece = { ...penguin, kind: 'orca', at: { x: 3, y: 6 } };
+  const meal: Piece = { ...food, at: { x: 4, y: 4 } };
+  const state = {
+    ...createGame(),
+    pieces: [
+      ...createGame().pieces.map((piece) => ({
+        ...piece,
+        at: piece.owner === 'south' ? { x: 0, y: 8 } : { x: 4, y: 2 },
+      })),
+      orca,
+      meal,
+      { ...penguin, id: 'guard', promoted: true, at: { x: 4, y: 8 } },
+    ],
+  };
+  const hook = renderHook(() => useBoardInteraction(state, 'south', vi.fn()));
+  act(() => hook.result.current.clickCell(orca.at));
+  expect(hook.result.current.kingCaptureTrapCells).toContainEqual(meal.at);
+  expect(hook.result.current.unsafeCells).not.toContainEqual(meal.at);
+  act(() => hook.result.current.setHover(meal.at));
+  expect(hook.result.current.previewKingCaptureTrap).toBe(true);
+  act(() => hook.result.current.clickCell(meal.at));
+  expect(hook.result.current.pending!.length).toBeGreaterThan(1);
+  expect(hook.result.current.previewKingCaptureTrap).toBe(true);
+  const unprotected = hook.result.current.pendingSafety.findIndex(
+    (option) => !option.kingCaptureTrap,
+  );
+  expect(unprotected).toBeGreaterThan(0);
+  act(() => hook.result.current.setOptionIndex(unprotected));
+  expect(hook.result.current.previewKingCaptureTrap).toBe(false);
+  expect(hook.result.current.previewUnsafe).toBe(true);
+  act(() => hook.result.current.clearChoice());
+  act(() => hook.result.current.clearSelection());
+  act(() => hook.result.current.clickPiece('king-north', { x: 4, y: 2 }));
+  expect(hook.result.current.kingCaptureTrapCells).toEqual([]);
+  expect(hook.result.current.previewKingCaptureTrap).toBe(false);
+});
