@@ -5,8 +5,10 @@ export const GUIDE_COLORS = {
   fill: '#42b9d8',
   active: '#098bba',
   last: '#6fa9be',
+  enemy: '#b08be9',
 } as const;
 export interface GuideState {
+  inspectingEnemy?: boolean;
   active: boolean;
   additional: boolean;
   reachable: boolean;
@@ -16,6 +18,15 @@ export interface GuideState {
   previewUnsafe: boolean;
 }
 export function guideStyle(state: GuideState) {
+  if (state.inspectingEnemy)
+    return {
+      fill: GUIDE_COLORS.enemy,
+      fillOpacity: state.reachable ? 0.32 : 0,
+      dot: GUIDE_COLORS.enemy,
+      dotOpacity: 0,
+      outline: GUIDE_COLORS.enemy,
+      outlineOpacity: 0,
+    };
   const preview = state.active || state.additional;
   const danger = preview ? state.previewUnsafe : state.legal && state.unsafe;
   return {

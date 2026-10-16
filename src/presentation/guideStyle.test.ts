@@ -30,3 +30,21 @@ it('uses the selected action for overlapping footprint cells instead of another 
   expect(selectedSafe.dot).toBe(GUIDE_COLORS.danger);
   expect(guideStyle(base).dot).toBe(GUIDE_COLORS.safe);
 });
+
+it('shows enemy coverage in its own color without danger, dots or outlines', () => {
+  const style = guideStyle({
+    ...base,
+    inspectingEnemy: true,
+    unsafe: true,
+    active: true,
+    previewUnsafe: true,
+  });
+  expect(style.fill).toBe(GUIDE_COLORS.enemy);
+  expect(style.fill).not.toBe(GUIDE_COLORS.fill);
+  expect(style.fillOpacity).toBeGreaterThan(0);
+  expect(style.dotOpacity).toBe(0);
+  expect(style.outlineOpacity).toBe(0);
+  expect(
+    guideStyle({ ...base, inspectingEnemy: true, reachable: false, last: true }).fillOpacity,
+  ).toBe(0);
+});

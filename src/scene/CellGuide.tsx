@@ -27,7 +27,7 @@ export function CellGuide(props: GuideState & { reduced: boolean }) {
   const fill = useRef<Mesh>(null),
     dot = useRef<Mesh>(null),
     outline = useRef<Mesh>(null);
-  useFrame((_, delta) => {
+  useFrame(({ clock }, delta) => {
     const blend = props.reduced ? 1 : 1 - Math.exp(-delta * 18);
     const fade = (mesh: Mesh | null, target: number) => {
       if (!mesh) return;
@@ -35,7 +35,11 @@ export function CellGuide(props: GuideState & { reduced: boolean }) {
       material.opacity += (target - material.opacity) * blend;
       mesh.visible = material.opacity > 0.002;
     };
-    fade(fill.current, style.fillOpacity);
+    const pulse =
+      props.inspectingEnemy && !props.reduced
+        ? 0.75 + 0.25 * Math.sin((clock.elapsedTime * Math.PI * 2) / 2.8)
+        : 1;
+    fade(fill.current, style.fillOpacity * pulse);
     fade(dot.current, style.dotOpacity);
     fade(outline.current, style.outlineOpacity);
     if (dot.current) {

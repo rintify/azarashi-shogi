@@ -36,6 +36,9 @@ export interface BoardProps {
 function BoardContents(props: BoardProps & { htmlPortal: RefObject<HTMLDivElement> }) {
   const { game, selectedId, preview, motion, busy } = props;
   useEffect(props.onReady, [props.onReady]);
+  const inspectingEnemy = game.pieces.some(
+    (piece) => piece.id === selectedId && piece.owner !== props.human,
+  );
   const legal = useMemo(() => new Set(props.legalCells.map(cellKey)), [props.legalCells]);
   const reachable = new Set(props.reachableCells.map(cellKey));
   const unsafe = new Set(props.unsafeCells.map(cellKey));
@@ -83,6 +86,7 @@ function BoardContents(props: BoardProps & { htmlPortal: RefObject<HTMLDivElemen
               />
             </mesh>
             <CellGuide
+              inspectingEnemy={inspectingEnemy}
               active={active}
               additional={additional}
               reachable={reachable.has(key)}
@@ -111,7 +115,9 @@ function BoardContents(props: BoardProps & { htmlPortal: RefObject<HTMLDivElemen
           selected={selectedId === piece.id}
           targeted={captured.has(piece.id)}
           source={props.threatSources.includes(piece.id)}
-          threatened={game.turn === props.human && props.threats.some((t) => t.targetId === piece.id)}
+          threatened={
+            game.turn === props.human && props.threats.some((t) => t.targetId === piece.id)
+          }
           kingCapture={game.turn === props.human && props.kingCaptureIds.includes(piece.id)}
           disabled={busy}
           reduced={props.reduced}

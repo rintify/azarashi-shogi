@@ -299,8 +299,8 @@ it('inspects an enemy jet in its own forward direction without submitting a move
   expect(hook.result.current.inspectingEnemy).toBe(true);
   expect(hook.result.current.legalCells).toEqual([target.at]);
   act(() => hook.result.current.setHover(target.at));
-  expect(hook.result.current.preview?.captured.map((p) => p.id)).toContain(target.id);
-  act(() => hook.result.current.chooseOption(hook.result.current.preview!));
+  expect(hook.result.current.preview).toBeNull();
+  expect(hook.result.current.unsafeCells).toEqual([]);
   act(() => hook.result.current.clickCell(target.at));
   expect(submit).not.toHaveBeenCalled();
   expect(hook.result.current.selected?.id).toBe(target.id);

@@ -70,10 +70,12 @@ export function useBoardInteraction(
     () =>
       new Map(
         [...destinations].flatMap(([key, options]) =>
-          options[0] ? [[key, actionSafety(analysisGame, options[0])] as const] : [],
+          !inspectingEnemy && options[0]
+            ? [[key, actionSafety(analysisGame, options[0])] as const]
+            : [],
         ),
       ),
-    [analysisGame, destinations],
+    [analysisGame, destinations, inspectingEnemy],
   );
   // Red marks risk, never illegality. Empty drops and non-royal moves need the same analysis.
   const unsafeCells = useMemo(
@@ -108,10 +110,11 @@ export function useBoardInteraction(
   }, [game, human]);
   const threat = threats.find((t) => t.targetId === (inspectedThreat ?? selectedId));
   const preview = useMemo(() => {
+    if (inspectingEnemy) return null;
     if (pending) return pending[optionIndex];
     if (!hover || !legalCells.some((c) => sameCell(c, hover))) return null;
     return destinations.get(cellKey(hover))?.[0] ?? null;
-  }, [pending, optionIndex, hover, legalCells, destinations]);
+  }, [pending, optionIndex, hover, legalCells, destinations, inspectingEnemy]);
   const previewUnsafe = pending
     ? !!pendingSafety[optionIndex]?.unsafe
     : !!hover && !!destinationSafety.get(cellKey(hover))?.unsafe;

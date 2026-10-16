@@ -2142,3 +2142,22 @@ button:not(:disabled):focus-visible {
     opacity: 0.68;
   }
 }
+
+.coordinate-board.inspecting-enemy button.reachable {
+  background: color-mix(in srgb, var(--enemy-guide-color) 28%, #e3f0f5);
+  animation: enemy-range-breathe 2.8s ease-in-out infinite;
+}
+@keyframes enemy-range-breathe {
+  0%,
+  100% {
+    background: color-mix(in srgb, var(--enemy-guide-color) 20%, #e3f0f5);
+  }
+  50% {
+    background: color-mix(in srgb, var(--enemy-guide-color) 40%, #e3f0f5);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .coordinate-board.inspecting-enemy button.reachable {
+    animation: none;
+  }
+}

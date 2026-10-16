@@ -388,6 +388,7 @@ export default function App() {
           }
         >
           <CoordinateBoard
+            inspectingEnemy={interaction.inspectingEnemy}
             kingCaptureIds={interaction.kingCaptureIds}
             unsafeCells={interaction.unsafeCells}
             game={game}

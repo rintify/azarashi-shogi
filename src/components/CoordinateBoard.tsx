@@ -13,6 +13,7 @@ export function CoordinateBoard({
   human,
   legalCells,
   reachableCells = [],
+  inspectingEnemy = false,
   unsafeCells = [],
   kingCaptureIds = [],
   onCell,
@@ -22,6 +23,7 @@ export function CoordinateBoard({
   human: Player;
   legalCells: Cell[];
   reachableCells?: Cell[];
+  inspectingEnemy?: boolean;
   unsafeCells?: Cell[];
   kingCaptureIds?: string[];
   onCell: (cell: Cell) => void;
@@ -32,9 +34,14 @@ export function CoordinateBoard({
   return (
     <div
       ref={ref}
-      className="coordinate-board"
+      className={`coordinate-board ${inspectingEnemy ? 'inspecting-enemy' : ''}`}
       aria-label="マス一覧で操作"
-      style={{ '--danger-color': GUIDE_COLORS.danger } as CSSProperties}
+      style={
+        {
+          '--danger-color': GUIDE_COLORS.danger,
+          '--enemy-guide-color': GUIDE_COLORS.enemy,
+        } as CSSProperties
+      }
     >
       {Array.from({ length: 100 }, (_, index) => {
         const i = human === 'south' ? index : 99 - index;
@@ -42,7 +49,7 @@ export function CoordinateBoard({
         const piece = pieceAt(game, cell);
         const legal = legalCells.some((c) => sameCell(c, cell));
         const reachable = reachableCells.some((c) => sameCell(c, cell));
-        const unsafe = unsafeCells.some((c) => sameCell(c, cell));
+        const unsafe = !inspectingEnemy && unsafeCells.some((c) => sameCell(c, cell));
         const kingCapture = game.turn === human && !!piece && kingCaptureIds.includes(piece.id);
         return (
           <button
@@ -64,8 +71,8 @@ export function CoordinateBoard({
                 ?.querySelector<HTMLButtonElement>(`button[data-index="${next}"]`)
                 ?.focus();
             }}
-            className={`${reachable ? 'reachable' : ''} ${unsafe ? 'unsafe' : ''} ${legal ? 'legal' : ''} ${piece ? (piece.owner === human ? 'own' : 'enemy') : ''}`}
-            aria-label={`${coordinate(cell)}${piece ? ` ${pieceName(piece)}` : ''}${legal ? ' 選択可能' : ''}${unsafe ? ' 捕食の危険' : ''}${kingCapture ? ' 相手の王を捕食可能' : ''}`}
+            className={`${reachable ? 'reachable' : ''} ${unsafe ? 'unsafe' : ''} ${legal && !inspectingEnemy ? 'legal' : ''} ${piece ? (piece.owner === human ? 'own' : 'enemy') : ''}`}
+            aria-label={`${coordinate(cell)}${piece ? ` ${pieceName(piece)}` : ''}${legal ? (inspectingEnemy ? ' 敵の移動範囲' : ' 選択可能') : ''}${unsafe ? ' 捕食の危険' : ''}${kingCapture ? ' 相手の王を捕食可能' : ''}`}
             onClick={() => onCell(cell)}
             onFocus={() => {
               setFocused(index);
