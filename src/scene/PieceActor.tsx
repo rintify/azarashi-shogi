@@ -14,7 +14,6 @@ import {
   facing,
   progress,
   sampleMotion,
-  transformationProgress,
   type MoveMotion,
 } from '../presentation/motion';
 
@@ -83,6 +82,7 @@ export function PieceActor({
         scale = pose.scale;
         yaw = pose.yaw;
         promoted = pose.promoted;
+        if (piece.kind === 'penguin') jetBlend.current = pose.jetBlend ?? Number(pose.promoted);
       }
     }
     if (intro && !motion && !reduced) {
@@ -95,17 +95,7 @@ export function PieceActor({
     root.current.scale.setScalar(Math.max(0.001, scale));
     root.current.visible = scale > 0.005;
     model.current.rotation.y = yaw;
-    if (piece.kind === 'penguin') {
-      const from = motion?.before?.promoted ? 1 : 0;
-      jetBlend.current =
-        moving && motion
-          ? from +
-            ((motion.action.piece.promoted ? 1 : 0) - from) *
-              transformationProgress(motion, progress(motion, performance.now()))
-          : piece.promoted
-            ? 1
-            : 0;
-    }
+    if (piece.kind === 'penguin' && !moving) jetBlend.current = Number(piece.promoted);
     const dynamics =
       moving && motion ? bodyDynamics(motion, progress(motion, performance.now())) : null;
     model.current.rotation.x = dynamics?.pitch ?? 0;

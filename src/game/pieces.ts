@@ -17,7 +17,8 @@ export const DEFINITIONS: Record<
     count: 3,
     value: 230,
     short: 'ペンギン',
-    description: '歩行は全方向へ1マス。ジェットは前の駒か盤端まで一直線。',
+    description:
+      '歩行は全方向へ1マス。ジェットに成るとき4方向から向きを選び、その向きの最初の駒か盤端まで一直線。',
   },
   bear: {
     name: 'シロクマ',

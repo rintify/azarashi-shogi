@@ -1,13 +1,16 @@
 import { DEFINITIONS, KINDS, footprint, pieceName } from '../game/pieces';
 import type { Cell, Piece, Player, Stock } from '../game/types';
 import { coordinate } from '../shared/coordinates';
+import { HEADING_LABEL, jetHeading } from '../game/headings';
 import { aiDifficulty, playerLabel, type GameRecord } from './record';
 import { replayTimeline } from './replayLibrary';
 
 const side = (owner: Player) => (owner === 'south' ? '先手' : '後手');
 const cells = (positions: Cell[]) => positions.map(coordinate).join('・');
+const heading = (p: Piece) =>
+  p.kind === 'penguin' && p.promoted ? ` / 進行方向: ${HEADING_LABEL[jetHeading(p)]}` : '';
 const piece = (p: Piece) =>
-  `${side(p.owner)} ${pieceName(p)} [${p.id}]（占有: ${cells(footprint(p))}）`;
+  `${side(p.owner)} ${pieceName(p)} [${p.id}]（占有: ${cells(footprint(p))}${heading(p)}）`;
 const stock = (s: Stock) => KINDS.map((k) => `${DEFINITIONS[k].name}=${s[k]}`).join('、');
 
 /** Observed facts from canonical replay states; no invented strategy or evaluation. */
@@ -37,7 +40,7 @@ export function replayText(record: GameRecord): string {
     ),
     'シロクマは縦横の最大距離がちょうど2の外周16マスへ跳ぶ。',
     'シャチ縦は1×2、横は2×1、王は2×2。駒全体が盤内に収まる必要がある。',
-    'ジェットペンギンは前方の最初の駒、または盤端まで進み、途中停止はできない。',
+    'ジェットペンギンは成るときに上下左右の4方向から向きを選び、その方向の最初の駒、または盤端まで進む。途中停止はできない。古い棋譜で方向の指定がない場合は所有者の前方を向く。',
     '通常の移動は途中の駒を飛び越え、着地点の占有範囲に1マスでも重なる駒を丸ごと捕食する。複数・味方の捕食も可能。',
     '捕食した非王は敵味方を問わず、捕食者のストックへ成る前の種類で戻る。',
     '1体以上の捕食で任意の変身が可能。白→黒は不可逆。ペンギンとシャチは可逆。',
@@ -78,7 +81,7 @@ export function replayText(record: GameRecord): string {
               : 'なし'
         }`,
       );
-      lines.push(`最終占有: ${cells(preview.footprint)}`);
+      lines.push(`最終占有: ${cells(preview.footprint)}${heading(preview.piece)}`);
     }
     lines.push(`捕食判定範囲: ${cells(preview.captureCells) || 'なし（配置）'}`);
     lines.push(

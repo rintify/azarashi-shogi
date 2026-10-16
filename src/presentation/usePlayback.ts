@@ -47,7 +47,7 @@ export function usePlayback(game: GameState, reduced = false, resetToken = 0, sp
     if (
       !current ||
       !target ||
-      target.piece.kind !== 'orca' ||
+      !['orca', 'penguin'].includes(target.piece.kind) ||
       target.piece.id !== current.action.piece.id
     )
       return;

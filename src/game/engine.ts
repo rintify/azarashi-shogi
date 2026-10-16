@@ -8,6 +8,7 @@ import {
   KINDS,
 } from './pieces';
 import { cellKey, otherPlayer, RULES_VERSION, sameCell } from './types';
+import { HEADINGS, HEADING_VECTOR, forwardHeading, jetHeading } from './headings';
 import type {
   ActionPreview,
   Cell,
@@ -84,9 +85,14 @@ export function moveCells(state: GameState, piece: Piece): Cell[] {
   const forward = piece.owner === 'south' ? -1 : 1;
   if (piece.kind === 'penguin' && piece.promoted) {
     const occupied = occupancy(state, piece.id);
+    const step = HEADING_VECTOR[jetHeading(piece)];
     let target: Cell | null = null;
-    for (let y = piece.at.y + forward; y >= 0 && y < BOARD_SIZE; y += forward) {
-      target = { x: piece.at.x, y };
+    for (
+      let at = { x: piece.at.x + step.x, y: piece.at.y + step.y };
+      at.x >= 0 && at.x < BOARD_SIZE && at.y >= 0 && at.y < BOARD_SIZE;
+      at = { x: at.x + step.x, y: at.y + step.y }
+    ) {
+      target = at;
       if (occupied.has(cellKey(target))) break;
     }
     return target ? [target] : [];
@@ -113,6 +119,21 @@ export function moveCells(state: GameState, piece: Piece): Cell[] {
 function transformedPiece(piece: Piece, transformation: Transformation): Piece | null {
   if (transformation.type === 'promote') {
     if (piece.kind === 'orca') return null;
+    if (
+      transformation.heading !== undefined &&
+      (piece.kind !== 'penguin' || piece.promoted || !HEADINGS.includes(transformation.heading))
+    )
+      return null;
+    if (piece.kind === 'penguin') {
+      const { heading: _heading, ...body } = piece;
+      return piece.promoted
+        ? { ...body, promoted: false }
+        : {
+            ...body,
+            promoted: true,
+            heading: transformation.heading ?? forwardHeading(piece.owner),
+          };
+    }
     return { ...piece, promoted: !piece.promoted };
   }
   if (
@@ -193,7 +214,7 @@ function buildMovePreview(
 export function actionKey(action: GameAction): string {
   if (action.type === 'place') return `p:${action.kind}:${cellKey(action.at)}`;
   const t = action.transformation;
-  return `m:${action.pieceId}:${cellKey(action.to)}:${!t ? '-' : t.type === 'promote' ? 't' : `${t.pivot}:${t.direction}`}`;
+  return `m:${action.pieceId}:${cellKey(action.to)}:${!t ? '-' : t.type === 'promote' ? `t:${t.heading ?? '-'}` : `${t.pivot}:${t.direction}`}`;
 }
 export function moveOptions(state: GameState, piece: Piece, to: Cell): ActionPreview[] {
   if (
@@ -212,7 +233,15 @@ export function moveOptions(state: GameState, piece: Piece, to: Cell): ActionPre
         ? ([0, 1] as const).flatMap((pivot) =>
             ([-1, 1] as const).map((direction) => ({ type: 'rotate' as const, pivot, direction })),
           )
-        : [{ type: 'promote' }];
+        : piece.kind === 'penguin' && !piece.promoted
+          ? [
+              { type: 'promote' },
+              ...HEADINGS.filter((h) => h !== forwardHeading(piece.owner)).map((heading) => ({
+                type: 'promote' as const,
+                heading,
+              })),
+            ]
+          : [{ type: 'promote' }];
     for (const transformation of transformations) {
       const p = buildMovePreview(state, piece, { ...action, transformation });
       if (p) results.push(p);

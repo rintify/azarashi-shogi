@@ -1,11 +1,13 @@
 import type { ActionPreview, GameState, Piece } from '../game/types';
 import { dimensions, footprint } from '../game/pieces';
+import { headingYaw, jetHeading } from '../game/headings';
 export type Vec3 = [number, number, number];
 export interface MotionPose {
   position: Vec3;
   scale: number;
   yaw: number;
   promoted: boolean;
+  jetBlend?: number;
 }
 export interface MoveMotion {
   choicePreview?: { target: ActionPreview; from: MotionPose; startedAt: number };
@@ -27,7 +29,8 @@ export function center(piece: Pick<Piece, 'at' | 'kind' | 'promoted'>): Vec3 {
   return [piece.at.x - 5 + w / 2, 0, piece.at.y - 5 + h / 2];
 }
 /** Models are authored facing local +Z. Board south advances toward world -Z. */
-export function facing(piece: Pick<Piece, 'owner' | 'kind' | 'promoted'>): number {
+export function facing(piece: Pick<Piece, 'owner' | 'kind' | 'promoted' | 'heading'>): number {
+  if (piece.kind === 'penguin' && piece.promoted) return headingYaw(jetHeading(piece));
   return (
     (piece.owner === 'south' ? Math.PI : 0) -
     (piece.kind === 'orca' && piece.promoted ? Math.PI / 2 : 0)
@@ -143,6 +146,7 @@ function samplePath(motion: MoveMotion, t: number) {
     ];
     yaw += (facing(after) - facing(before)) * change;
   }
+  if (before.kind === 'penguin') yaw += angleDelta(facing(before), facing(after)) * change;
   if (aerial) {
     const landingStart =
       motion.stage === 'resolve' ? (hasTransformation(motion) ? 0.68 : 0.1) : 0.78;
@@ -166,6 +170,7 @@ function samplePath(motion: MoveMotion, t: number) {
     scale: hasTransformation(motion) ? 1 + Math.sin(change * Math.PI) * 0.12 : 1,
     yaw,
     promoted: change > 0.5 ? after.promoted : before.promoted,
+    jetBlend: Number(before.promoted) + (Number(after.promoted) - Number(before.promoted)) * change,
   };
 }
 export function captureMoment(motion: MoveMotion, victim: Piece) {
@@ -203,6 +208,7 @@ export function sampleMotion(
         yaw: facing(motion.before),
         scale: 1,
         promoted: motion.before.promoted,
+        jetBlend: Number(motion.before.promoted),
       },
       blend,
     );
@@ -221,6 +227,7 @@ export function sampleMotion(
         yaw: facing(target.piece),
         scale: 1,
         promoted: target.piece.promoted,
+        jetBlend: Number(target.piece.promoted),
       },
       blend,
     );
@@ -239,15 +246,25 @@ export function sampleMotion(
       (hasTransformation(motion) ? transformationProgress(motion, t) : blend) > 0.5
         ? motion.action.piece.promoted
         : motion.resolveFrom.promoted;
+    result.jetBlend =
+      (motion.resolveFrom.jetBlend ?? Number(motion.resolveFrom.promoted)) +
+      (Number(motion.action.piece.promoted) -
+        (motion.resolveFrom.jetBlend ?? Number(motion.resolveFrom.promoted))) *
+        blend;
     return result;
   }
   return pose;
 }
+const angleDelta = (from: number, to: number) =>
+  Math.atan2(Math.sin(to - from), Math.cos(to - from));
 function blendPose(from: MotionPose, to: MotionPose, t: number): MotionPose {
   return {
     position: from.position.map((v, i) => v + (to.position[i] - v) * t) as Vec3,
-    yaw: from.yaw + (to.yaw - from.yaw) * t,
+    yaw: from.yaw + angleDelta(from.yaw, to.yaw) * t,
     scale: from.scale + (to.scale - from.scale) * t,
     promoted: t > 0.5 ? to.promoted : from.promoted,
+    jetBlend:
+      (from.jetBlend ?? Number(from.promoted)) +
+      ((to.jetBlend ?? Number(to.promoted)) - (from.jetBlend ?? Number(from.promoted))) * t,
   };
 }
