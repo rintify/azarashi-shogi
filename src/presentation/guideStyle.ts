@@ -19,11 +19,13 @@ export interface GuideState {
   previewUnsafe: boolean;
   kingDanger?: boolean;
   previewKingDanger?: boolean;
+  transformationSafe?: boolean;
 }
 export function guideStyle(state: GuideState) {
   if (state.inspectingEnemy)
     return {
       kingDanger: false,
+      transformationSafe: false,
       fill: GUIDE_COLORS.enemy,
       fillOpacity: state.reachable ? 0.32 : 0,
       dot: GUIDE_COLORS.enemy,
@@ -32,28 +34,35 @@ export function guideStyle(state: GuideState) {
       outlineOpacity: 0,
     };
   const preview = state.active || state.additional;
-  const kingDanger = !!(preview ? state.previewKingDanger : state.legal && state.kingDanger);
-  const danger = kingDanger || (preview ? state.previewUnsafe : state.legal && state.unsafe);
+  const transformationSafe = !!state.transformationSafe && state.legal;
+  const kingDanger =
+    !transformationSafe && !!(preview ? state.previewKingDanger : state.legal && state.kingDanger);
+  const danger =
+    !transformationSafe &&
+    (kingDanger || (preview ? state.previewUnsafe : state.legal && state.unsafe));
   const dangerColor = kingDanger ? GUIDE_COLORS.kingDanger : GUIDE_COLORS.danger;
   return {
     kingDanger,
+    transformationSafe,
     fill: danger ? dangerColor : GUIDE_COLORS.fill,
     fillOpacity: preview
       ? danger
         ? 0.32
         : 0.36
-      : state.legal && state.unsafe
+      : state.legal && state.unsafe && !transformationSafe
         ? 0.24
         : state.reachable
           ? 0.2
           : state.last
             ? 0.1
             : 0,
-    dot: state.kingDanger
-      ? GUIDE_COLORS.kingDanger
-      : state.unsafe
-        ? GUIDE_COLORS.danger
-        : GUIDE_COLORS.safe,
+    dot: transformationSafe
+      ? GUIDE_COLORS.safe
+      : state.kingDanger
+        ? GUIDE_COLORS.kingDanger
+        : state.unsafe
+          ? GUIDE_COLORS.danger
+          : GUIDE_COLORS.safe,
     dotOpacity: state.legal ? 1 : 0,
     outline: danger ? dangerColor : preview ? GUIDE_COLORS.active : GUIDE_COLORS.last,
     outlineOpacity: danger ? 0 : preview ? 0.9 : state.last ? 0.45 : 0,

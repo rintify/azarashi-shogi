@@ -19,6 +19,7 @@ export function CoordinateBoard({
   helperIds = [],
   threatenedIds = [],
   kingDangerCells = [],
+  transformationSafeCells = [],
   onCell,
   onHover,
 }: {
@@ -32,6 +33,7 @@ export function CoordinateBoard({
   helperIds?: string[];
   threatenedIds?: string[];
   kingDangerCells?: Cell[];
+  transformationSafeCells?: Cell[];
   onCell: (cell: Cell) => void;
   onHover: (cell: Cell) => void;
 }) {
@@ -56,6 +58,8 @@ export function CoordinateBoard({
         const piece = pieceAt(game, cell);
         const legal = legalCells.some((c) => sameCell(c, cell));
         const reachable = reachableCells.some((c) => sameCell(c, cell));
+        const transformationSafe =
+          !inspectingEnemy && transformationSafeCells.some((c) => sameCell(c, cell));
         const unsafe = !inspectingEnemy && unsafeCells.some((c) => sameCell(c, cell));
         const kingCapture = game.turn === human && !!piece && kingCaptureIds.includes(piece.id);
         const kingDanger = !inspectingEnemy && kingDangerCells.some((c) => sameCell(c, cell));
@@ -83,8 +87,8 @@ export function CoordinateBoard({
                 ?.querySelector<HTMLButtonElement>(`button[data-index="${next}"]`)
                 ?.focus();
             }}
-            className={`${reachable ? 'reachable' : ''} ${unsafe ? 'unsafe' : ''} ${kingDanger ? 'king-risk' : ''} ${legal && !inspectingEnemy ? 'legal' : ''} ${piece ? (piece.owner === human ? 'own' : 'enemy') : ''}`}
-            aria-label={`${coordinate(cell)}${piece ? ` ${pieceName(piece)}` : ''}${legal ? (inspectingEnemy ? ' 敵の移動範囲' : ' 選択可能') : ''}${unsafe ? ' 捕食の危険' : ''}${mark ? ` ${MARK_LABELS[mark]}` : ''}${kingDanger ? ' 王が捕食される危険' : ''}`}
+            className={`${reachable ? 'reachable' : ''} ${unsafe ? 'unsafe' : ''} ${kingDanger ? 'king-risk' : ''} ${transformationSafe ? 'transformation-safe' : ''} ${legal && !inspectingEnemy ? 'legal' : ''} ${piece ? (piece.owner === human ? 'own' : 'enemy') : ''}`}
+            aria-label={`${coordinate(cell)}${piece ? ` ${pieceName(piece)}` : ''}${legal ? (inspectingEnemy ? ' 敵の移動範囲' : ' 選択可能') : ''}${unsafe ? ' 捕食の危険' : ''}${mark ? ` ${MARK_LABELS[mark]}` : ''}${kingDanger ? ' 王が捕食される危険' : ''}${transformationSafe ? ' ※成って安全にできる向きがあります' : ''}`}
             onClick={() => onCell(cell)}
             onFocus={() => {
               setFocused(index);
@@ -92,6 +96,11 @@ export function CoordinateBoard({
             }}
             onMouseEnter={() => onHover(cell)}
           >
+            {transformationSafe && (
+              <span className="transformation-note" aria-hidden="true">
+                ※
+              </span>
+            )}
             {piece ? <AnimalIcon kind={piece.kind} promoted={piece.promoted} /> : null}
             {mark && (
               <span

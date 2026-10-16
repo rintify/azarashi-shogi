@@ -219,6 +219,7 @@ export default function App() {
               reachableCells={interaction.reachableCells}
               unsafeCells={interaction.unsafeCells}
               kingDangerCells={interaction.kingDangerCells}
+              transformationSafeCells={interaction.transformationSafeCells}
               previewKingDanger={interaction.previewKingDanger}
               helperIds={interaction.helperIds}
               preview={interaction.preview}
@@ -399,6 +400,7 @@ export default function App() {
             helperIds={interaction.helperIds}
             threatenedIds={interaction.threats.map((threat) => threat.targetId)}
             kingDangerCells={interaction.kingDangerCells}
+            transformationSafeCells={interaction.transformationSafeCells}
             unsafeCells={interaction.unsafeCells}
             game={game}
             human={settings.human}

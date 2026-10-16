@@ -21,6 +21,7 @@ export interface BoardProps {
   reachableCells: Cell[];
   unsafeCells: Cell[];
   kingDangerCells: Cell[];
+  transformationSafeCells: Cell[];
   previewKingDanger: boolean;
   helperIds: string[];
   preview: ActionPreview | null;
@@ -53,6 +54,7 @@ function BoardContents(props: BoardProps & { htmlPortal: RefObject<HTMLDivElemen
   );
   const legal = useMemo(() => new Set(props.legalCells.map(cellKey)), [props.legalCells]);
   const reachable = new Set(props.reachableCells.map(cellKey));
+  const transformationSafe = new Set(props.transformationSafeCells.map(cellKey));
   const kingDanger = new Set(props.kingDangerCells.map(cellKey));
   const unsafe = new Set(props.unsafeCells.map(cellKey));
   const shownAction = preview ?? (motion?.stage === 'return' ? null : motion?.action);
@@ -107,6 +109,7 @@ function BoardContents(props: BoardProps & { htmlPortal: RefObject<HTMLDivElemen
               legal={legal.has(key) && !busy}
               unsafe={unsafe.has(key)}
               kingDanger={kingDanger.has(key)}
+              transformationSafe={transformationSafe.has(key)}
               previewKingDanger={!!preview && props.previewKingDanger}
               previewUnsafe={!!preview && props.previewUnsafe}
               reduced={props.reduced}

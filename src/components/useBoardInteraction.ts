@@ -83,18 +83,41 @@ export function useBoardInteraction(
       ),
     [analysisGame, destinations, inspectingEnemy],
   );
+  const transformationSafeCells = useMemo(() => {
+    if (inspectingEnemy || selected?.kind !== 'orca') return [];
+    return legalCells.filter((at) => {
+      const key = cellKey(at);
+      if (!destinationSafety.get(key)?.unsafe) return false;
+      return (destinations.get(key) ?? []).some(
+        (option) =>
+          option.action.type === 'move' &&
+          option.action.transformation?.type === 'rotate' &&
+          !actionSafety(game, option).unsafe,
+      );
+    });
+  }, [game, selected, inspectingEnemy, legalCells, destinations, destinationSafety]);
+  const transformationSafeKeys = useMemo(
+    () => new Set(transformationSafeCells.map(cellKey)),
+    [transformationSafeCells],
+  );
   // Red marks risk, never illegality. Empty drops and non-royal moves need the same analysis.
   const unsafeCells = useMemo(
-    () => legalCells.filter((at) => destinationSafety.get(cellKey(at))?.unsafe),
-    [legalCells, destinationSafety],
+    () =>
+      legalCells.filter(
+        (at) =>
+          !transformationSafeKeys.has(cellKey(at)) && destinationSafety.get(cellKey(at))?.unsafe,
+      ),
+    [legalCells, destinationSafety, transformationSafeKeys],
   );
   const kingDangerCells = useMemo(
     () =>
       legalCells.filter((at) => {
         const safety = destinationSafety.get(cellKey(at));
-        return safety?.kingThreatened || safety?.losesGame;
+        return (
+          !transformationSafeKeys.has(cellKey(at)) && (safety?.kingThreatened || safety?.losesGame)
+        );
       }),
-    [legalCells, destinationSafety],
+    [legalCells, destinationSafety, transformationSafeKeys],
   );
   const helperIds = useMemo(() => kingRescuers(game, human), [game, human]);
   const pendingSafety = useMemo(
@@ -132,13 +155,17 @@ export function useBoardInteraction(
   }, [pending, optionIndex, hover, legalCells, destinations, inspectingEnemy]);
   const previewUnsafe = pending
     ? !!pendingSafety[optionIndex]?.unsafe
-    : !!hover && !!destinationSafety.get(cellKey(hover))?.unsafe;
+    : !!hover &&
+      !transformationSafeKeys.has(cellKey(hover)) &&
+      !!destinationSafety.get(cellKey(hover))?.unsafe;
   const previewSafety = pending
     ? pendingSafety[optionIndex]
     : hover
       ? destinationSafety.get(cellKey(hover))
       : undefined;
-  const previewKingDanger = !!(previewSafety?.kingThreatened || previewSafety?.losesGame);
+  const previewKingDanger =
+    !(hover && !pending && transformationSafeKeys.has(cellKey(hover))) &&
+    !!(previewSafety?.kingThreatened || previewSafety?.losesGame);
   const portrait: Piece | null =
     selected ??
     (activeKind
@@ -221,6 +248,7 @@ export function useBoardInteraction(
     reachableCells,
     unsafeCells,
     kingDangerCells,
+    transformationSafeCells,
     previewKingDanger,
     helperIds,
     previewUnsafe,

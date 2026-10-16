@@ -2515,3 +2515,19 @@ button:not(:disabled):focus-visible {
     background: color-mix(in srgb, var(--king-danger-color) 55%, #e3f0f5);
   }
 }
+
+.coordinate-board button.transformation-safe {
+  background: #a4dce7;
+  color: #087b9f;
+  box-shadow: none;
+  animation: none;
+}
+.transformation-note {
+  position: absolute;
+  right: 2px;
+  bottom: 1px;
+  color: #087b9f;
+  font-size: 12px;
+  font-weight: 800;
+  pointer-events: none;
+}

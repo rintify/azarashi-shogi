@@ -395,3 +395,61 @@ it('separates moves exposing the king from danger to the moving piece, and updat
   expect(hook.result.current.kingDangerCells).toEqual([]);
   expect(hook.result.current.previewKingDanger).toBe(false);
 });
+
+it('marks dangerous orca landings blue with a note only if a legal rotation makes the complete action safe', () => {
+  const orca: Piece = { ...penguin, kind: 'orca', at: { x: 4, y: 6 } };
+  const meal: Piece = { ...food, at: { x: 4, y: 4 } };
+  const hunter: Piece = { ...penguin, id: 'hunter', owner: 'north', at: { x: 5, y: 4 } };
+  const state = {
+    ...createGame(),
+    pieces: [
+      ...createGame().pieces.map((piece) => ({
+        ...piece,
+        at: { x: piece.owner === 'south' ? 0 : 8, y: piece.at.y },
+      })),
+      orca,
+      meal,
+      hunter,
+    ],
+  };
+  const hook = renderHook(() => useBoardInteraction(state, 'south', vi.fn()));
+  act(() => hook.result.current.clickCell(orca.at));
+  expect(hook.result.current.transformationSafeCells).toContainEqual(meal.at);
+  expect(hook.result.current.unsafeCells).not.toContainEqual(meal.at);
+  expect(hook.result.current.kingDangerCells).not.toContainEqual(meal.at);
+  act(() => hook.result.current.setHover(meal.at));
+  expect(hook.result.current.previewUnsafe).toBe(false);
+  act(() => hook.result.current.clickCell(meal.at));
+  expect(hook.result.current.previewUnsafe).toBe(true);
+  const safeIndex = hook.result.current.pendingSafety.findIndex((option) => !option.unsafe);
+  expect(safeIndex).toBeGreaterThan(0);
+  act(() => hook.result.current.setOptionIndex(safeIndex));
+  expect(hook.result.current.previewUnsafe).toBe(false);
+});
+it('keeps the red warning when every orca rotation is still unsafe', () => {
+  const orca: Piece = { ...penguin, kind: 'orca', at: { x: 4, y: 6 } };
+  const meal: Piece = { ...food, at: { x: 4, y: 4 } };
+  const hunter: Piece = {
+    ...penguin,
+    id: 'hunter',
+    owner: 'north',
+    kind: 'bear',
+    at: { x: 6, y: 4 },
+  };
+  const state = {
+    ...createGame(),
+    pieces: [
+      ...createGame().pieces.map((piece) => ({
+        ...piece,
+        at: { x: piece.owner === 'south' ? 0 : 8, y: piece.at.y },
+      })),
+      orca,
+      meal,
+      hunter,
+    ],
+  };
+  const hook = renderHook(() => useBoardInteraction(state, 'south', vi.fn()));
+  act(() => hook.result.current.clickCell(orca.at));
+  expect(hook.result.current.transformationSafeCells).not.toContainEqual(meal.at);
+  expect(hook.result.current.unsafeCells).toContainEqual(meal.at);
+});
