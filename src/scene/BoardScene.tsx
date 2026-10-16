@@ -12,6 +12,7 @@ import { CellGuide } from './CellGuide';
 import { PlacementGhost } from './PlacementGhost';
 import { CaptureTransfers } from './CaptureTransfers';
 import { ActionEffects } from './ActionEffects';
+import { LastMoveRipple } from './LastMoveRipple';
 import type { StationaryGuide } from '../presentation/guideStyle';
 export interface BoardProps {
   onReady: () => void;
@@ -67,7 +68,6 @@ function BoardContents(props: BoardProps & { htmlPortal: RefObject<HTMLDivElemen
   const target = new Set(shownAction?.footprint.map(cellKey));
   const extra = new Set(shownAction?.captureCells.map(cellKey));
   const captured = new Set(preview?.captured.map((p) => p.id));
-  const last = new Set(game.lastAction?.footprint.map(cellKey));
   return (
     <>
       <IceWorld reduced={props.reduced} />
@@ -114,7 +114,6 @@ function BoardContents(props: BoardProps & { htmlPortal: RefObject<HTMLDivElemen
               active={active}
               additional={additional}
               reachable={reachable.has(key) || stationary}
-              last={last.has(key)}
               legal={legal.has(key) && !busy}
               stationary={stationary}
               stationaryAnchor={
@@ -168,6 +167,14 @@ function BoardContents(props: BoardProps & { htmlPortal: RefObject<HTMLDivElemen
         reduced={props.reduced}
       />
       {motion && motion.stage !== 'return' && <ActionEffects key={game.revision} motion={motion} />}
+      {game.lastAction && (
+        <LastMoveRipple
+          key={game.revision}
+          action={game.lastAction}
+          motion={motion}
+          reduced={props.reduced}
+        />
+      )}
       {motion && <CaptureTransfers motion={motion} />}
       <SceneCamera
         focusPiece={focusPiece}

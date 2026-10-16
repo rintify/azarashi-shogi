@@ -4,7 +4,6 @@ const base: GuideState = {
   active: false,
   additional: false,
   reachable: true,
-  last: false,
   legal: true,
   unsafe: false,
   previewUnsafe: false,
@@ -59,9 +58,7 @@ it('shows enemy coverage in its own color without danger, dots or outlines', () 
   expect(style.fillOpacity).toBeGreaterThan(0);
   expect(style.dotOpacity).toBe(0);
   expect(style.outlineOpacity).toBe(0);
-  expect(
-    guideStyle({ ...base, inspectingEnemy: true, reachable: false, last: true }).fillOpacity,
-  ).toBe(0);
+  expect(guideStyle({ ...base, inspectingEnemy: true, reachable: false }).fillOpacity).toBe(0);
 });
 
 it('uses dark red specifically for king exposure while preserving ordinary piece danger', () => {
@@ -185,9 +182,8 @@ it('lets a hovered move replace the staying-put footprint color where they overl
   expect(style.kingDanger).toBe(false);
 });
 
-it('shows the previous move as a faint white fill without any outline', () => {
-  const style = guideStyle({ ...base, legal: false, last: true, reachable: false });
-  expect(style.fill).toBe('#ffffff');
-  expect(style.fillOpacity).toBe(0.1);
+it('leaves previous-move cells clear when no other guide is active', () => {
+  const style = guideStyle({ ...base, legal: false, reachable: false });
+  expect(style.fillOpacity).toBe(0);
   expect(style.outlineOpacity).toBe(0);
 });
