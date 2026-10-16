@@ -2,6 +2,8 @@ import { useRef, type ReactNode, type RefObject } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { MeshPhysicalMaterial, SphereGeometry, type Group } from 'three';
 import { JET_POSE } from './animalPoses';
+import { JetEngine } from './JetEngine';
+import { OrcaModel } from './OrcaModel';
 import type { Kind, Player } from '../game/types';
 
 // Every animal part shares geometry; the fixed palette also shares GPU materials.
@@ -214,15 +216,7 @@ function Penguin({ jet, jetBlend }: { jet: boolean; jetBlend?: RefObject<number>
         </group>
       ))}
       <PenguinPart blend={blend} from={[0, 0.78, -0.48]} to={[0, 0.48, -0.15]} engine>
-        <Blob scale={[0.12, 0.115, 0.23]} color="#70c1c5" />
-        <mesh position={[0, 0, -0.25]} rotation={[Math.PI / 2, 0, 0]}>
-          <cylinderGeometry args={[0.075, 0.095, 0.12, 16]} />
-          <meshStandardMaterial color="#465b68" roughness={0.5} />
-        </mesh>
-        <mesh position={[0, 0, -0.34]} rotation={[-Math.PI / 2, 0, 0]}>
-          <coneGeometry args={[0.065, 0.15, 16]} />
-          <meshStandardMaterial color="#8feaff" emissive="#52bddd" emissiveIntensity={0.5} />
-        </mesh>
+        <JetEngine />
       </PenguinPart>
     </group>
   );
@@ -253,42 +247,6 @@ function Bear() {
       ))}
       <Eyes y={0.67} z={0.487} spread={0.15} size={0.034} />
       <Blob at={[0, 0.51, -0.49]} scale={[0.09, 0.085, 0.1]} color="#e6ece7" />
-    </group>
-  );
-}
-function Orca() {
-  return (
-    <group>
-      <Blob at={[0, 0.48, -0.04]} scale={[0.36, 0.34, 0.77]} color="#263744" roughness={0.24} />
-      <Blob at={[0, 0.4, 0.52]} scale={[0.32, 0.26, 0.3]} color="#263744" roughness={0.24} />
-      <Blob at={[0, 0.257, 0.23]} scale={[0.26, 0.15, 0.49]} color="#fffdf3" />
-      <mesh position={[0, 0.88, -0.24]} rotation={[0.1, 0, 0]} castShadow>
-        <coneGeometry args={[0.19, 0.53, 3]} />
-        <meshStandardMaterial color="#263744" />
-      </mesh>
-      {[-1, 1].map((s) => (
-        <group key={s}>
-          <Blob
-            at={[s * 0.31, 0.55, 0.36]}
-            scale={[0.055, 0.095, 0.18]}
-            rotation={[0, s * 0.35, -s * 0.2]}
-            color="#fffdf3"
-          />
-          <Blob
-            at={[s * 0.34, 0.23, 0.02]}
-            scale={[0.22, 0.055, 0.27]}
-            rotation={[0, s * 0.5, 0]}
-            color="#263744"
-          />
-          <Blob
-            at={[s * 0.19, 0.29, -0.8]}
-            scale={[0.27, 0.06, 0.14]}
-            rotation={[0, -s * 0.35, 0]}
-            color="#263744"
-          />
-        </group>
-      ))}
-      <Eyes y={0.51} z={0.77} spread={0.15} size={0.033} />
     </group>
   );
 }
@@ -372,7 +330,7 @@ export function Animal({
       ) : kind === 'bear' ? (
         <Bear />
       ) : kind === 'orca' ? (
-        <Orca />
+        <OrcaModel />
       ) : (
         <Walrus />
       )}
@@ -404,7 +362,7 @@ function OwnerBadge({
     seal: [0, 0.65, -0.22],
     penguin: [0, 0.51, 0.298],
     bear: [0, 0.78, -0.1],
-    orca: [0, 0.82, 0.03],
+    orca: [0, 0.785, 0.24],
     walrus: [0, 0.89, -0.17],
   };
   const upright = kind === 'penguin' && !promoted;
