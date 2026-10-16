@@ -66,7 +66,6 @@ function BoardContents(props: BoardProps & { htmlPortal: RefObject<HTMLDivElemen
   const shownAction = preview ?? (motion?.stage === 'return' ? null : motion?.action);
   const target = new Set(shownAction?.footprint.map(cellKey));
   const extra = new Set(shownAction?.captureCells.map(cellKey));
-  const captured = new Set(preview?.captured.map((p) => p.id));
   const last = new Set(game.lastAction?.footprint.map(cellKey));
   return (
     <>
@@ -148,7 +147,6 @@ function BoardContents(props: BoardProps & { htmlPortal: RefObject<HTMLDivElemen
             motion?.stage !== 'choice' && !!motion?.action.captured.some((p) => p.id === piece.id)
           }
           selected={selectedId === piece.id}
-          targeted={captured.has(piece.id)}
           threatened={
             game.turn === props.human && props.threats.some((t) => t.targetId === piece.id)
           }

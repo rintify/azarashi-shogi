@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
+import { useCallback, useEffect, useRef, type RefObject } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import { pieceMark, PieceMarkIcon, MARK_LABELS } from '../components/PieceMark';
-import { Color, MeshBasicMaterial, type Group, type Object3D, type Camera } from 'three';
+import { type Group, type Object3D, type Camera } from 'three';
 import type { Cell, Piece } from '../game/types';
 import { dimensions } from '../game/pieces';
 import { AnimatedPresence } from '../components/AnimatedUI';
@@ -24,7 +24,6 @@ export interface ActorProps {
   motion: MoveMotion | null;
   victim?: boolean;
   selected: boolean;
-  targeted: boolean;
   threatened: boolean;
   kingCapture: boolean;
   helper: boolean;
@@ -41,7 +40,6 @@ export function PieceActor({
   motion,
   victim = false,
   selected,
-  targeted,
   threatened,
   kingCapture,
   helper,
@@ -74,8 +72,6 @@ export function PieceActor({
     },
     [mark, disabled, victim],
   );
-  const ownerColor = piece.owner === 'south' ? '#087fad' : '#e58e3f';
-  const color = targeted ? '#ef7049' : selected ? '#38d1df' : ownerColor;
   useFrame(() => {
     if (!root.current || !model.current) return;
     let position = center(piece),
@@ -183,13 +179,6 @@ export function PieceActor({
           </group>
         )}
       </group>
-      <FootprintOutline
-        width={w}
-        height={h}
-        color={color}
-        active={(selected || targeted) && !moving}
-        reduced={reduced}
-      />
       <Html calculatePosition={locateMarker} center portal={htmlPortal} zIndexRange={[25, 20]}>
         <AnimatedPresence show={!!mark && !disabled && !victim}>
           <button
@@ -205,58 +194,6 @@ export function PieceActor({
           </button>
         </AnimatedPresence>
       </Html>
-    </group>
-  );
-}
-
-function FootprintOutline({
-  width,
-  height,
-  color,
-  active,
-  reduced,
-}: {
-  width: number;
-  height: number;
-  color: string;
-  active: boolean;
-  reduced: boolean;
-}) {
-  const [material] = useState(
-    () => new MeshBasicMaterial({ color, transparent: true, opacity: 0, depthWrite: false }),
-  );
-  const tint = useRef(new Color(color));
-  const root = useRef<Group>(null);
-  useEffect(() => () => material.dispose(), [material]);
-  useFrame((_, delta) => {
-    const blend = reduced ? 1 : 1 - Math.exp(-delta * 16);
-    material.opacity += (Number(active) * 0.8 - material.opacity) * blend;
-    tint.current.set(color);
-    material.color.lerp(tint.current, blend);
-    if (root.current) root.current.visible = material.opacity > 0.002;
-  });
-  return (
-    <group ref={root} position={[0, 0.175, 0]}>
-      {[-1, 1].map((side) => (
-        <group key={side}>
-          <mesh
-            material={material}
-            position={[0, 0, side * (height / 2 - 0.045)]}
-            rotation={[-Math.PI / 2, 0, 0]}
-            raycast={() => null}
-          >
-            <planeGeometry args={[width - 0.09, 0.025]} />
-          </mesh>
-          <mesh
-            material={material}
-            position={[side * (width / 2 - 0.045), 0, 0]}
-            rotation={[-Math.PI / 2, 0, 0]}
-            raycast={() => null}
-          >
-            <planeGeometry args={[0.025, height - 0.09]} />
-          </mesh>
-        </group>
-      ))}
     </group>
   );
 }
