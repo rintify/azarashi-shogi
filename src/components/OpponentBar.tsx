@@ -14,7 +14,7 @@ export function OpponentBar({
 }: {
   game: GameState;
   human: Player;
-  difficulty: Difficulty;
+  difficulty?: Difficulty;
   thinking: boolean;
   name?: string;
 }) {
@@ -23,9 +23,11 @@ export function OpponentBar({
       <div className="opponent-name">
         <span className={`presence-dot ${thinking ? 'thinking' : ''}`} />
         <strong>
-          {name} <small>Lv.{difficulty}</small>
+          {name} {difficulty && <small>Lv.{difficulty}</small>}
         </strong>
-        <span className="thinking-copy">{thinking ? '考え中…' : '氷原のペンギン'}</span>
+        <span className="thinking-copy">
+          {thinking ? '考え中…' : difficulty ? '氷原のペンギン' : 'ローカル対戦'}
+        </span>
       </div>
       <StockItems game={game} player={otherPlayer(human)} />
     </section>

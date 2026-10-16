@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { Download, FileText, Film, Play, Upload, X } from 'lucide-react';
 import { GameDialog } from './AnimatedUI';
 import { AnimalIcon } from './AnimalIcon';
-import { isSpectator, type GameRecord } from '../match/record';
+import { isSpectator, isLocalPvP, type GameRecord } from '../match/record';
 import { replayTimeline, type SavedReplay } from '../match/replayLibrary';
 import { replayText } from '../match/replayText';
 
@@ -39,9 +39,11 @@ function ReplayCard({
       <AnimalIcon kind={isSpectator(record.settings) ? 'penguin' : 'seal'} />
       <div className="replay-card-copy">
         <strong>
-          {isSpectator(record.settings)
-            ? 'AI vs AI'
-            : `あなた vs AI · Lv.${record.settings.difficulty}`}
+          {isLocalPvP(record.settings)
+            ? 'ローカルPvP · ふたり対戦'
+            : isSpectator(record.settings)
+              ? 'AI vs AI'
+              : `あなた vs AI · Lv.${record.settings.difficulty}`}
         </strong>
         <span>
           {new Date(record.createdAt).toLocaleString('ja-JP', {

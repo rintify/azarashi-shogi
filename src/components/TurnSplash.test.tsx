@@ -5,7 +5,10 @@ import { createGame } from '../game/engine';
 import { DEFAULT_SETTINGS } from '../match/record';
 import { TurnSplash } from './TurnSplash';
 
-afterEach(() => { cleanup(); vi.useRealTimers(); });
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
 
 it('waits for landing and lets the callout finish even if the next move starts', () => {
   vi.useFakeTimers();
@@ -28,4 +31,21 @@ it('waits for landing and lets the callout finish even if the next move starts',
 it('suppresses the callout when replay or a modal is visible', () => {
   render(<TurnSplash game={createGame()} settings={DEFAULT_SETTINGS} ready={false} busy={false} />);
   expect(screen.queryByText('あなた')).toBeNull();
+});
+
+it('uses first and second player names in local PvP', () => {
+  const game = createGame();
+  const settings = { ...DEFAULT_SETTINGS, mode: 'local-pvp' as const };
+  const view = render(<TurnSplash game={game} settings={settings} ready busy={false} />);
+  expect(screen.getByText('先手')).toBeTruthy();
+  view.rerender(
+    <TurnSplash
+      game={{ ...game, turn: 'north', revision: 1 }}
+      settings={settings}
+      ready
+      busy={false}
+    />,
+  );
+  expect(screen.getByText('後手')).toBeTruthy();
+  expect(screen.queryByText('相手')).toBeNull();
 });

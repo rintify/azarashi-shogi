@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { ArrowRight, ChevronDown, X } from 'lucide-react';
 import type { Difficulty, MatchSettings } from '../match/record';
 import type { Player } from '../game/types';
-import { aiDifficulty, isSpectator } from '../match/record';
+import { aiDifficulty } from '../match/record';
 import { AnimalIcon } from './AnimalIcon';
 import { LEVELS } from '../ai/levels';
 export function NewGameDialog({
@@ -15,7 +15,11 @@ export function NewGameDialog({
   close: () => void;
   start: (settings: MatchSettings) => void;
 }) {
-  const [watching, setWatching] = useState(isSpectator(current));
+  const [mode, setMode] = useState<NonNullable<MatchSettings['mode']>>(
+    current.mode ?? 'human-vs-ai',
+  );
+  const watching = mode === 'ai-vs-ai';
+  const local = mode === 'local-pvp';
   const [southLevel, setSouthLevel] = useState(aiDifficulty(current, 'south'));
   const [human, setHuman] = useState<Player>(current.human);
   const [difficulty, setDifficulty] = useState<Difficulty>(current.difficulty);
@@ -35,15 +39,13 @@ export function NewGameDialog({
         </button>
       </header>
       <AnimatedSize>
-        <p className="dialog-intro">
-          対戦モードと強さを選びます。開始すると現在の対局は終了します。
-        </p>
+        <p className="dialog-intro">遊び方を選んではじめよう。今の対局はリプレイに残ります。</p>
         <label className="setting-label">対戦モード</label>
         <div className="side-options mode-options">
           <button
-            aria-pressed={!watching}
-            className={!watching ? 'active' : ''}
-            onClick={() => setWatching(false)}
+            aria-pressed={mode === 'human-vs-ai'}
+            className={mode === 'human-vs-ai' ? 'active' : ''}
+            onClick={() => setMode('human-vs-ai')}
           >
             <div className="mode-portraits" aria-hidden="true">
               <AnimalIcon kind="seal" />
@@ -55,7 +57,7 @@ export function NewGameDialog({
           <button
             aria-pressed={watching}
             className={watching ? 'active' : ''}
-            onClick={() => setWatching(true)}
+            onClick={() => setMode('ai-vs-ai')}
           >
             <div className="mode-portraits" aria-hidden="true">
               <AnimalIcon kind="penguin" />
@@ -64,8 +66,20 @@ export function NewGameDialog({
             </div>
             AI vs AI<span>対局を観戦する</span>
           </button>
+          <button
+            aria-pressed={local}
+            className={local ? 'active' : ''}
+            onClick={() => setMode('local-pvp')}
+          >
+            <div className="mode-portraits" aria-hidden="true">
+              <AnimalIcon kind="seal" />
+              <b>VS</b>
+              <AnimalIcon kind="seal" promoted />
+            </div>
+            ローカルPvP<span>同じ端末でふたり対戦</span>
+          </button>
         </div>
-        {!watching && (
+        {!watching && !local && (
           <div className="settings-group">
             <label className="setting-label">あなたの手番</label>
             <div className="side-options">
@@ -105,39 +119,47 @@ export function NewGameDialog({
             />
           </div>
         )}
-        <label className="setting-label" htmlFor="difficulty">
-          {watching ? '後手AIの強さ' : '相手の強さ'}
-          <span>
-            Lv.{difficulty} · {LEVELS[difficulty].name}
-          </span>
-        </label>
-        <input
-          id="difficulty"
-          type="range"
-          min="1"
-          max="5"
-          step="1"
-          value={difficulty}
-          onChange={(e) => setDifficulty(Number(e.target.value) as Difficulty)}
-        />
-        <div className="range-labels">
-          <span>気軽に</span>
-          <span>じっくり勝負</span>
-        </div>
-        <p className="difficulty-note">
-          {watching
-            ? `先手は最大${LEVELS[southLevel].thinkingMs / 1000}秒、後手は最大${LEVELS[difficulty].thinkingMs / 1000}秒。同じルールで対局します。`
-            : difficulty === 5
-              ? '最長10秒じっくり考える「極」。同じルールで、全力の一手を指します。'
-              : `NPCの思考時間は最大${LEVELS[difficulty].thinkingMs / 1000}秒。${LEVELS[difficulty].name}レベルで対戦します。`}
-        </p>
+        {local ? (
+          <p className="local-play-note">
+            先手（青）から開始。1手ごとに視点と持ち駒が切り替わります。端末を交代しながら遊んでね。
+          </p>
+        ) : (
+          <>
+            <label className="setting-label" htmlFor="difficulty">
+              {watching ? '後手AIの強さ' : '相手の強さ'}
+              <span>
+                Lv.{difficulty} · {LEVELS[difficulty].name}
+              </span>
+            </label>
+            <input
+              id="difficulty"
+              type="range"
+              min="1"
+              max="5"
+              step="1"
+              value={difficulty}
+              onChange={(e) => setDifficulty(Number(e.target.value) as Difficulty)}
+            />
+            <div className="range-labels">
+              <span>気軽に</span>
+              <span>じっくり勝負</span>
+            </div>
+            <p className="difficulty-note">
+              {watching
+                ? `先手は最大${LEVELS[southLevel].thinkingMs / 1000}秒、後手は最大${LEVELS[difficulty].thinkingMs / 1000}秒。同じルールで対局します。`
+                : difficulty === 5
+                  ? '最長10秒じっくり考える「極」。同じルールで、全力の一手を指します。'
+                  : `NPCの思考時間は最大${LEVELS[difficulty].thinkingMs / 1000}秒。${LEVELS[difficulty].name}レベルで対戦します。`}
+            </p>
+          </>
+        )}
         <button
           className="primary-button full"
           onClick={() =>
             start({
-              human: watching ? 'south' : human,
+              human: watching || local ? 'south' : human,
               difficulty,
-              mode: watching ? 'ai-vs-ai' : 'human-vs-ai',
+              mode,
               aiLevels: watching ? { south: southLevel, north: difficulty } : undefined,
             })
           }

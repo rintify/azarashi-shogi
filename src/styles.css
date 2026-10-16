@@ -2531,3 +2531,37 @@ button:not(:disabled):focus-visible {
   font-weight: 800;
   pointer-events: none;
 }
+
+.mode-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.mode-options > button {
+  min-width: 0;
+  padding-inline: 7px;
+}
+.local-play-note {
+  margin: 18px 0;
+  padding: 14px;
+  border-radius: 18px;
+  background: #e6f3f2;
+  color: #426d78;
+  font-size: 12px;
+  line-height: 1.8;
+}
+@media (max-width: 400px) {
+  .mode-options > button {
+    font-size: 11px;
+    padding-inline: 4px;
+  }
+  .mode-options .mode-portraits {
+    gap: 4px;
+  }
+  .mode-options .animal-icon {
+    width: 20px;
+    height: 20px;
+  }
+  .mode-options > button > span {
+    font-size: 9px;
+  }
+}

@@ -34,3 +34,11 @@ it('can describe an empty record without inventing a result', () => {
   expect(text).toContain('記録手数: 0');
   expect(text).toContain('未終局。次は先手の手番。');
 });
+
+it('labels local PvP as two humans without NPC difficulty metadata', () => {
+  const text = replayText(newRecord({ mode: 'local-pvp', human: 'south', difficulty: 3 }));
+  expect(text).toContain('先手: 先手 / 後手: 後手');
+  expect(text).toContain('対戦モード: ローカルPvP（先手・後手とも人間）');
+  expect(text).not.toContain('NPC難度');
+  expect(text).not.toContain('NPC乱数シード');
+});

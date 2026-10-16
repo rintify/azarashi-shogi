@@ -1,7 +1,7 @@
 import { DEFINITIONS, KINDS, footprint, pieceName } from '../game/pieces';
 import type { Cell, Piece, Player, Stock } from '../game/types';
 import { coordinate } from '../shared/coordinates';
-import { aiDifficulty, playerLabel, type GameRecord } from './record';
+import { aiDifficulty, isLocalPvP, playerLabel, type GameRecord } from './record';
 import { replayTimeline } from './replayLibrary';
 
 const side = (owner: Player) => (owner === 'south' ? '先手' : '後手');
@@ -19,9 +19,11 @@ export function replayText(record: GameRecord): string {
     'アザラシ将棋 — 実況・解説用棋譜',
     `対局ID: ${record.id}`,
     `開始日時: ${record.createdAt}（ISO 8601）`,
-    `ルールバージョン: ${record.rulesVersion} / NPC乱数シード: ${record.seed}`,
+    `ルールバージョン: ${record.rulesVersion}${isLocalPvP(record.settings) ? '' : ` / NPC乱数シード: ${record.seed}`}`,
     `先手: ${playerLabel(record.settings, 'south')} / 後手: ${playerLabel(record.settings, 'north')}`,
-    `NPC難度: 先手Lv.${aiDifficulty(record.settings, 'south')}、後手Lv.${aiDifficulty(record.settings, 'north')}（人間側には適用しない）`,
+    isLocalPvP(record.settings)
+      ? '対戦モード: ローカルPvP（先手・後手とも人間）'
+      : `NPC難度: 先手Lv.${aiDifficulty(record.settings, 'south')}、後手Lv.${aiDifficulty(record.settings, 'north')}（人間側には適用しない）`,
     `記録手数: ${record.actions.length}`,
     '',
     '【実況・解説のための読み方】',

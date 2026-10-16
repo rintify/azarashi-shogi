@@ -1,10 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { Snowflake } from 'lucide-react';
 import type { GameState, Player } from '../game/types';
-import { isSpectator, playerLabel, type MatchSettings } from '../match/record';
+import { isSpectator, isLocalPvP, playerLabel, type MatchSettings } from '../match/record';
 
 /** Announce the next turn only after the previous piece has landed. */
-export function TurnSplash({ game, settings, ready, busy }: {
+export function TurnSplash({
+  game,
+  settings,
+  ready,
+  busy,
+}: {
   game: GameState;
   settings: MatchSettings;
   ready: boolean;
@@ -28,14 +33,18 @@ export function TurnSplash({ game, settings, ready, busy }: {
     return () => window.clearTimeout(timer);
   }, [notice]);
   if (!notice || !ready || game.phase !== 'playing') return null;
-  const label = !isSpectator(settings) && notice.turn !== settings.human
-    ? '相手'
-    : playerLabel(settings, notice.turn);
+  const label =
+    !isLocalPvP(settings) && !isSpectator(settings) && notice.turn !== settings.human
+      ? '相手'
+      : playerLabel(settings, notice.turn);
   return (
     <div className="turn-splash" key={notice.revision} data-side={notice.turn} aria-hidden="true">
       <div className="turn-splash-copy">
         <Snowflake className="turn-splash-spark" />
-        <strong>{label}<small>の番</small></strong>
+        <strong>
+          {label}
+          <small>の番</small>
+        </strong>
       </div>
     </div>
   );

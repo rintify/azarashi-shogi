@@ -15,7 +15,14 @@ import {
   Film,
 } from 'lucide-react';
 import { AnimalIcon } from './components/AnimalIcon';
-import { aiDifficulty, isSpectator, playerLabel } from './match/record';
+import {
+  aiDifficulty,
+  isSpectator,
+  isLocalPvP,
+  interactionPlayer,
+  isComputerTurn,
+  playerLabel,
+} from './match/record';
 import { otherPlayer } from './game/types';
 import { SpectatorDock } from './components/SpectatorDock';
 import { useMatch } from './match/useMatch';
@@ -32,6 +39,7 @@ import { statusCopy } from './components/statusCopy';
 import { useBoardInteraction } from './components/useBoardInteraction';
 import { pieceName } from './game/pieces';
 import { coordinate } from './components/coordinates';
+import { useTurnHandoff } from './presentation/useTurnHandoff';
 import { useCaptureStocks } from './presentation/useCaptureStocks';
 import { usePlayback } from './presentation/usePlayback';
 import { usePlayArea } from './presentation/usePlayArea';
@@ -59,6 +67,7 @@ export default function App() {
   const [catalogVisible, setCatalogVisible] = useState(false);
   const [libraryVisible, setLibraryVisible] = useState(false);
   const watching = isSpectator(settings);
+  const local = isLocalPvP(settings);
   const [paused, setPaused] = useState(false);
   const [stepRequested, setStepRequested] = useState(false);
   useEffect(() => setStepRequested(false), [game.revision]);
@@ -83,11 +92,22 @@ export default function App() {
   const playback = usePlayback(game, reduced, replay.epoch, replay.active ? replay.speed : 1),
     audio = useGameAudio(playback.motion);
   const stockGame = useCaptureStocks(game, playback.motion);
+  const player = interactionPlayer(
+    settings,
+    replay.active ? settings.human : playback.settled.turn,
+  );
+  const handoffReady = useTurnHandoff(player, local && !replay.active, reduced);
+  const controlSettings = { ...settings, human: player };
   const interaction = useBoardInteraction(
     game,
-    settings.human,
+    player,
     submit,
     sceneReady &&
+      handoffReady &&
+      !rulesVisible &&
+      !settingsVisible &&
+      !libraryVisible &&
+      !catalogVisible &&
       !playback.resolving &&
       !watching &&
       !replay.active &&
@@ -110,6 +130,7 @@ export default function App() {
     aiDifficulty(match.settings, match.game.turn),
     submit,
     sceneReady &&
+      isComputerTurn(match.settings, match.game.turn) &&
       !playback.busy &&
       !rulesOpen &&
       !newGameOpen &&
@@ -161,12 +182,13 @@ export default function App() {
     settingsVisible,
     sceneReady,
   ]);
-  const status = statusCopy(game, settings.human, interaction);
-  const resultTitle = watching
-    ? game.result?.winner
-      ? `${playerLabel(settings, game.result.winner)}の勝ちです`
-      : '引き分けです'
-    : status.title;
+  const status = statusCopy(game, player, interaction);
+  const resultTitle =
+    watching || local
+      ? game.result?.winner
+        ? `${playerLabel(settings, game.result.winner)}の勝ちです`
+        : '引き分けです'
+      : status.title;
   const actorLabel = (owner = game.turn) => playerLabel(settings, owner);
   useEffect(() => {
     if (interaction.pending && interaction.pending.length > 1) setKeyboardOpen(false);
@@ -179,7 +201,7 @@ export default function App() {
     window.addEventListener('keydown', escape);
     return () => window.removeEventListener('keydown', escape);
   }, [interaction]);
-  const king = game.pieces.find((p) => p.kind === 'walrus' && p.owner === settings.human);
+  const king = game.pieces.find((p) => p.kind === 'walrus' && p.owner === player);
   const kingDanger =
     !watching &&
     !replay.active &&
@@ -194,7 +216,11 @@ export default function App() {
       style={{ '--danger-color': GUIDE_COLORS.danger } as CSSProperties}
       onPointerDown={audio.unlock}
     >
-      <section className="world-layer" aria-label="対局盤" aria-busy={playback.busy}>
+      <section
+        className="world-layer"
+        aria-label="対局盤"
+        aria-busy={playback.busy || !handoffReady}
+      >
         <SceneBoundary
           onFallback={() => {
             setSceneReady(true);
@@ -213,7 +239,7 @@ export default function App() {
               focusResult={ended && !resultDismissed}
               onReady={markReady}
               game={game}
-              human={settings.human}
+              human={player}
               selectedId={interaction.selectedId}
               legalCells={interaction.legalCells}
               reachableCells={interaction.reachableCells}
@@ -230,7 +256,7 @@ export default function App() {
               view={view}
               area={area}
               motion={playback.motion}
-              busy={playback.busy}
+              busy={playback.busy || !handoffReady}
               reduced={reduced}
               onCell={interaction.clickCell}
               onHover={interaction.setHover}
@@ -330,9 +356,9 @@ export default function App() {
       <div className="opponent-hud">
         <OpponentBar
           game={stockGame}
-          human={settings.human}
-          difficulty={aiDifficulty(settings, otherPlayer(settings.human))}
-          name={actorLabel(otherPlayer(settings.human))}
+          human={player}
+          difficulty={local ? undefined : aiDifficulty(settings, otherPlayer(player))}
+          name={actorLabel(otherPlayer(player))}
           thinking={aiStatus.thinking}
         />
       </div>
@@ -373,13 +399,17 @@ export default function App() {
           ) : (
             <>
               <span className={`status-pulse ${interaction.humanTurn ? 'human' : ''}`} />
-              {watching
-                ? `${actorLabel()}${paused && !stepRequested ? ' · 一時停止' : 'の手番'}`
-                : interaction.humanTurn
-                  ? interaction.portrait
-                    ? status.title
-                    : 'あなたの手番'
-                  : 'NPCの手番'}
+              {local
+                ? interaction.portrait && handoffReady
+                  ? `${actorLabel()} · ${status.title}`
+                  : `${actorLabel()}${handoffReady ? 'の番' : 'へ交代'}`
+                : watching
+                  ? `${actorLabel()}${paused && !stepRequested ? ' · 一時停止' : 'の手番'}`
+                  : interaction.humanTurn
+                    ? interaction.portrait
+                      ? status.title
+                      : 'あなたの手番'
+                    : 'NPCの手番'}
               <small>{`${game.revision + 1}手目`}</small>
             </>
           )}
@@ -403,7 +433,7 @@ export default function App() {
             transformationSafeCells={interaction.transformationSafeCells}
             unsafeCells={interaction.unsafeCells}
             game={game}
-            human={settings.human}
+            human={player}
             legalCells={interaction.legalCells}
             reachableCells={interaction.reachableCells}
             onCell={interaction.clickCell}
@@ -416,12 +446,7 @@ export default function App() {
       >
         <div className="bottom-hud">
           {replay.active ? (
-            <ReplayDock
-              replay={replay}
-              busy={playback.busy}
-              game={stockGame}
-              human={settings.human}
-            />
+            <ReplayDock replay={replay} busy={playback.busy} game={stockGame} human={player} />
           ) : watching ? (
             <SpectatorDock
               game={stockGame}
@@ -438,9 +463,9 @@ export default function App() {
           ) : (
             <ActionDock
               game={stockGame}
-              settings={settings}
+              settings={controlSettings}
               interaction={interaction}
-              busy={playback.busy || !sceneReady}
+              busy={playback.busy || !sceneReady || !handoffReady}
               onHelp={() => setRulesOpen(true)}
             />
           )}
@@ -467,9 +492,11 @@ export default function App() {
             <span>
               {playback.busy
                 ? '一手を再生中'
-                : watching
-                  ? '先手AI・青 / 後手AI・橙'
-                  : `あなたは${settings.human === 'south' ? '先手・青' : '後手・橙'}`}
+                : local
+                  ? 'ローカルPvP · 先手は青 / 後手は橙'
+                  : watching
+                    ? '先手AI・青 / 後手AI・橙'
+                    : `あなたは${settings.human === 'south' ? '先手・青' : '後手・橙'}`}
             </span>
           )}
         </AnimatedValue>
@@ -479,7 +506,7 @@ export default function App() {
           outcome={
             game.result?.winner == null
               ? 'draw'
-              : watching || game.result.winner === settings.human
+              : watching || local || game.result.winner === settings.human
                 ? 'victory'
                 : 'defeat'
           }
@@ -508,7 +535,7 @@ export default function App() {
       <AnimatedPresence
         show={!!interaction.pending && interaction.pending.length > 1 && playback.choiceReady}
       >
-        <TransformationDialog human={settings.human} interaction={interaction} />
+        <TransformationDialog human={player} interaction={interaction} />
       </AnimatedPresence>
       <AnimatedPresence show={catalogOpen} onPresenceChange={setCatalogVisible}>
         <PieceCatalog close={() => setCatalogOpen(false)} reduced={reduced} />

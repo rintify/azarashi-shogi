@@ -4,7 +4,7 @@ import { CaptureChoice } from './CaptureChoice';
 import { ChevronUp, Info, X } from 'lucide-react';
 import type { GameState } from '../game/types';
 import { DEFINITIONS, KINDS } from '../game/pieces';
-import type { MatchSettings } from '../match/record';
+import { isLocalPvP, playerLabel, type MatchSettings } from '../match/record';
 import { AnimalIcon } from './AnimalIcon';
 import { StockItems } from './OpponentBar';
 import type { BoardInteraction } from './useBoardInteraction';
@@ -56,7 +56,9 @@ export function ActionDock({ game, settings, interaction, onHelp, busy = false }
         aria-controls={trayId}
         onClick={() => setExpanded((open) => !open)}
       >
-        <span className="reserve-label">持ち駒</span>
+        <span className="reserve-label">
+          {isLocalPvP(settings) ? `${playerLabel(settings, settings.human)}の持ち駒` : '持ち駒'}
+        </span>
         <StockItems game={game} player={settings.human} activeKind={activeKind} />
         <ChevronUp size={15} className={expanded ? 'is-open' : ''} />
       </button>
@@ -92,7 +94,14 @@ export function ActionDock({ game, settings, interaction, onHelp, busy = false }
               </button>
             </div>
           </div>
-          <div className="reserve-grid" aria-label="あなたのストック">
+          <div
+            className="reserve-grid"
+            aria-label={
+              isLocalPvP(settings)
+                ? `${playerLabel(settings, settings.human)}のストック`
+                : 'あなたのストック'
+            }
+          >
             {KINDS.filter((kind) => kind !== 'walrus').map((kind) => (
               <button
                 key={kind}

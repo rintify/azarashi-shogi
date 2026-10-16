@@ -1,5 +1,14 @@
 import { expect, it } from 'vitest';
-import { aiDifficulty, decodeRecord, isSpectator, newRecord, playerLabel } from './record';
+import {
+  aiDifficulty,
+  decodeRecord,
+  isSpectator,
+  isLocalPvP,
+  interactionPlayer,
+  isComputerTurn,
+  newRecord,
+  playerLabel,
+} from './record';
 it('restores legacy human matches and AI versus AI settings with independent levels', () => {
   const legacy = decodeRecord(JSON.stringify(newRecord({ human: 'south', difficulty: 3 })));
   expect(isSpectator(legacy.record.settings)).toBe(false);
@@ -33,4 +42,25 @@ it('rejects unknown modes and malformed AI levels rather than starting an invali
 
 it('does not replay a record under a different rule version', () => {
   expect(() => decodeRecord(JSON.stringify({ ...newRecord(), rulesVersion: 1 }))).toThrow();
+});
+
+it('restores local PvP and assigns both sides to human control without AI turns', () => {
+  const record = newRecord({ mode: 'local-pvp', human: 'south', difficulty: 3 });
+  record.actions = [
+    { type: 'place', kind: 'seal', at: { x: 3, y: 7 } },
+    { type: 'place', kind: 'penguin', at: { x: 3, y: 2 } },
+  ];
+  const loaded = decodeRecord(JSON.stringify(record));
+  expect(isLocalPvP(loaded.record.settings)).toBe(true);
+  expect(loaded.game.revision).toBe(2);
+  expect(playerLabel(record.settings, 'south')).toBe('先手');
+  expect(playerLabel(record.settings, 'north')).toBe('後手');
+  for (const turn of ['south', 'north'] as const) {
+    expect(interactionPlayer(record.settings, turn)).toBe(turn);
+    expect(isComputerTurn(record.settings, turn)).toBe(false);
+  }
+  const solo = { human: 'south' as const, difficulty: 3 as const };
+  expect(interactionPlayer(solo, 'north')).toBe('south');
+  expect(isComputerTurn(solo, 'north')).toBe(true);
+  expect(isComputerTurn({ ...solo, mode: 'ai-vs-ai' }, 'south')).toBe(true);
 });

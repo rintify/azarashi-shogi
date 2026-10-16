@@ -4,7 +4,7 @@ import type { GameAction, GameState, Player } from '../game/types';
 import { randomSeed } from '../shared/random';
 export type Difficulty = 1 | 2 | 3 | 4 | 5;
 export interface MatchSettings {
-  mode?: 'human-vs-ai' | 'ai-vs-ai';
+  mode?: 'human-vs-ai' | 'ai-vs-ai' | 'local-pvp';
   aiLevels?: Record<Player, Difficulty>;
   human: Player;
   difficulty: Difficulty;
@@ -21,15 +21,24 @@ export interface GameRecord {
 export const DEFAULT_SETTINGS: MatchSettings = { human: 'south', difficulty: 3 };
 export const STORAGE_KEY = `azarashi-shogi.match.v${RULES_VERSION}`;
 export const LEGACY_STORAGE_KEY = 'azarashi-shogi.match.v1';
+export const isLocalPvP = (settings: MatchSettings) => settings.mode === 'local-pvp';
+export const interactionPlayer = (settings: MatchSettings, turn: Player) =>
+  isLocalPvP(settings) ? turn : settings.human;
+export const isComputerTurn = (settings: MatchSettings, turn: Player) =>
+  !isLocalPvP(settings) && (isSpectator(settings) || turn !== settings.human);
 export const isSpectator = (settings: MatchSettings) => settings.mode === 'ai-vs-ai';
 export const playerLabel = (settings: MatchSettings, player: Player) =>
-  isSpectator(settings)
+  isLocalPvP(settings)
     ? player === 'south'
-      ? '先手AI'
-      : '後手AI'
-    : player === settings.human
-      ? 'あなた'
-      : 'NPC';
+      ? '先手'
+      : '後手'
+    : isSpectator(settings)
+      ? player === 'south'
+        ? '先手AI'
+        : '後手AI'
+      : player === settings.human
+        ? 'あなた'
+        : 'NPC';
 export const aiDifficulty = (settings: MatchSettings, player: Player) =>
   settings.aiLevels?.[player] ?? settings.difficulty;
 export function newRecord(settings = DEFAULT_SETTINGS): GameRecord {
@@ -79,7 +88,8 @@ export function decodeRecord(text: string): { record: GameRecord; game: GameStat
 function validSettings(settings: MatchSettings): boolean {
   return (
     !!settings &&
-    (settings.mode === undefined || ['human-vs-ai', 'ai-vs-ai'].includes(settings.mode)) &&
+    (settings.mode === undefined ||
+      ['human-vs-ai', 'ai-vs-ai', 'local-pvp'].includes(settings.mode)) &&
     (settings.aiLevels === undefined ||
       ['south', 'north'].every((side) =>
         [1, 2, 3, 4, 5].includes(settings.aiLevels![side as Player]),
