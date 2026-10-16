@@ -40,6 +40,7 @@ import { useReplay } from './match/useReplay';
 import { ReplayLibraryDialog } from './components/ReplayLibraryDialog';
 import { ReplayDock } from './components/ReplayDock';
 import { TurnSplash } from './components/TurnSplash';
+import { PieceCatalog } from './components/PieceCatalog';
 const BoardScene = lazy(() =>
   import('./scene/BoardScene').then((m) => ({ default: m.BoardScene })),
 );
@@ -53,6 +54,8 @@ export default function App() {
   const { submit, restart } = match;
   const warning = match.warning ?? library.warning;
   const [libraryOpen, setLibraryOpen] = useState(false);
+  const [catalogOpen, setCatalogOpen] = useState(false);
+  const [catalogVisible, setCatalogVisible] = useState(false);
   const [libraryVisible, setLibraryVisible] = useState(false);
   const watching = isSpectator(settings);
   const [paused, setPaused] = useState(false);
@@ -82,7 +85,12 @@ export default function App() {
     game,
     settings.human,
     submit,
-    sceneReady && !playback.resolving && !watching && !replay.active && !libraryOpen,
+    sceneReady &&
+      !playback.resolving &&
+      !watching &&
+      !replay.active &&
+      !libraryOpen &&
+      !catalogOpen,
     playback.presentChoice,
   );
   useEffect(() => {
@@ -107,6 +115,8 @@ export default function App() {
       !settingsVisible &&
       !libraryOpen &&
       !libraryVisible &&
+      !catalogOpen &&
+      !catalogVisible &&
       !replay.active &&
       (!watching || !paused || stepRequested),
     match.record.seed,
@@ -117,6 +127,8 @@ export default function App() {
       !replay.playing ||
       playback.busy ||
       libraryVisible ||
+      catalogOpen ||
+      catalogVisible ||
       rulesOpen ||
       rulesVisible ||
       newGameOpen ||
@@ -139,6 +151,8 @@ export default function App() {
     replay.advance,
     playback.busy,
     libraryVisible,
+    catalogOpen,
+    catalogVisible,
     rulesOpen,
     rulesVisible,
     newGameOpen,
@@ -223,12 +237,30 @@ export default function App() {
         key={match.record.id}
         game={playback.settled}
         settings={settings}
-        ready={sceneReady && !replay.active && !libraryVisible && !rulesVisible && !settingsVisible}
+        ready={
+          sceneReady &&
+          !replay.active &&
+          !libraryVisible &&
+          !rulesVisible &&
+          !settingsVisible &&
+          !catalogVisible
+        }
         busy={playback.busy}
       />
       <header className="game-header">
         <div className="game-brand">
-          <AnimalIcon kind="seal" className="brand-mascot" />
+          <button
+            className="brand-catalog"
+            aria-label="駒の図鑑"
+            title="駒の図鑑"
+            onClick={() => {
+              replay.pause();
+              setCatalogOpen(true);
+            }}
+          >
+            <AnimalIcon kind="seal" className="brand-mascot" />
+            <span>図鑑</span>
+          </button>
           <h1>アザラシ将棋</h1>
         </div>
         <nav aria-label="対局メニュー">
@@ -453,6 +485,9 @@ export default function App() {
         show={!!interaction.pending && interaction.pending.length > 1 && playback.choiceReady}
       >
         <TransformationDialog human={settings.human} interaction={interaction} />
+      </AnimatedPresence>
+      <AnimatedPresence show={catalogOpen} onPresenceChange={setCatalogVisible}>
+        <PieceCatalog close={() => setCatalogOpen(false)} reduced={reduced} />
       </AnimatedPresence>
       <AnimatedPresence show={rulesOpen} onPresenceChange={setRulesVisible}>
         <RulesDialog close={() => setRulesOpen(false)} />
