@@ -19,6 +19,7 @@ export function CoordinateBoard({
   unsafeCells = [],
   kingCaptureIds = [],
   helperIds = [],
+  trappedIds = [],
   threatenedIds = [],
   kingDangerCells = [],
   transformationSafeCells = [],
@@ -35,6 +36,7 @@ export function CoordinateBoard({
   unsafeCells?: Cell[];
   kingCaptureIds?: string[];
   helperIds?: string[];
+  trappedIds?: string[];
   threatenedIds?: string[];
   kingDangerCells?: Cell[];
   transformationSafeCells?: Cell[];
@@ -83,7 +85,12 @@ export function CoordinateBoard({
           (kingDangerCells.some((c) => sameCell(c, cell)) || !!stationarySafety?.kingThreatened);
         const mark =
           game.turn === human && piece
-            ? pieceMark(kingCapture, helperIds.includes(piece.id), threatenedIds.includes(piece.id))
+            ? pieceMark(
+                kingCapture,
+                helperIds.includes(piece.id),
+                threatenedIds.includes(piece.id),
+                trappedIds.includes(piece.id),
+              )
             : null;
         return (
           <button
@@ -117,7 +124,7 @@ export function CoordinateBoard({
             {piece ? <AnimalIcon kind={piece.kind} promoted={piece.promoted} /> : null}
             {mark && piece && sameCell(cell, markerCell(piece, human)) && (
               <span
-                className={`coordinate-mark ${mark === 'king' ? 'king-capture-badge' : mark === 'helper' ? 'helper-badge' : ''}`}
+                className={`coordinate-mark ${mark === 'king' ? 'king-capture-badge' : mark === 'helper' ? 'helper-badge' : mark === 'trapped' ? 'trapped-badge' : ''}`}
                 aria-hidden="true"
               >
                 <PieceMarkIcon mark={mark} size={13} />

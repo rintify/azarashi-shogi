@@ -2500,6 +2500,13 @@ button:not(:disabled):focus-visible {
   background: #bce7ce;
   border-color: #edfff2;
 }
+.threat-badge.trapped-badge,
+.coordinate-mark.trapped-badge {
+  background: #8f2038;
+  color: #ffffff;
+  border-color: #ffe1e7;
+  box-shadow: 0 2px 8px #65172b40;
+}
 .coordinate-board button.king-capture-trap {
   background: color-mix(in srgb, var(--king-capture-trap-color) 35%, #e3f0f5);
   color: #886214;

@@ -25,6 +25,7 @@ export interface ActorProps {
   victim?: boolean;
   selected: boolean;
   threatened: boolean;
+  trapped: boolean;
   kingCapture: boolean;
   helper: boolean;
   disabled: boolean;
@@ -41,6 +42,7 @@ export function PieceActor({
   victim = false,
   selected,
   threatened,
+  trapped,
   kingCapture,
   helper,
   disabled,
@@ -62,7 +64,7 @@ export function PieceActor({
   }, [intro]);
   const moving = !!motion && !victim && motion.action.piece.id === piece.id;
   const [w, h] = dimensions(moving && motion?.before ? motion.before : piece);
-  const mark = pieceMark(kingCapture, helper, threatened);
+  const mark = pieceMark(kingCapture, helper, threatened, trapped);
   const lastMarkerPosition = useRef<[number, number]>([0, 0]);
   const locateMarker = useCallback(
     (object: Object3D, camera: Camera, viewport: { width: number; height: number }) => {
@@ -182,7 +184,7 @@ export function PieceActor({
       <Html calculatePosition={locateMarker} center portal={htmlPortal} zIndexRange={[25, 20]}>
         <AnimatedPresence show={!!mark && !disabled && !victim}>
           <button
-            className={`threat-badge ${mark === 'king' ? 'king-capture-badge' : mark === 'helper' ? 'helper-badge' : ''}`}
+            className={`threat-badge ${mark === 'king' ? 'king-capture-badge' : mark === 'helper' ? 'helper-badge' : mark === 'trapped' ? 'trapped-badge' : ''}`}
             aria-label={mark ? MARK_LABELS[mark] : undefined}
             title={mark ? MARK_LABELS[mark] : undefined}
             onClick={(e) => {

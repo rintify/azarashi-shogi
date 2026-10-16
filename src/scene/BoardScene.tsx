@@ -28,6 +28,7 @@ export interface BoardProps {
   previewKingCaptureTrap: boolean;
   previewKingDanger: boolean;
   helperIds: string[];
+  trappedIds: string[];
   preview: ActionPreview | null;
   previewUnsafe: boolean;
   threats: Threat[];
@@ -150,6 +151,7 @@ function BoardContents(props: BoardProps & { htmlPortal: RefObject<HTMLDivElemen
           threatened={
             game.turn === props.human && props.threats.some((t) => t.targetId === piece.id)
           }
+          trapped={game.turn === props.human && props.trappedIds.includes(piece.id)}
           helper={game.turn === props.human && props.helperIds.includes(piece.id)}
           kingCapture={game.turn === props.human && props.kingCaptureIds.includes(piece.id)}
           disabled={busy}

@@ -1,4 +1,4 @@
-import { applyPreview, legalPreviews } from './engine';
+import { applyPreview, legalPreviews, moveCells, moveOptions } from './engine';
 import { otherPlayer } from './types';
 import type { ActionPreview, GameState, Piece, Player } from './types';
 
@@ -40,6 +40,16 @@ export function actionSafety(state: GameState, preview: ActionPreview): ActionSa
 /** Display-only analysis of staying put; this never creates a pass or changes the match. */
 export function stationarySafety(state: GameState, piece: Piece): ActionSafety {
   return assessPosition({ ...state, turn: otherPlayer(piece.owner) }, piece);
+}
+
+/** Red at rest and at every destination, including every capture transformation. */
+export function hasOnlyRedPositions(state: GameState, piece: Piece): boolean {
+  if (state.phase !== 'playing' || state.turn !== piece.owner) return false;
+  const isRed = (safety: ActionSafety) => safety.unsafe && !safety.kingCaptureTrap;
+  if (!isRed(stationarySafety(state, piece))) return false;
+  return moveCells(state, piece).every((at) =>
+    moveOptions(state, piece, at).every((option) => isRed(actionSafety(state, option))),
+  );
 }
 
 function assessPosition(next: GameState, piece: Piece): ActionSafety {

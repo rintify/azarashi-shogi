@@ -8,7 +8,7 @@ import {
   previewAction,
 } from '../game/engine';
 import { kingRescuers } from '../game/rescue';
-import { actionSafety, stationarySafety } from '../game/safety';
+import { actionSafety, hasOnlyRedPositions, stationarySafety } from '../game/safety';
 import { footprint } from '../game/pieces';
 import type { StationaryGuide } from '../presentation/guideStyle';
 import { cellKey, sameCell, otherPlayer } from '../game/types';
@@ -167,6 +167,20 @@ export function useBoardInteraction(
     return [...cells.values()];
   }, [pending, destinations]);
   const threats = useMemo(() => getThreats(game, human), [game, human]);
+  const trappedIds = useMemo(
+    () =>
+      humanTurn
+        ? game.pieces
+            .filter(
+              (piece) =>
+                piece.owner === human &&
+                threats.some((threat) => threat.targetId === piece.id) &&
+                hasOnlyRedPositions(game, piece),
+            )
+            .map((piece) => piece.id)
+        : [],
+    [game, human, humanTurn, threats],
+  );
   const kingCaptureIds = useMemo(() => {
     const enemy = otherPlayer(human);
     const king = game.pieces.find((p) => p.kind === 'walrus' && p.owner === enemy);
@@ -302,6 +316,7 @@ export function useBoardInteraction(
     previewUnsafe,
     pendingSafety,
     threats,
+    trappedIds,
     kingCaptureIds,
     threat,
     preview,

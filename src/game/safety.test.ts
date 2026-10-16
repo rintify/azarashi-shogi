@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyPreview, createGame, legalPreviews, moveOptions, previewAction } from './engine';
-import { actionSafety, stationarySafety } from './safety';
+import { actionSafety, hasOnlyRedPositions, stationarySafety } from './safety';
 import type { GameAction, GameState, Kind, Piece, Player } from './types';
 const p = (
   id: string,
@@ -19,6 +19,50 @@ const safety = (state: GameState, action: GameAction) => {
   expect(preview).not.toBeNull();
   return actionSafety(state, preview!);
 };
+describe('pieces with only red positions', () => {
+  it('requires danger at rest and at every available destination', () => {
+    const seal = p('m', 'seal', 4, 4);
+    expect(hasOnlyRedPositions(board(seal, p('hunter', 'bear', 6, 4, 'north')), seal)).toBe(true);
+    // The only destination is dangerous, but staying put is safe.
+    expect(hasOnlyRedPositions(board(seal, p('hunter', 'seal', 4, 2, 'north')), seal)).toBe(false);
+    // Capturing the attacker gives a safe destination.
+    expect(hasOnlyRedPositions(board(seal, p('hunter', 'seal', 4, 3, 'north')), seal)).toBe(false);
+  });
+  it('handles immobile pieces without marking a safe piece', () => {
+    const seal = p('m', 'seal', 4, 0);
+    expect(hasOnlyRedPositions(board(seal, p('hunter', 'bear', 6, 0, 'north')), seal)).toBe(true);
+    expect(hasOnlyRedPositions(board(seal), seal)).toBe(false);
+  });
+  it('does not treat yellow positions as red', () => {
+    const seal = p('m', 'seal', 4, 0);
+    const state: GameState = {
+      ...board(),
+      pieces: [
+        p('own', 'walrus', 0, 8),
+        p('enemy', 'walrus', 4, 2, 'north'),
+        seal,
+        p('guard', 'penguin', 4, 8, 'south', true),
+      ],
+    };
+    expect(stationarySafety(state, seal).kingCaptureTrap).toBe(true);
+    expect(hasOnlyRedPositions(state, seal)).toBe(false);
+  });
+  it('accepts a safe L-shaped transformation as an escape', () => {
+    const orca = p('m', 'orca', 4, 6);
+    const state = board(orca, p('food', 'seal', 4, 4), p('hunter', 'penguin', 5, 4, 'north'));
+    const options = moveOptions(state, orca, { x: 4, y: 4 });
+    expect(actionSafety(state, options[0]).unsafe).toBe(true);
+    expect(options.slice(1).some((option) => !actionSafety(state, option).unsafe)).toBe(true);
+    expect(hasOnlyRedPositions(state, orca)).toBe(false);
+  });
+  it('handles north-facing pieces and suppresses finished or inactive positions', () => {
+    const seal = p('m', 'seal', 4, 9, 'north');
+    const state: GameState = { ...board(seal, p('hunter', 'bear', 6, 9)), turn: 'north' };
+    expect(hasOnlyRedPositions(state, seal)).toBe(true);
+    expect(hasOnlyRedPositions({ ...state, phase: 'finished' }, seal)).toBe(false);
+    expect(hasOnlyRedPositions({ ...state, turn: 'south' }, seal)).toBe(false);
+  });
+});
 describe('complete action danger', () => {
   for (const [kind, promoted] of [
     ['seal', false],
