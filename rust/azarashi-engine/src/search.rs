@@ -85,6 +85,14 @@ struct Search<'a, H: Host> {
     killers: HashMap<u16, Vec<u64>>,
     quiet_history: HashMap<(Side, u64), u32>,
 }
+/// Owned by the engine instance across turns. Bounds use root-relative scores.
+#[derive(Default)]
+pub struct Cache {
+    context: Option<(Side, u8, bool, [f64; 5])>,
+    table: HashMap<u64, Entry>,
+    evaluations: HashMap<u64, Evaluation>,
+}
+
 fn terminal(position: &Position, root: Side, ply: u16) -> Option<f64> {
     match position.result {
         0 => None,
@@ -550,6 +558,7 @@ impl<H: Host> Search<'_, H> {
         }
     }
 }
+#[cfg(test)]
 pub fn search<H: Host>(
     position: &Position,
     names: &[String],
@@ -558,6 +567,23 @@ pub fn search<H: Host>(
     history: &[String],
     host: &mut H,
 ) -> SearchResult {
+    search_cached(position, names, profile, seed, history, host, &mut Cache::default())
+}
+
+pub fn search_cached<H: Host>(
+    position: &Position,
+    names: &[String],
+    profile: Profile,
+    seed: u32,
+    history: &[String],
+    host: &mut H,
+    cache: &mut Cache,
+) -> SearchResult {
+    let context = (position.turn, profile.tactical_depth, profile.advanced, profile.values);
+    if cache.context != Some(context) {
+        *cache = Cache::default();
+        cache.context = Some(context);
+    }
     let start = host.now();
     let mut search = Search {
         host,
@@ -566,10 +592,13 @@ pub fn search<H: Host>(
         start,
         deadline: start + profile.budget_ms,
         nodes: 0,
-        table: HashMap::new(),
-        evaluations: HashMap::new(),
+        table: std::mem::take(&mut cache.table),
+        evaluations: std::mem::take(&mut cache.evaluations),
         killers: HashMap::new(),
         quiet_history: HashMap::new(),
     };
-    search.root_search(position, names, seed, history)
+    let result = search.root_search(position, names, seed, history);
+    cache.table = search.table;
+    cache.evaluations = search.evaluations;
+    result
 }

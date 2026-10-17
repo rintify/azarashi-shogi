@@ -13,6 +13,10 @@ extern "C" {
     fn clock_now() -> f64;
     fn search_progress(depth: u32, nodes: f64, elapsed_ms: f64);
 }
+thread_local! {
+    static CACHES: std::cell::RefCell<[search::Cache; 2]> =
+        std::cell::RefCell::new([search::Cache::default(), search::Cache::default()]);
+}
 struct WorkerHost;
 impl search::Host for WorkerHost {
     fn now(&mut self) -> f64 {
@@ -40,14 +44,15 @@ fn process(input: &[u8], inspect: bool) -> Result<Vec<u8>, String> {
         serialize(&wire::inspect(&position, &names, &request.profile))
     } else {
         serialize(&wire::result(
-            search::search(
+            CACHES.with(|caches| search::search_cached(
                 &position,
                 &names,
                 request.profile,
                 request.seed,
                 &request.position_history,
                 &mut WorkerHost,
-            ),
+                &mut caches.borrow_mut()[position.turn.index()],
+            )),
             &names,
         ))
     }

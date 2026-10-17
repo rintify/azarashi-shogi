@@ -228,3 +228,41 @@ describe('Rust/WASM search in the real compiled module', () => {
     expect(() => engine.search(createGame(), 6, { maxDepth: 0 })).toThrow(/profile/);
   });
 });
+
+it('reuses evaluated subtrees without changing a completed fixed-horizon score', async () => {
+  const engine = await instantiateEngine(module, { now: () => 0 });
+  const state = board(
+    p('own', 'walrus', 0, 8),
+    p('enemy', 'walrus', 8, 0, 'north'),
+    p('s', 'seal', 3, 6),
+  );
+  const options = { seed: 12, maxDepth: 3, tacticalDepth: 0 };
+  const cold = engine.search(state, 6, options);
+  const warm = engine.search(state, 6, options);
+  expect(warm.depth).toBe(cold.depth);
+  expect(warm.score).toBeCloseTo(cold.score, 8);
+  expect(warm.nodes).toBeLessThan(cold.nodes);
+  expect(previewAction(state, warm.action!)).not.toBeNull();
+  console.info('Persistent cache: cold/warm nodes', cold.nodes, warm.nodes);
+});
+
+it('isolates retained scores by side and evaluation profile and reapplies current repetition costs', async () => {
+  const engine = await instantiateEngine(module, { now: () => 0 });
+  const state = board(p('own', 'walrus', 0, 8), p('enemy', 'walrus', 8, 0, 'north'));
+  for (const turn of ['south', 'north', 'south'] as const) {
+    for (const difficulty of [6, 3, 6] as const) {
+      const position = { ...state, turn };
+      const options = { seed: 73, maxDepth: 2 };
+      const cold = await instantiateEngine(module, { now: () => 0 });
+      const expected = cold.search(position, difficulty, options);
+      const actual = engine.search(position, difficulty, options);
+      expect(actual.score).toBeCloseTo(expected.score, 8);
+      expect(actual.depth).toBe(expected.depth);
+    }
+  }
+  const first = engine.search(state, 1, { seed: 12 }).action!;
+  const repeated = positionIdentity(applyAction(state, first));
+  const freshHistory = Array(20).fill(repeated);
+  const actual = engine.search(state, 1, { seed: 12, positionHistory: freshHistory });
+  expect(positionIdentity(applyAction(state, actual.action!))).not.toBe(repeated);
+});
