@@ -2558,3 +2558,60 @@ button:not(:disabled):focus-visible {
     font-size: 9px;
   }
 }
+
+/* Delayed search feedback floats at the edge and never intercepts board input. */
+.thinking-clock-presence {
+  position: absolute;
+  top: max(164px, calc(env(safe-area-inset-top) + 144px));
+  right: max(12px, env(safe-area-inset-right));
+  z-index: 22;
+  pointer-events: none;
+}
+.thinking-clock {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px 5px 5px;
+  border-radius: 24px;
+  color: #28778e;
+  background: #ffffffe0;
+  box-shadow: 0 2px 10px #27637b12;
+  font-variant-numeric: tabular-nums;
+}
+.thinking-clock svg {
+  width: 38px;
+  height: 38px;
+  fill: none;
+  stroke-linecap: round;
+}
+.thinking-clock-track {
+  stroke: #d7edf1;
+  stroke-width: 3;
+}
+.thinking-clock-progress {
+  stroke: #3badd0;
+  stroke-width: 3;
+  transform: rotate(-90deg);
+  transform-origin: center;
+  transition: stroke-dasharray 80ms linear;
+}
+.thinking-clock-hands {
+  stroke: currentColor;
+  stroke-width: 1.8;
+}
+.thinking-clock > div {
+  display: grid;
+  gap: 1px;
+}
+.thinking-clock small {
+  font-size: 10px;
+}
+.thinking-clock b {
+  font-size: 17px;
+  line-height: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .thinking-clock-progress {
+    transition: none;
+  }
+}

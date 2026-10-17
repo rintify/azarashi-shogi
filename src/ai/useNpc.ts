@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { GameAction, GameState, Player } from '../game/types';
 import type { Difficulty } from '../match/record';
 import type { ThinkRequest, ThinkResponse } from './protocol';
+import { LEVELS } from './levels';
 const EMPTY_HISTORY: readonly string[] = [];
 export function useNpc(
   game: GameState,
@@ -13,6 +14,10 @@ export function useNpc(
   positionHistory: readonly string[] = EMPTY_HISTORY,
 ) {
   const [status, setStatus] = useState({ thinking: false, depth: 0, nodes: 0 });
+  const [thinkingSession, setThinkingSession] = useState<{
+    startedAt: number;
+    budgetMs: number;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
@@ -24,6 +29,7 @@ export function useNpc(
     let active = true;
     let worker: Worker;
     setStatus({ thinking: true, depth: 0, nodes: 0 });
+    setThinkingSession({ startedAt: performance.now(), budgetMs: LEVELS[difficulty].thinkingMs });
     setError(null);
     try {
       worker = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' });
@@ -63,5 +69,10 @@ export function useNpc(
       worker.terminate();
     };
   }, [game, human, difficulty, submit, attempt, enabled, seed, positionHistory]);
-  return { status, error, retry: () => setAttempt((n) => n + 1) };
+  return {
+    status,
+    thinkingSession: status.thinking ? thinkingSession : null,
+    error,
+    retry: () => setAttempt((n) => n + 1),
+  };
 }

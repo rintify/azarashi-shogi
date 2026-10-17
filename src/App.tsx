@@ -49,6 +49,7 @@ import { useReplay } from './match/useReplay';
 import { ReplayLibraryDialog } from './components/ReplayLibraryDialog';
 import { ReplayDock } from './components/ReplayDock';
 import { TurnSplash } from './components/TurnSplash';
+import { ThinkingClock } from './components/ThinkingClock';
 import { PieceCatalog } from './components/PieceCatalog';
 const BoardScene = lazy(() =>
   import('./scene/BoardScene').then((m) => ({ default: m.BoardScene })),
@@ -122,6 +123,7 @@ export default function App() {
   const { area, ref: playRef } = usePlayArea();
   const {
     status: aiStatus,
+    thinkingSession,
     error: aiError,
     retry: retryNpc,
   } = useNpc(
@@ -367,6 +369,7 @@ export default function App() {
           thinking={aiStatus.thinking}
         />
       </div>
+      <ThinkingClock session={thinkingSession} />
       <div className={`turn-banner ${kingDanger ? 'king-danger' : ''}`} role="status">
         <AnimatedValue
           valueKey={`${game.revision}:${playback.motion?.stage}:${playback.busy}:${kingDanger}:${paused}:${status.title}`}
