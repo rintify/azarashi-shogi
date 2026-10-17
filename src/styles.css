@@ -2573,32 +2573,28 @@ button:not(:disabled):focus-visible {
 }
 .thinking-clock {
   box-sizing: border-box;
-  width: 120px;
+  width: 96px;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 5px 10px 5px 5px;
-  border: 2px solid #ffffffdd;
-  border-radius: 18px;
-  color: #43677e;
-  background: #fff8edee;
-  box-shadow: 0 3px 0 #6da7bb35;
+  gap: 5px;
+  padding: 3px;
+  color: #ffffffc4;
   font-variant-numeric: tabular-nums;
 }
 .thinking-clock svg {
-  width: 30px;
-  height: 30px;
+  width: 24px;
+  height: 24px;
   flex: none;
   fill: none;
   stroke-linecap: round;
 }
 .thinking-clock-track {
-  stroke: #d7edf1;
-  stroke-width: 3;
+  stroke: #ffffff24;
+  stroke-width: 2;
 }
 .thinking-clock-progress {
-  stroke: #3badd0;
-  stroke-width: 3;
+  stroke: #ffffffa8;
+  stroke-width: 2;
   transform: rotate(-90deg);
   transform-origin: center;
   transition: stroke-dasharray 80ms linear;
@@ -2619,15 +2615,15 @@ button:not(:disabled):focus-visible {
   white-space: nowrap;
 }
 .thinking-clock small {
-  font-size: 9px;
+  font-size: 8px;
   line-height: 1.2;
-  color: #718799;
+  color: #ffffff99;
 }
 .thinking-clock b {
   display: inline-block;
   flex: 0 0 3ch;
   text-align: right;
-  font-size: 15px;
+  font-size: 11px;
   line-height: 1;
 }
 @media (prefers-reduced-motion: reduce) {
