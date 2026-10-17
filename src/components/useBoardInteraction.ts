@@ -35,7 +35,6 @@ export function useBoardInteraction(
   const [hover, setHover] = useState<Cell | null>(null);
   const [pending, setPending] = useState<ActionPreview[] | null>(null);
   const [optionIndex, setOptionIndex] = useState(0);
-  const [inspectedThreat, setInspectedThreat] = useState<string | null>(null);
   const humanTurn = enabled && game.turn === human && game.phase !== 'finished';
   const selected = game.pieces.find((p) => p.id === selectedId) ?? null;
   const inspectingEnemy = !!selected && selected.owner !== human;
@@ -188,7 +187,7 @@ export function useBoardInteraction(
       ? (getThreats(game, enemy).find((t) => t.targetId === king.id)?.attackerIds ?? [])
       : [];
   }, [game, human]);
-  const threat = threats.find((t) => t.targetId === (inspectedThreat ?? selectedId));
+  const threat = threats.find((t) => t.targetId === selectedId);
   const preview = useMemo(() => {
     if (inspectingEnemy) return null;
     if (pending) return pending[optionIndex];
@@ -227,21 +226,18 @@ export function useBoardInteraction(
     setStockKind(null);
     setPending(null);
     setHover(null);
-    setInspectedThreat(null);
     setOptionIndex(0);
   }, [game.revision, human]);
   function clearSelection() {
     clearChoice();
     setSelectedId(null);
     setStockKind(null);
-    setInspectedThreat(null);
   }
   function selectStock(kind: Kind) {
     if (!humanTurn || game.stocks[human][kind] === 0) return;
     clearChoice();
     setSelectedId(null);
     setStockKind(kind === stockKind ? null : kind);
-    setInspectedThreat(null);
   }
   function clickCell(cell: Cell) {
     if (!humanTurn || pending) return;
@@ -266,7 +262,6 @@ export function useBoardInteraction(
     if (piece) {
       setSelectedId(piece.id === selectedId ? null : piece.id);
       setStockKind(null);
-      setInspectedThreat(null);
       setHover(null);
     } else {
       setSelectedId(null);
@@ -281,16 +276,8 @@ export function useBoardInteraction(
     if (!selected || inspectingEnemy || !legalCells.some((at) => sameCell(at, cell))) {
       setSelectedId(selected?.id === id ? null : id);
       setStockKind(null);
-      setInspectedThreat(null);
       setHover(null);
     } else clickCell(cell);
-  }
-  function inspectThreat(id: string) {
-    setInspectedThreat(id);
-    if (humanTurn && !pending) {
-      setSelectedId(id);
-      setStockKind(null);
-    }
   }
   function chooseOption(preview: ActionPreview) {
     if (humanTurn && !inspectingEnemy) submit(preview.action, game.revision);
@@ -324,7 +311,6 @@ export function useBoardInteraction(
     selectStock,
     clickCell,
     clickPiece,
-    inspectThreat,
     clearChoice,
     clearSelection,
     chooseOption,

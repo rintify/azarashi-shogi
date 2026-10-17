@@ -82,9 +82,6 @@ svg {
   pointer-events: none;
   z-index: 2;
 }
-.scene-labels .threat-badge {
-  pointer-events: auto;
-}
 .world-layer canvas {
   display: block;
   touch-action: none;
@@ -546,6 +543,7 @@ svg {
   user-select: none;
 }
 .threat-badge {
+  pointer-events: none;
   width: 25px;
   height: 25px;
   display: grid;
@@ -2477,6 +2475,7 @@ button:not(:disabled):focus-visible {
   box-shadow: 0 2px 8px #1c6c3830;
 }
 .coordinate-mark {
+  pointer-events: none;
   position: absolute;
   top: 0;
   right: 0;

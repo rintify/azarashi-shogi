@@ -34,7 +34,6 @@ export interface ActorProps {
   htmlPortal: RefObject<HTMLDivElement>;
   onPiece: (id: string, c: Cell) => void;
   onHover: (c: Cell | null) => void;
-  onThreat: () => void;
 }
 export function PieceActor({
   piece,
@@ -51,7 +50,6 @@ export function PieceActor({
   htmlPortal,
   onPiece,
   onHover,
-  onThreat,
 }: ActorProps) {
   const root = useRef<Group>(null),
     model = useRef<Group>(null),
@@ -181,19 +179,20 @@ export function PieceActor({
           </group>
         )}
       </group>
-      <Html calculatePosition={locateMarker} center portal={htmlPortal} zIndexRange={[25, 20]}>
+      <Html
+        calculatePosition={locateMarker}
+        center
+        portal={htmlPortal}
+        zIndexRange={[25, 20]}
+        style={{ pointerEvents: 'none' }}
+      >
         <AnimatedPresence show={!!mark && !disabled && !victim}>
-          <button
+          <span
             className={`threat-badge ${mark === 'king' ? 'king-capture-badge' : mark === 'helper' ? 'helper-badge' : mark === 'trapped' ? 'trapped-badge' : ''}`}
             aria-label={mark ? MARK_LABELS[mark] : undefined}
-            title={mark ? MARK_LABELS[mark] : undefined}
-            onClick={(e) => {
-              e.stopPropagation();
-              onThreat();
-            }}
           >
             {mark && <PieceMarkIcon mark={mark} />}
-          </button>
+          </span>
         </AnimatedPresence>
       </Html>
     </group>

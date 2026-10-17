@@ -42,7 +42,6 @@ export interface BoardProps {
   onCell: (cell: Cell) => void;
   onPiece: (id: string, cell: Cell) => void;
   onHover: (cell: Cell | null) => void;
-  onThreat: (id: string) => void;
 }
 function BoardContents(props: BoardProps & { htmlPortal: RefObject<HTMLDivElement> }) {
   const { game, selectedId, preview, motion, busy } = props;
@@ -160,7 +159,6 @@ function BoardContents(props: BoardProps & { htmlPortal: RefObject<HTMLDivElemen
           htmlPortal={props.htmlPortal}
           onPiece={props.onPiece}
           onHover={props.onHover}
-          onThreat={() => props.onThreat(piece.id)}
         />
       ))}
       <PlacementGhost

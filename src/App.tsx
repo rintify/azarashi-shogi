@@ -267,7 +267,6 @@ export default function App() {
               onCell={interaction.clickCell}
               onPiece={interaction.clickPiece}
               onHover={interaction.setHover}
-              onThreat={interaction.inspectThreat}
             />
           </Suspense>
         </SceneBoundary>

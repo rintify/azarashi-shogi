@@ -28,8 +28,8 @@ export function PieceMarkIcon({ mark, size = 18 }: { mark: PieceMark; size?: num
   );
 }
 export const MARK_LABELS: Record<PieceMark, string> = {
-  king: '相手の王を捕食できます。この駒を選択',
-  helper: '助っ人：逃げ場のない王を救える手があります。この駒を選択',
-  trapped: '現在位置とすべての移動先が危険です。この駒を選択',
-  danger: 'この駒を捕食できる相手を表示',
+  king: '相手の王を捕食できます',
+  helper: '助っ人：逃げ場のない王を救える手があります',
+  trapped: '現在位置とすべての移動先が危険です',
+  danger: '相手に捕食される危険があります',
 };
