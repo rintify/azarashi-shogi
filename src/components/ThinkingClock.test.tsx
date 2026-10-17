@@ -9,7 +9,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-it('appears only after 3.5 seconds, shows whole elapsed seconds, and completes its exit', () => {
+it('appears only after 3.5 seconds, visualizes elapsed time without numbers, and completes its exit', () => {
   vi.useFakeTimers();
   let now = 100;
   vi.spyOn(performance, 'now').mockImplementation(() => now);
@@ -23,17 +23,17 @@ it('appears only after 3.5 seconds, shows whole elapsed seconds, and completes i
   tick(3600);
   expect(screen.queryByLabelText('AIの思考時間')).toBeNull();
   tick(3650);
-  expect(screen.getByText('3')).toBeTruthy();
-  expect(screen.getByText('/ 10秒')).toBeTruthy();
+  expect(screen.getByText('AI 思考中')).toBeTruthy();
+  expect(view.container.textContent).not.toMatch(/[0-9]/);
   tick(5200);
-  expect(screen.getByText('5')).toBeTruthy();
+  expect(screen.getByText('AI 思考中')).toBeTruthy();
   expect(
     view.container.querySelector('.thinking-clock-progress')?.getAttribute('stroke-dasharray'),
   ).toBe('0.51 1');
   view.rerender(<ThinkingClock session={null} />);
   act(() => vi.advanceTimersByTime(200));
   expect(view.container.querySelector('[data-state="exit"]')).toBeTruthy();
-  expect(screen.getByText('5')).toBeTruthy();
+  expect(screen.getByText('AI 思考中')).toBeTruthy();
   act(() => vi.advanceTimersByTime(80));
   expect(screen.queryByLabelText('AIの思考時間')).toBeNull();
   expect(vi.getTimerCount()).toBe(0);
@@ -56,6 +56,8 @@ it('restarts the delay for a new search and uses its own time limit', () => {
     now = 8000;
     vi.advanceTimersByTime(50);
   });
-  expect(screen.getByText('4')).toBeTruthy();
-  expect(screen.getByText('/ 30秒')).toBeTruthy();
+  expect(screen.getByText('AI 思考中')).toBeTruthy();
+  expect(
+    view.container.querySelector('.thinking-clock-progress')?.getAttribute('stroke-dasharray'),
+  ).toBe(`${4 / 30} 1`);
 });

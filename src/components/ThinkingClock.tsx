@@ -36,13 +36,7 @@ export function ThinkingClock({ session }: { session: ThinkingSession | null }) 
           />
           <path className="thinking-clock-hands" d="M20 10v10l6 4" />
         </svg>
-        <div>
-          <small>AI 思考中</small>
-          <span>
-            <b>{Math.floor(elapsed / 1000)}</b>
-            <small> / {(session?.budgetMs ?? 0) / 1000}秒</small>
-          </span>
-        </div>
+        <small>AI 思考中</small>
       </div>
     </AnimatedPresence>
   );

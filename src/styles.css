@@ -2567,19 +2567,18 @@ button:not(:disabled):focus-visible {
   max-width: calc(100% - 24px);
   position: absolute;
   top: max(164px, calc(env(safe-area-inset-top) + 144px));
-  right: max(12px, env(safe-area-inset-right));
+  right: max(4px, env(safe-area-inset-right));
   z-index: 22;
   pointer-events: none;
 }
 .thinking-clock {
   box-sizing: border-box;
-  width: 96px;
+  width: 76px;
   display: flex;
   align-items: center;
   gap: 5px;
   padding: 3px;
   color: #ffffffc4;
-  font-variant-numeric: tabular-nums;
 }
 .thinking-clock svg {
   width: 24px;
@@ -2603,28 +2602,10 @@ button:not(:disabled):focus-visible {
   stroke: currentColor;
   stroke-width: 1.8;
 }
-.thinking-clock > div {
-  display: grid;
-  gap: 1px;
-  min-width: 0;
-}
-.thinking-clock > div > span {
-  display: flex;
-  align-items: baseline;
-  gap: 3px;
-  white-space: nowrap;
-}
 .thinking-clock small {
   font-size: 8px;
   line-height: 1.2;
   color: #ffffff99;
-}
-.thinking-clock b {
-  display: inline-block;
-  flex: 0 0 3ch;
-  text-align: right;
-  font-size: 11px;
-  line-height: 1;
 }
 @media (prefers-reduced-motion: reduce) {
   .thinking-clock-progress {
