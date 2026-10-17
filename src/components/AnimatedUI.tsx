@@ -19,11 +19,13 @@ export function AnimatedPresence({
   show,
   children,
   className = '',
+  exitDurationMs = EXIT_MS,
   onPresenceChange,
 }: {
   show: boolean;
   children: ReactNode;
   className?: string;
+  exitDurationMs?: number;
   onPresenceChange?: (present: boolean) => void;
 }) {
   const [retained, setRetained] = useState(show);
@@ -37,16 +39,16 @@ export function AnimatedPresence({
   useEffect(() => {
     if (show) return;
     const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    const timer = window.setTimeout(() => setRetained(false), reduced ? 0 : EXIT_MS);
+    const timer = window.setTimeout(() => setRetained(false), reduced ? 0 : exitDurationMs);
     return () => window.clearTimeout(timer);
-  }, [show]);
+  }, [show, exitDurationMs]);
   useEffect(() => onPresenceChange?.(show || retained), [show, retained, onPresenceChange]);
   if (!show && !retained) return null;
   return (
     <ExitContext.Provider value={!show}>
       <div
         className={`ui-presence ${className}`}
-        style={timing}
+        style={{ '--ui-exit-duration': `${exitDurationMs}ms` } as CSSProperties}
         data-state={show ? 'enter' : 'exit'}
         inert={!show}
         aria-hidden={!show || undefined}

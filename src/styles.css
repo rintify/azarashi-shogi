@@ -2623,3 +2623,31 @@ button:not(:disabled):focus-visible {
     transition: none;
   }
 }
+
+.ui-presence.thinking-clock-presence[data-state='enter'] > .thinking-clock {
+  animation: thinking-clock-enter 400ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.ui-presence.thinking-clock-presence[data-state='exit'] > .thinking-clock {
+  animation: thinking-clock-exit var(--ui-exit-duration) cubic-bezier(0.4, 0, 1, 1) both;
+}
+@keyframes thinking-clock-enter {
+  from {
+    transform: translateX(calc(100% + max(24px, env(safe-area-inset-right))));
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+@keyframes thinking-clock-exit {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(calc(100% + max(24px, env(safe-area-inset-right))));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ui-presence.thinking-clock-presence[data-state] > .thinking-clock {
+    animation: none;
+  }
+}
