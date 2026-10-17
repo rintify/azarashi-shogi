@@ -44,17 +44,15 @@ fn process(input: &[u8], inspect: bool) -> Result<Vec<u8>, String> {
         serialize(&wire::inspect(&position, &names, &request.profile))
     } else {
         serialize(&wire::result(
-            CACHES.with(|caches| {
-                search::search_cached(
-                    &position,
-                    &names,
-                    request.profile,
-                    request.seed,
-                    &request.position_history,
-                    &mut WorkerHost,
-                    &mut caches.borrow_mut()[position.turn.index()],
-                )
-            }),
+            CACHES.with(|caches| search::search_cached(
+                &position,
+                &names,
+                request.profile,
+                request.seed,
+                &request.position_history,
+                &mut WorkerHost,
+                &mut caches.borrow_mut()[position.turn.index()],
+            )),
             &names,
         ))
     }

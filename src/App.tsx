@@ -20,6 +20,7 @@ import {
   isSpectator,
   isLocalPvP,
   interactionPlayer,
+  isComputerTurn,
   playerLabel,
 } from './match/record';
 import { otherPlayer } from './game/types';
@@ -131,7 +132,8 @@ export default function App() {
     aiDifficulty(match.settings, match.game.turn),
     submit,
     sceneReady &&
-      !isLocalPvP(match.settings) &&
+      isComputerTurn(match.settings, match.game.turn) &&
+      !playback.busy &&
       !rulesOpen &&
       !newGameOpen &&
       !rulesVisible &&
@@ -144,8 +146,6 @@ export default function App() {
       (!watching || !paused || stepRequested),
     match.record.seed,
     match.positionHistory,
-    match.record.id,
-    playback.busy,
   );
   useEffect(() => {
     if (

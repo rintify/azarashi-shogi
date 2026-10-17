@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { GameAction, GameState, Player } from '../game/types';
 import type { Difficulty } from '../match/record';
-import { NpcClient } from './NpcClient';
+import type { ThinkRequest, ThinkResponse } from './protocol';
+import { LEVELS } from './levels';
 const EMPTY_HISTORY: readonly string[] = [];
-
 export function useNpc(
   game: GameState,
   human: Player | null,
@@ -12,8 +12,6 @@ export function useNpc(
   enabled = true,
   seed = 0,
   positionHistory: readonly string[] = EMPTY_HISTORY,
-  matchId = String(seed),
-  deferUntilSettled = false,
 ) {
   const [status, setStatus] = useState({ thinking: false, depth: 0, nodes: 0 });
   const [thinkingSession, setThinkingSession] = useState<{
@@ -22,85 +20,55 @@ export function useNpc(
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
-  const [visible, setVisible] = useState(() => !document.hidden);
-  const client = useRef<NpcClient | null>(null);
   useEffect(() => {
-    const update = () => setVisible(!document.hidden);
-    document.addEventListener('visibilitychange', update);
-    return () => document.removeEventListener('visibilitychange', update);
-  }, []);
-  useEffect(() => {
-    const instance = new NpcClient();
-    client.current = instance;
-    return () => {
-      instance.dispose();
-      client.current = null;
-    };
-  }, [matchId, seed, attempt]);
-
-  useEffect(() => {
-    const instance = client.current!;
-    if (!enabled || !visible || game.phase === 'finished') {
-      instance.stop();
+    if (!enabled || game.turn === human || game.phase === 'finished') {
       setStatus((s) => (s.thinking ? { ...s, thinking: false } : s));
       setError(null);
       return;
     }
-    if (deferUntilSettled) {
+    let active = true;
+    let worker: Worker;
+    setStatus({ thinking: true, depth: 0, nodes: 0 });
+    setThinkingSession({ startedAt: performance.now(), budgetMs: LEVELS[difficulty].thinkingMs });
+    setError(null);
+    try {
+      worker = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' });
+    } catch {
+      setError('この環境ではNPCを起動できません。ブラウザーを更新して再試行してください。');
       setStatus((s) => ({ ...s, thinking: false }));
       return;
     }
-    let active = true;
-    const input = { state: game, difficulty, seed, positionHistory };
-    setError(null);
-    if (game.turn === human) {
-      setStatus((s) => ({ ...s, thinking: false }));
-      // A speculative failure must never interrupt the player's turn.
-      try {
-        instance.ponder(input);
-      } catch {
-        instance.stop();
-      }
-    } else {
-      setStatus({ thinking: true, depth: 0, nodes: 0 });
-      const startedAt = performance.now();
-      try {
-        const budgetMs = instance.think(input, (data) => {
-          if (!active) return;
-          if (data.type === 'progress') setStatus({ thinking: true, ...data.progress });
-          else if (data.type === 'result') {
-            setStatus({ thinking: false, ...data.result });
-            if (data.result.action) submit(data.result.action, game.revision);
-            else setError('指せる手が見つかりませんでした。再試行してください。');
-          } else if (data.type === 'error') {
-            setError(data.message);
-            setStatus((s) => ({ ...s, thinking: false }));
-          }
-        });
-        setThinkingSession({ startedAt, budgetMs });
-      } catch {
-        instance.stop();
-        setError('この環境ではNPCを起動できません。ブラウザーを更新して再試行してください。');
+    worker.onmessage = ({ data }: MessageEvent<ThinkResponse>) => {
+      if (!active || data.revision !== game.revision) return;
+      if (data.type === 'progress') setStatus({ thinking: true, ...data.progress });
+      else if (data.type === 'result') {
+        setStatus({ thinking: false, ...data.result });
+        if (data.result.action) submit(data.result.action, game.revision);
+        else setError('指せる手が見つかりませんでした。再試行してください。');
+      } else {
+        setError(data.message);
         setStatus((s) => ({ ...s, thinking: false }));
       }
-    }
-    // Keep speculative work alive across the human -> NPC transition so it can be adopted.
+    };
+    worker.onerror = () => {
+      if (active) {
+        setError('NPCの読み込みに失敗しました。再試行してください。');
+        setStatus((s) => ({ ...s, thinking: false }));
+      }
+    };
+    const request: ThinkRequest = {
+      state: game,
+      difficulty,
+      revision: game.revision,
+      seed,
+      positionHistory,
+    };
+    worker.postMessage(request);
     return () => {
       active = false;
+      worker.terminate();
     };
-  }, [
-    game,
-    human,
-    difficulty,
-    submit,
-    attempt,
-    enabled,
-    seed,
-    positionHistory,
-    matchId,
-    visible,
-    deferUntilSettled,
-  ]);
+  }, [game, human, difficulty, submit, attempt, enabled, seed, positionHistory]);
   return {
     status,
     thinkingSession: status.thinking ? thinkingSession : null,

@@ -1,20 +1,15 @@
 import type { GameState } from '../game/types';
 import type { Difficulty } from '../match/record';
 import type { SearchProgress, SearchResult } from './searchTypes';
-
-export interface SearchInput {
+export interface ThinkRequest {
   seed: number;
-  /** Played positions including the current position; repeated visits affect root choices. */
+  /** Canonical positions already played, including the current position. */
   positionHistory: readonly string[];
   state: GameState;
   difficulty: Difficulty;
-}
-export interface ThinkRequest extends SearchInput {
-  id: number;
-  type: 'think' | 'ponder';
+  revision: number;
 }
 export type ThinkResponse =
-  | { type: 'forecast'; id: number; input: SearchInput }
-  | { type: 'progress'; id: number; progress: SearchProgress }
-  | { type: 'result'; id: number; result: SearchResult }
-  | { type: 'error'; id: number; message: string };
+  | { type: 'progress'; revision: number; progress: SearchProgress }
+  | { type: 'result'; revision: number; result: SearchResult }
+  | { type: 'error'; revision: number; message: string };

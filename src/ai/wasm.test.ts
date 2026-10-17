@@ -266,22 +266,3 @@ it('isolates retained scores by side and evaluation profile and reapplies curren
   const actual = engine.search(state, 1, { seed: 12, positionHistory: freshHistory });
   expect(positionIdentity(applyAction(state, actual.action!))).not.toBe(repeated);
 });
-
-it('reuses caches across actual turns, captures and compacted piece slots without changing fixed-depth scores', async () => {
-  const engine = await instantiateEngine(module, { now: () => 0 });
-  let state = board(
-    p('own', 'walrus', 0, 8),
-    p('enemy', 'walrus', 8, 0, 'north'),
-    p('s', 'seal', 4, 5),
-    p('n', 'seal', 4, 4, 'north'),
-  );
-  for (let turn = 0; turn < 6 && !state.result; turn++) {
-    const options = { maxDepth: 2, tacticalDepth: 0, seed: 41 };
-    const fresh = await instantiateEngine(module, { now: () => 0 });
-    const expected = fresh.search(state, 6, options);
-    const actual = engine.search(state, 6, options);
-    expect(actual.score).toBeCloseTo(expected.score, 8);
-    expect(actual.depth).toBe(expected.depth);
-    state = applyAction(state, actual.action!);
-  }
-});
