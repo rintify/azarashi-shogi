@@ -567,7 +567,15 @@ pub fn search<H: Host>(
     history: &[String],
     host: &mut H,
 ) -> SearchResult {
-    search_cached(position, names, profile, seed, history, host, &mut Cache::default())
+    search_cached(
+        position,
+        names,
+        profile,
+        seed,
+        history,
+        host,
+        &mut Cache::default(),
+    )
 }
 
 pub fn search_cached<H: Host>(
@@ -579,7 +587,12 @@ pub fn search_cached<H: Host>(
     host: &mut H,
     cache: &mut Cache,
 ) -> SearchResult {
-    let context = (position.turn, profile.tactical_depth, profile.advanced, profile.values);
+    let context = (
+        position.turn,
+        profile.tactical_depth,
+        profile.advanced,
+        profile.values,
+    );
     if cache.context != Some(context) {
         *cache = Cache::default();
         cache.context = Some(context);

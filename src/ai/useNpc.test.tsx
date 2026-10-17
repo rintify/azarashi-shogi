@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
 import { act, cleanup, renderHook } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { applyAction, createGame } from '../game/engine';
-import type { ThinkResponse } from './protocol';
+import type { SearchInput, ThinkRequest, ThinkResponse } from './protocol';
 import { useNpc } from './useNpc';
 import { positionIdentity } from '../game/position';
+
+const emptyHistory: readonly string[] = [];
 class FakeWorker {
   static instances: FakeWorker[] = [];
   onmessage: ((event: MessageEvent<ThinkResponse>) => void) | null = null;
@@ -14,8 +16,14 @@ class FakeWorker {
   constructor() {
     FakeWorker.instances.push(this);
   }
+  get request(): ThinkRequest {
+    return this.postMessage.mock.lastCall![0];
+  }
   send(data: ThinkResponse) {
     this.onmessage?.({ data } as MessageEvent<ThinkResponse>);
+  }
+  finish() {
+    this.send({ type: 'result', id: this.request.id, result });
   }
 }
 const result = {
@@ -32,154 +40,158 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
-describe('NPC worker lifecycle', () => {
-  it('sends the played history to either AI and replaces it for a new match', () => {
-    const game = createGame();
-    const submit = vi.fn();
-    const previous = [positionIdentity(game), 'earlier-position'];
-    const hook = renderHook(({ positions }) => useNpc(game, null, 3, submit, true, 12, positions), {
-      initialProps: { positions: previous },
-    });
-    expect(FakeWorker.instances[0].postMessage).toHaveBeenCalledWith(
-      expect.objectContaining({ positionHistory: previous }),
-    );
-    const fresh = [positionIdentity(game)];
-    hook.rerender({ positions: fresh });
-    expect(FakeWorker.instances[0].terminate).toHaveBeenCalledOnce();
-    expect(FakeWorker.instances[1].postMessage).toHaveBeenCalledWith(
-      expect.objectContaining({ positionHistory: fresh }),
-    );
-  });
-  it('passes match entropy to the worker and cancels it when opening a replay', () => {
-    const game = createGame(),
-      submit = vi.fn();
-    const hook = renderHook(({ enabled, seed }) => useNpc(game, null, 2, submit, enabled, seed), {
-      initialProps: { enabled: true, seed: 12345 },
-    });
-    const worker = FakeWorker.instances[0];
-    expect(worker.postMessage).toHaveBeenCalledWith({
-      state: game,
-      difficulty: 2,
-      revision: 0,
-      seed: 12345,
-      positionHistory: [],
-    });
-    hook.rerender({ enabled: false, seed: 12345 });
-    expect(worker.terminate).toHaveBeenCalledOnce();
-    act(() => worker.send({ type: 'result', revision: 0, result }));
-    expect(submit).not.toHaveBeenCalled();
-    hook.rerender({ enabled: true, seed: 98765 });
-    expect(FakeWorker.instances[1].postMessage).toHaveBeenCalledWith(
-      expect.objectContaining({ seed: 98765 }),
-    );
-  });
-  it('leaves the human turn on the main thread', () => {
-    const game = createGame(),
-      submit = vi.fn();
-    renderHook(() => useNpc(game, 'south', 3, submit));
-    expect(FakeWorker.instances).toHaveLength(0);
-  });
-  it('updates progress and submits only the current position', () => {
-    const submit = vi.fn();
-    const game = createGame();
-    const hook = renderHook(() => useNpc(game, 'north', 3, submit));
-    const worker = FakeWorker.instances[0];
-    expect(worker.postMessage).toHaveBeenCalledWith({
-      state: game,
-      difficulty: 3,
-      revision: 0,
-      seed: 0,
-      positionHistory: [],
-    });
-    act(() =>
-      worker.send({
-        type: 'progress',
-        revision: 0,
-        progress: { depth: 2, nodes: 100, elapsedMs: 10 },
-      }),
-    );
-    expect(hook.result.current.status.thinking).toBe(true);
-    expect(hook.result.current.status.depth).toBe(2);
-    act(() => worker.send({ type: 'result', revision: 99, result }));
-    expect(submit).not.toHaveBeenCalled();
-    act(() => worker.send({ type: 'result', revision: 0, result }));
-    expect(submit).toHaveBeenCalledWith(result.action, 0);
-  });
-  it('terminates an old search and rejects its result even when a new match has the same revision', () => {
-    const submit = vi.fn();
-    const hook = renderHook(({ game }) => useNpc(game, 'north', 5, submit), {
-      initialProps: { game: createGame() },
-    });
-    const oldWorker = FakeWorker.instances[0];
-    hook.rerender({ game: createGame() });
-    expect(oldWorker.terminate).toHaveBeenCalledOnce();
-    act(() => oldWorker.send({ type: 'result', revision: 0, result }));
-    expect(submit).not.toHaveBeenCalled();
-    act(() => FakeWorker.instances[1].send({ type: 'result', revision: 0, result }));
-    expect(submit).toHaveBeenCalledOnce();
-    hook.unmount();
-    expect(FakeWorker.instances[1].terminate).toHaveBeenCalledOnce();
-  });
-  it('exposes errors and starts a fresh worker on retry', () => {
-    const submit = vi.fn(),
-      game = createGame();
-    const hook = renderHook(() => useNpc(game, 'north', 3, submit));
-    act(() => FakeWorker.instances[0].send({ type: 'error', revision: 0, message: 'retry' }));
-    expect(hook.result.current.error).toBe('retry');
-    expect(hook.result.current.status.thinking).toBe(false);
-    act(() => hook.result.current.retry());
-    expect(FakeWorker.instances).toHaveLength(2);
-    expect(hook.result.current.error).toBeNull();
-  });
-});
 
-it('does not start the NPC until playback releases the next turn', () => {
+it('retains an idle Worker across ordinary AI turns, including playback', () => {
   const game = createGame(),
     submit = vi.fn();
-  const hook = renderHook(({ enabled }) => useNpc(game, 'north', 3, submit, enabled), {
-    initialProps: { enabled: false },
-  });
-  expect(FakeWorker.instances).toHaveLength(0);
-  hook.rerender({ enabled: true });
+  const hook = renderHook(
+    ({ state, defer }) => useNpc(state, null, 3, submit, true, 12, emptyHistory, 'match', defer),
+    {
+      initialProps: { state: game, defer: false },
+    },
+  );
+  const first = FakeWorker.instances[0];
+  act(() => first.finish());
+  expect(submit).toHaveBeenCalledWith(result.action, 0);
+  const next = applyAction(game, result.action);
+  hook.rerender({ state: next, defer: true });
+  expect(first.terminate).not.toHaveBeenCalled();
+  hook.rerender({ state: next, defer: false });
   expect(FakeWorker.instances).toHaveLength(1);
-  hook.rerender({ enabled: false });
-  expect(FakeWorker.instances[0].terminate).toHaveBeenCalledOnce();
-  act(() => FakeWorker.instances[0].send({ type: 'result', revision: 0, result }));
+  expect(first.request.state).toBe(next);
+  expect(first.request.type).toBe('think');
+  expect(first.postMessage).toHaveBeenCalledTimes(2);
+});
+
+it('ponders during the human turn without showing thinking or submitting speculative moves', () => {
+  const game = createGame(),
+    submit = vi.fn();
+  const hook = renderHook(() => useNpc(game, 'south', 6, submit));
+  const worker = FakeWorker.instances[0];
+  expect(worker.request.type).toBe('ponder');
+  act(() => worker.finish());
+  expect(submit).not.toHaveBeenCalled();
+  expect(hook.result.current.status.thinking).toBe(false);
+  expect(hook.result.current.thinkingSession).toBeNull();
+});
+
+it.each([false, true])('adopts a matching forecast across landing, completed=%s', (completed) => {
+  const game = createGame(),
+    submit = vi.fn();
+  const history = [positionIdentity(game)];
+  const next = applyAction(game, result.action);
+  const nextHistory = [...history, positionIdentity(next)];
+  const hook = renderHook(
+    ({ state, positions, defer }) =>
+      useNpc(state, 'south', 6, submit, true, 12, positions, 'match', defer),
+    {
+      initialProps: { state: game, positions: history, defer: false },
+    },
+  );
+  const worker = FakeWorker.instances[0];
+  const input: SearchInput = { state: next, positionHistory: nextHistory, difficulty: 6, seed: 12 };
+  act(() => worker.send({ type: 'forecast', id: worker.request.id, input }));
+  if (completed) act(() => worker.finish());
+  hook.rerender({ state: next, positions: nextHistory, defer: true });
+  expect(worker.terminate).not.toHaveBeenCalled();
+  expect(submit).not.toHaveBeenCalled();
+  hook.rerender({ state: next, positions: nextHistory, defer: false });
+  if (!completed) act(() => worker.finish());
+  expect(worker.postMessage).toHaveBeenCalledOnce();
+  expect(FakeWorker.instances).toHaveLength(1);
+  expect(submit).toHaveBeenCalledExactlyOnceWith(result.action, next.revision);
+});
+
+it('discards missed predictions and gives the actual position its full budget', () => {
+  const game = createGame(),
+    submit = vi.fn();
+  const hook = renderHook(({ state }) => useNpc(state, 'south', 6, submit), {
+    initialProps: { state: game },
+  });
+  const predicted = FakeWorker.instances[0];
+  act(() =>
+    predicted.send({
+      type: 'forecast',
+      id: predicted.request.id,
+      input: { state: game, seed: 0, difficulty: 6, positionHistory: [] },
+    }),
+  );
+  const next = applyAction(game, result.action);
+  hook.rerender({ state: next });
+  expect(predicted.terminate).toHaveBeenCalledOnce();
+  expect(FakeWorker.instances[1].request.type).toBe('think');
+  expect(hook.result.current.thinkingSession?.budgetMs).toBe(30000);
+  act(() => predicted.finish());
   expect(submit).not.toHaveBeenCalled();
 });
 
-it('runs both armies in spectator mode and submits their ordinary placements in sequence', () => {
-  const initial = createGame(),
+it('cancels on pause/replay, rejects obsolete results, and restarts on retry', () => {
+  const game = createGame(),
     submit = vi.fn();
-  const hook = renderHook(({ game, level }) => useNpc(game, null, level, submit), {
-    initialProps: { game: initial, level: 2 as import('../match/record').Difficulty },
+  const hook = renderHook(({ enabled }) => useNpc(game, null, 3, submit, enabled), {
+    initialProps: { enabled: true },
   });
-  const first = FakeWorker.instances[0];
-  expect(first.postMessage).toHaveBeenCalledWith({
-    state: initial,
-    difficulty: 2,
-    revision: 0,
-    seed: 0,
-    positionHistory: [],
+  const old = FakeWorker.instances[0];
+  hook.rerender({ enabled: false });
+  expect(old.terminate).toHaveBeenCalledOnce();
+  act(() => old.finish());
+  expect(submit).not.toHaveBeenCalled();
+  hook.rerender({ enabled: true });
+  const worker = FakeWorker.instances[1];
+  act(() => worker.send({ type: 'error', id: worker.request.id, message: 'retry' }));
+  expect(hook.result.current.error).toBe('retry');
+  act(() => hook.result.current.retry());
+  expect(FakeWorker.instances).toHaveLength(3);
+  expect(hook.result.current.error).toBeNull();
+});
+
+it('isolates new matches even when revision and seed match', () => {
+  const game = createGame(),
+    submit = vi.fn();
+  const hook = renderHook(({ id }) => useNpc(game, null, 6, submit, true, 12, emptyHistory, id), {
+    initialProps: { id: 'a' },
   });
-  act(() => first.send({ type: 'result', revision: 0, result }));
-  expect(submit).toHaveBeenCalledWith(result.action, 0);
-  const north = applyAction(initial, result.action);
-  hook.rerender({ game: north, level: 4 });
-  expect(first.terminate).toHaveBeenCalledOnce();
-  expect(FakeWorker.instances[1].postMessage).toHaveBeenCalledWith({
-    state: north,
-    difficulty: 4,
-    revision: 1,
-    seed: 0,
-    positionHistory: [],
+  const old = FakeWorker.instances[0];
+  hook.rerender({ id: 'b' });
+  expect(old.terminate).toHaveBeenCalledOnce();
+  act(() => old.finish());
+  expect(submit).not.toHaveBeenCalled();
+  act(() => FakeWorker.instances[1].finish());
+  expect(submit).toHaveBeenCalledOnce();
+});
+
+it('rejects stale request IDs and duplicate results from a retained Worker', () => {
+  const game = createGame(),
+    submit = vi.fn();
+  const hook = renderHook(({ state }) => useNpc(state, null, 6, submit), {
+    initialProps: { state: game },
   });
-  const reply = {
-    ...result,
-    action: { type: 'place' as const, kind: 'penguin' as const, at: { x: 4, y: 2 } },
-  };
-  act(() => FakeWorker.instances[1].send({ type: 'result', revision: 1, result: reply }));
-  expect(submit).toHaveBeenLastCalledWith(reply.action, 1);
+  const worker = FakeWorker.instances[0],
+    id = worker.request.id;
+  act(() => worker.finish());
+  hook.rerender({ state: applyAction(game, result.action) });
+  act(() => worker.send({ type: 'result', id, result }));
+  expect(submit).toHaveBeenCalledTimes(1);
+  act(() => {
+    worker.finish();
+    worker.finish();
+  });
+  expect(submit).toHaveBeenCalledTimes(2);
+});
+
+it('halts speculation when the tab becomes hidden', () => {
+  const game = createGame();
+  const submit = vi.fn();
+  renderHook(() => useNpc(game, 'south', 6, submit));
+  vi.spyOn(document, 'hidden', 'get').mockReturnValue(true);
+  act(() => document.dispatchEvent(new Event('visibilitychange')));
+  expect(FakeWorker.instances[0].terminate).toHaveBeenCalledOnce();
+});
+
+it('does not allocate a Worker in local PvP or disabled play', () => {
+  renderHook(() => useNpc(createGame(), null, 6, vi.fn(), false));
+  expect(FakeWorker.instances).toHaveLength(0);
 });
