@@ -1,8 +1,8 @@
 Shader "Azarashi/Surface" {
     Properties {
         _Catalog ("Catalog lighting", Float) = 0
-        _Color ("Color", Color) = (1,1,1,1)
-        _Emission ("Emission", Color) = (0,0,0,1)
+        _Color ("Linear color", Vector) = (1,1,1,1)
+        _Emission ("Linear emission", Vector) = (0,0,0,1)
         _MainTex ("Texture", 2D) = "white" {}
         _Smoothness ("Smoothness", Range(0,1)) = .5
         _Metallic ("Metallic", Range(0,1)) = 0

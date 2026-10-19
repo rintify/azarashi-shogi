@@ -54,6 +54,18 @@ namespace Azarashi.UnityView.Editor
         }
         public static void Run(NativeGameData data)
         {
+            // Exported material colors are already linear. ShaderLab Color properties
+            // convert from sRGB on upload, even when their values are set with SetVector.
+            foreach (var name in new[] { "Azarashi/Surface", "Azarashi/Ocean", "Azarashi/Unlit" })
+            {
+                var shader = Shader.Find(name);
+                foreach (var property in new[] { "_Color", "_Emission" })
+                {
+                    var index = shader.FindPropertyIndex(property);
+                    if (index >= 0 && shader.GetPropertyType(index) != UnityEngine.Rendering.ShaderPropertyType.Vector)
+                        throw new Exception(name + " " + property + " must preserve exported linear values.");
+                }
+            }
             var fixture = JsonUtility.FromJson<Fixture>(File.ReadAllText(Path.GetFullPath("../.openai/unity-presentation-fixtures.json")));
             var count = 0;
             foreach (var item in fixture.cases)

@@ -169,6 +169,7 @@ namespace Azarashi.UnityView
             QualitySettings.shadowResolution = ShadowResolution.High;
             QualitySettings.shadowDistance = 60;
             QualitySettings.antiAliasing = 2;
+            Debug.Log("Native renderer: activeColorSpace=" + QualitySettings.activeColorSpace + ", graphics=" + SystemInfo.graphicsDeviceType + ", sRGBWrite=" + GL.sRGBWrite);
 
         }
 

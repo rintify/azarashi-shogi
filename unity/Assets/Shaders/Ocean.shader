@@ -1,5 +1,5 @@
 Shader "Azarashi/Ocean" {
-    Properties { _Color ("Deep", Color) = (0.002,0.098,0.185,1) _Emission ("Light", Color) = (0.008,0.266,0.429,1) _OceanTime ("React scene time", Float) = 0 }
+    Properties { _Color ("Linear deep", Vector) = (0.002,0.098,0.185,1) _Emission ("Linear light", Vector) = (0.008,0.266,0.429,1) _OceanTime ("React scene time", Float) = 0 }
     SubShader {
         Tags { "RenderType"="Opaque" }
         Pass {

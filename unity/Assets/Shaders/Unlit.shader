@@ -1,6 +1,6 @@
 Shader "Azarashi/Unlit" {
     Properties {
-        _Color ("Color", Color) = (1,1,1,1)
+        _Color ("Linear color", Vector) = (1,1,1,1)
         _ToneMapped ("Tone mapped", Float) = 0
         _MainTex ("Texture", 2D) = "white" {}
         _Cull ("Cull", Float) = 2

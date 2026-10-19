@@ -20,6 +20,8 @@
 
 場面の環境照明は元のThree.jsが生成したPMREMをlinear RGBA half floatで保持する。UnityのStandardシェーダーへの単純置換ではなく、元のGGX、clearcoat、多重散乱、CubeUVサンプリングとACESを移植している。色をsRGBへ二度変換しない。図鑑には元の図鑑専用の照明と床を使う。
 
+素材契約の色は既に線形値なので、ShaderLabの `_Color` / `_Emission` は `Vector` として宣言する。`Color` 宣言では、`SetVector` で渡してもsRGBから線形への変換が入る。2026-10-20の実WebGL照合で、この二重入力変換による海と駒の暗転を確認し、宣言を修正した。手動の出力ガンマ変換は追加していない。Editor検証はこの型の契約もチェックする。照明・影の細部の一致は別途照合が必要。
+
 環境照明と捕食音の再生成は開発サーバーの `?unity-environment` 画面から行う。環境は元のIceWorldを実際のWebGLで描画して保存し、音は元のscheduleBiteをOfflineAudioContextでレンダリングする。出力はそれぞれ `Native/Lighting/Environment.bytes`、`Native/Audio/Bite.bytes`。`PresentationSources.json` は採取元のSHA-256を保持し、変更後の古い素材の使用をビルド前に拒否する。
 
 ## 検証
