@@ -22,7 +22,7 @@ namespace Azarashi.UnityView
         public string id, shader, texture;
         public float[] color, emissive;
         public float opacity, roughness, metalness, clearcoat, clearcoatRoughness, envMapIntensity, time;
-        public bool transparent, additive, depthTest, depthWrite, toneMapped, flatShading;
+        public bool transparent, additive, depthTest, depthWrite, toneMapped, flatShading, useSceneEnvironment;
         public int side;
     }
     [Serializable]

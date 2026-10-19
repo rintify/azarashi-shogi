@@ -150,6 +150,7 @@ namespace Azarashi.UnityView
     [Serializable]
     public sealed class LightingSettings
     {
+        public float environmentIntensity;
         public HemisphereSettings hemisphere; public DirectionalSettings[] directional;
     }
     [Serializable]

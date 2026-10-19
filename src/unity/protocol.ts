@@ -19,6 +19,7 @@ export interface MaterialResource {
   clearcoat: number;
   clearcoatRoughness: number;
   envMapIntensity: number;
+  useSceneEnvironment: boolean;
   toneMapped: boolean;
   flatShading: boolean;
   transparent: boolean;

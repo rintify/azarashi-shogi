@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   BoxGeometry,
   Color,
+  CubeTexture,
   Group,
   Mesh,
   MeshBasicMaterial,
@@ -122,5 +123,17 @@ describe('React scene → Unity rendering contract', () => {
     const frame = encoder.encode(scene, camera);
     expect(frame.materials.find((m) => m.id === material.uuid)?.roughness).toBe(0.68);
     expect(frame.materials.find((m) => m.id === ocean.uuid)?.shader).toBe('ocean');
+  });
+
+  it('distinguishes scene environment lighting from an explicit material environment map', () => {
+    const { scene, camera, material, encoder } = fixture();
+    material.envMapIntensity = 0.2;
+    let exported = encoder.encode(scene, camera).materials.find((m) => m.id === material.uuid)!;
+    expect(exported.useSceneEnvironment).toBe(true);
+    expect(exported.envMapIntensity).toBe(0.2);
+    material.envMap = new CubeTexture();
+    exported = encoder.encode(scene, camera).materials.find((m) => m.id === material.uuid)!;
+    expect(exported.useSceneEnvironment).toBe(false);
+    expect(exported.envMapIntensity).toBe(0.2);
   });
 });

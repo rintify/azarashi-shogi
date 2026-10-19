@@ -173,6 +173,7 @@ async function main() {
     }),
   );
   const lighting = {
+    environmentIntensity: sampledScene.environmentIntensity,
     hemisphere: { sky: '#ffffff', ground: '#000000', intensity: 0 },
     directional: [] as { position: number[]; color: string; intensity: number; shadows: boolean }[],
   };

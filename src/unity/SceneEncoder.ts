@@ -80,6 +80,7 @@ function materialResource(
     clearcoatRoughness:
       (material as MeshStandardMaterial & { clearcoatRoughness?: number }).clearcoatRoughness ?? 0,
     envMapIntensity: surface.envMapIntensity ?? 1,
+    useSceneEnvironment: !!surface.isMeshStandardMaterial && surface.envMap === null,
     toneMapped: material.toneMapped,
     flatShading: surface.flatShading ?? false,
     transparent: material.transparent,

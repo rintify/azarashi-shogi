@@ -23,6 +23,7 @@ namespace Azarashi.UnityView
         private Camera view;
         private static readonly Matrix4x4 Mirror = Matrix4x4.Scale(new Vector3(1, 1, -1));
         private bool valid;
+        private float environmentIntensity;
         private readonly MaterialPropertyBlock drawProperties = new MaterialPropertyBlock();
         private readonly Dictionary<string, Vector2> anchors = new Dictionary<string, Vector2>();
         private Matrix4x4 anchorCamera;
@@ -175,6 +176,7 @@ namespace Azarashi.UnityView
 
         public void ConfigureLighting(LightingSettings settings)
         {
+            environmentIntensity = settings.environmentIntensity;
             ColorUtility.TryParseHtmlString(settings.hemisphere.sky, out var sky);
             ColorUtility.TryParseHtmlString(settings.hemisphere.ground, out var ground);
             RenderSettings.ambientSkyColor = sky * settings.hemisphere.intensity;
@@ -345,7 +347,8 @@ namespace Azarashi.UnityView
             material.SetFloat("_Metallic", resource.metalness);
             material.SetFloat("_Clearcoat", resource.clearcoat);
             material.SetFloat("_ClearcoatRoughness", resource.clearcoatRoughness);
-            material.SetFloat("_EnvIntensity", resource.envMapIntensity);
+            // Three r180 uses the scene intensity when no explicit material envMap is set.
+            material.SetFloat("_EnvIntensity", resource.useSceneEnvironment ? environmentIntensity : resource.envMapIntensity);
             material.SetFloat("_ToneMapped", resource.toneMapped ? 1 : 0);
             material.SetFloat("_FlatShading", resource.flatShading ? 1 : 0);
             material.SetFloat("_Cull", resource.side == 2 ? (float)CullMode.Off : resource.side == 1 ? (float)CullMode.Front : (float)CullMode.Back);
