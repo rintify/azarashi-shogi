@@ -8,6 +8,10 @@
     {
       "path": "src/presentation/biteAudio.ts",
       "sha256": "d09113125ca02f075bd315d12ee709fb2d313f05d0b04ededa2d5929a212ddf1"
+    },
+    {
+      "path": "src/presentation/motionAudio.ts",
+      "sha256": "4d74d08d7da775bc762555dee65d6c1040ca45f4707c6e20bda30f4911d65258"
     }
   ]
 }

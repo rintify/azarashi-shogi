@@ -16,9 +16,11 @@ namespace Azarashi.UnityView
             banner.style.transitionDuration = new System.Collections.Generic.List<TimeValue> { new TimeValue(.25f) };
             if (!landscape)
             {
-                banner.style.left = Length.Percent(50);
-                banner.style.width = StyleKeyword.Auto;
-                banner.style.translate = new Translate(Length.Percent(-50), 0);
+                // Center the complete live row. Absolute auto-width is constrained
+                // by its left inset in Yoga and can leave longer warnings offset.
+                banner.style.left = 0;
+                banner.style.width = Length.Percent(100);
+                banner.style.translate = new Translate(0, 0);
             }
             else
                 banner.style.translate = new Translate(0, 0);

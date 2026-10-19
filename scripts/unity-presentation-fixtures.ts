@@ -14,6 +14,7 @@ import { guideStyle, type GuideState } from '../src/presentation/guideStyle';
 import type { GameState, ActionPreview } from '../src/game/types';
 import { sampleCameraOrbit } from '../src/presentation/cameraOrbit';
 import { offeredMoveOptions, requiresChoice } from '../src/components/choiceOptions';
+import { motionAudioCues } from '../src/presentation/motionAudio';
 
 export async function exportPresentationFixtures(directory: string) {
   const record = JSON.parse(await readFile('docs/fixtures/unity-smoke.json', 'utf8'));
@@ -32,6 +33,12 @@ export async function exportPresentationFixtures(directory: string) {
       duration: motion.duration / 1000,
       playbackDuration: playbackDuration(motion) / 1000,
       landing: landingMoment(motion),
+      audio: motionAudioCues(motion),
+      resolveAudio: motionAudioCues({
+        ...motion,
+        stage: 'resolve',
+        duration: motion.action.action.transformation ? 1150 : 620,
+      }),
       samples: Array.from({ length: 41 }, (_, index) => {
         const t = index / 40,
           pose = sampleMotion(motion, t),

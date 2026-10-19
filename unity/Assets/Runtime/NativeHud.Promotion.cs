@@ -88,7 +88,23 @@ namespace Azarashi.UnityView
                     button.Add(shape);
                     NativeUi.Enter(button, (i - 1) * .035f, true);
                 }
-                refresh = () => { for (var i = 0; i < buttons.Count; i++) { var active = choiceIndex == i + 1; var danger = match.ChoiceColor(i + 1) != match.Data.Config.colors.safe; var fill = danger ? (active ? "#ffc8d2" : "#ffe4e9") : active ? "#cefae9" : "#f5fcff"; buttons[i].style.backgroundColor = C(fill); Border(buttons[i], 3, active && !danger ? "#fff9d9" : "#ffffff"); NativeUi.RestingY(buttons[i], active ? -5 : 0); var shape = buttons[i].Q<NativeRotationShape>(); shape.Tint = C(danger ? match.ChoiceColor(i + 1) : active ? "#429a9b" : "#90acc1"); shape.MarkDirtyRepaint(); NativeUi.Skin(buttons[i], active && danger ? "rotationDanger" : active ? "rotationSelected" : "rotation", compact ? 17 : 19, match.ChoiceColor(i + 1)); } refreshPromotion(); };
+                refresh = () =>
+                {
+                    for (var i = 0; i < buttons.Count; i++)
+                    {
+                        var active = choiceIndex == i + 1;
+                        var danger = match.ChoiceColor(i + 1) != match.Data.Config.colors.safe;
+                        var fill = danger ? (active ? "#ffc8d2" : "#ffe4e9") : active ? "#cefae9" : "#f5fcff";
+                        NativeUi.Colors(buttons[i], C(fill), C(fill));
+                        Border(buttons[i], 3, active && !danger ? "#fff9d9" : "#ffffff");
+                        NativeUi.RestingY(buttons[i], active ? -5 : 0);
+                        var shape = buttons[i].Q<NativeRotationShape>();
+                        shape.Tint = C(danger ? match.Data.Config.colors.danger : active ? "#429a9b" : "#90acc1");
+                        shape.MarkDirtyRepaint();
+                        NativeUi.Skin(buttons[i], active && danger ? "rotationDanger" : active ? "rotationSelected" : "rotation", compact ? 17 : 19, match.Data.Config.colors.danger);
+                    }
+                    refreshPromotion();
+                };
                 refresh();
             }
             if (count > 1)
@@ -158,11 +174,11 @@ namespace Azarashi.UnityView
                     button.style.top = y - verticalGap - (compact ? 48 : landscape ? 52 : 58) - (ownKing ? warningHeight + verticalGap : 0);
 
                 if (keepControl != null)
-                    NativeUi.Skin(keepControl, match.ChoiceColor(0) == match.Data.Config.colors.safe ? "keep" : "promotionDanger", 30, match.ChoiceColor(0));
+                    NativeUi.Skin(keepControl, match.ChoiceColor(0) == match.Data.Config.colors.safe ? "keep" : "promotionDanger", 30, match.Data.Config.colors.danger);
                 if (evolveControl != null)
                 {
                     var color = match.ChoiceColor(choiceIndex > 0 ? choiceIndex : 1);
-                    NativeUi.Skin(evolveControl, color == match.Data.Config.colors.safe ? "evolve" : "promotionDanger", 30, color);
+                    NativeUi.Skin(evolveControl, color == match.Data.Config.colors.safe ? "evolve" : "promotionDanger", 30, match.Data.Config.colors.danger);
                 }
             };
             warning.RegisterCallback<GeometryChangedEvent>(_ => refreshPromotion());

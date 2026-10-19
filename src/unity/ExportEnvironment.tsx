@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { HalfFloatType, PMREMGenerator } from 'three';
 import { IceWorld } from '../scene/IceWorld';
 import { scheduleBite } from '../presentation/biteAudio';
+import { scheduleTone, TONE_CUES, type ToneCue } from '../presentation/motionAudio';
 
 function ExportButton({ setExport }: { setExport: (fn: () => void) => void }) {
   const { gl, scene } = useThree();
@@ -48,6 +49,23 @@ async function exportBite() {
   a.click();
   URL.revokeObjectURL(url);
 }
+async function exportTones() {
+  const rate = 48000;
+  const chunks: BlobPart[] = [new Uint32Array([rate, Object.keys(TONE_CUES).length])];
+  for (const cue of Object.keys(TONE_CUES) as ToneCue[]) {
+    const context = new OfflineAudioContext(1, Math.ceil(rate * (TONE_CUES[cue][1] + 0.025)), rate);
+    scheduleTone(context, 0, cue);
+    const samples = (await context.startRendering()).getChannelData(0);
+    const name = new TextEncoder().encode(cue);
+    chunks.push(new Uint32Array([name.length]), name, new Uint32Array([samples.length]), samples);
+  }
+  const url = URL.createObjectURL(new Blob(chunks, { type: 'application/octet-stream' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'azarashi-original-tones.bytes';
+  a.click();
+  URL.revokeObjectURL(url);
+}
 export default function ExportEnvironment() {
   const [run, setRun] = useState<() => void>(() => () => {});
   return (
@@ -80,6 +98,19 @@ export default function ExportEnvironment() {
         onClick={exportBite}
       >
         元の捕食音をUnity用に保存
+      </button>
+      <button
+        style={{
+          position: 'absolute',
+          top: 160,
+          left: 20,
+          padding: 20,
+          background: 'white',
+          color: 'black',
+        }}
+        onClick={exportTones}
+      >
+        元の移動・着地・変身音をUnity用に保存
       </button>
     </main>
   );

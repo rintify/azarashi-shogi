@@ -200,7 +200,10 @@ namespace Azarashi.UnityView
             result.userData = "native-ui";
             result.style.display = DisplayStyle.Flex;
             NativeUi.ClearChildren(result);
+            NativeUi.StopAnimation(result);
             result.style.opacity = 1;
+            result.style.translate = new Translate(0, 0);
+            result.style.scale = new Scale(Vector3.one);
             celebration.Clear();
             if (changed)
                 resultStarted = Time.unscaledTime;

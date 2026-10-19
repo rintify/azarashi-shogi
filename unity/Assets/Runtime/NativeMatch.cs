@@ -102,7 +102,7 @@ namespace Azarashi.UnityView
         }
         private NativeCamera orbit;
         private Vector2 down;
-        private bool pointerDown, wasReady, stepRequested, capturePlayed;
+        private bool pointerDown, wasReady, stepRequested;
         private float nextReplay, turnStarted;
         private readonly List<string> history = new List<string>();
         private NativeAudio audio;
@@ -130,6 +130,7 @@ namespace Azarashi.UnityView
             Hud = gameObject.AddComponent<NativeHud>();
             Hud.Initialize(this);
             audio = gameObject.AddComponent<NativeAudio>();
+            Muted = NativeStorage.Read("sound", "azarashi-shogi.sound") == "off";
             LoadLibrary();
         }
         private void Update()
@@ -144,18 +145,12 @@ namespace Azarashi.UnityView
                 wasReady = true;
                 Restore();
             }
+            audio.Sync(Motion, Muted);
             if (Motion != null)
             {
-                if (!capturePlayed && Time.unscaledTime >= Motion.Landing && Motion.Action.captured.Length > 0)
-                {
-                    capturePlayed = true;
-                    if (!Muted)
-                        audio.Bite();
-                }
                 if (Motion.Done)
                 {
                     Motion = null;
-                    capturePlayed = false;
                     turnStarted = Time.unscaledTime;
                     nextReplay = Time.unscaledTime + .34f / ReplaySpeed;
                     Refresh();
@@ -227,6 +222,7 @@ namespace Azarashi.UnityView
             last = null;
             State = Data.Config.initial.Copy();
             Record = new MatchRecord { rulesVersion = Data.Config.initial.rulesVersion, id = Guid.NewGuid().ToString(), createdAt = DateTime.UtcNow.ToString("o"), seed = (uint)UnityEngine.Random.Range(1, int.MaxValue), settings = new RecordSettings { mode = settings.mode, human = settings.human, difficulty = settings.difficulty, aiLevels = new RecordLevels { south = settings.southLevel, north = settings.difficulty } } };
+            Hud.NewMatch();
             introStarted = -1;
             Paused = false;
             history.Clear();
@@ -250,6 +246,13 @@ namespace Azarashi.UnityView
             ReplayPlaying = false;
             ClearSelection();
             Hud.Rebuild();
+        }
+        public void ToggleSound()
+        {
+            Muted = !Muted;
+            audio.Sync(Motion, Muted);
+            NativeStorage.Write("sound", Muted ? "off" : "on");
+            NativeStorage.Flush();
         }
         public void Close()
         {
@@ -342,7 +345,6 @@ namespace Azarashi.UnityView
             Pending = choices;
             HoverPreview = choices[0];
             Motion = choices.Length > 1 ? new NativeMotion(Data, State, choices[0], true) : null;
-            capturePlayed = false;
             Hud.Rebuild();
         }
         public void PreviewChoice(int index)
@@ -380,7 +382,6 @@ namespace Azarashi.UnityView
         private void Commit(Preview preview)
         {
             Motion = new NativeMotion(Data, State, preview);
-            capturePlayed = false;
             Apply(preview);
         }
         private void Apply(Preview preview)

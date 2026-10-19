@@ -303,7 +303,7 @@ namespace Azarashi.UnityView
             title.style.letterSpacing = (mobile ? -.02f : .03f) * (landscape ? 14 : mobile ? width <= 360 ? 12 : 13 : 18);
             NativeUi.TextShadows(title, "textBrand");
             var labels = new[] { match.Muted ? "mute" : "sound", "book", "replay", "reset", match.TopView ? "cube" : "view", gridOpen ? "x" : "grid" };
-            Action[] actions = { () => { match.Muted = !match.Muted; Rebuild(); }, () => match.Open("rules"), () => match.Open("replays"), () => match.Open("settings"), () => { match.TopView = !match.TopView; Rebuild(); }, () => { gridOpen = !gridOpen; Rebuild(); } };
+            Action[] actions = { () => { match.ToggleSound(); Rebuild(); }, () => match.Open("rules"), () => match.Open("replays"), () => match.Open("settings"), () => { match.TopView = !match.TopView; Rebuild(); }, () => { gridOpen = !gridOpen; Rebuild(); } };
             for (var i = 0; i < labels.Length; i++)
             {
                 var pressed = i == 0 && !match.Muted || i == 4 && match.TopView || i == 5 && gridOpen;

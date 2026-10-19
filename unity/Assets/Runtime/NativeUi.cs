@@ -182,6 +182,7 @@ namespace Azarashi.UnityView
         public static void Enter(VisualElement element, float delay = 0, bool control = false) => Animate(element, control ? .3f : .26f, delay, 0, 1, control ? 8 : 12, 0, control ? .86f : .96f, 1, true);
         public static void Header(VisualElement element, float delay = 0) => Animate(element, .42f, delay, 0, 1, -8, 0, 1, 1, true);
         public static void Exit(VisualElement element) => Animate(element, .18f, 0, element.resolvedStyle.opacity, 0, 0, 9, 1, .96f, false);
+        public static void StopAnimation(VisualElement element) => tweens.RemoveAll(t => t.element == element);
         public static void Swap(TextElement label, string value)
         {
             if (label.text == value)
@@ -240,6 +241,16 @@ namespace Azarashi.UnityView
             if (controls.TryGetValue(button, out var control))
                 control.restingY = y;
             button.style.translate = new Translate(0, y);
+        }
+        public static void Colors(Button button, Color normal, Color hover)
+        {
+            if (controls.TryGetValue(button, out var control))
+            {
+                control.normal = normal;
+                control.hover = hover;
+                button.style.backgroundColor = control.over ? hover : normal;
+            }
+            else button.style.backgroundColor = normal;
         }
         private static void Move(Button button, Control c, float scale, float y)
         {

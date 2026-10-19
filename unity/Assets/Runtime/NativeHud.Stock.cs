@@ -57,7 +57,6 @@ namespace Azarashi.UnityView
                         gridPulses[button] = Time.unscaledTime;
                 }
                 buttons.Add(button);
-                button.tooltip = Coordinate(cell) + (piece == null ? "" : " " + match.Data.Name(piece));
                 if (piece != null)
                 {
                     var iconSize = Mathf.Min(40, cellSize - 4);
@@ -217,6 +216,16 @@ namespace Azarashi.UnityView
                 Rebuild();
             }
         }
+        public void NewMatch()
+        {
+            gridOpen = expanded = false;
+            announcedTurn = null;
+            gainStarts.Clear();
+            gainCounts.Clear();
+            foreach (var label in gainLabels.Values) label.style.display = DisplayStyle.None;
+            foreach (var ring in gainRings.Values) ring.style.display = DisplayStyle.None;
+            Rebuild();
+        }
         public bool EscapeUi()
         {
             var tray = expanded;
@@ -290,7 +299,7 @@ namespace Azarashi.UnityView
                     Round(b, 17);
                     Border(b, 2, active ? "#70c8d6" : "#d5e6f0");
                     NoSkin(b);
-                    NativeUi.Bind(b, () => { if (match.SelectedStock != kind) match.SelectStock(kind); expanded = false; Rebuild(); }, C(active ? "#d2f4ef" : colors[i]), C("#d7f0fb"));
+                    NativeUi.Bind(b, () => { if (match.SelectedStock != kind) match.SelectStock(kind); expanded = false; Rebuild(); }, C(active ? "#d2f4ef" : colors[i]), C(active ? "#d2f4ef" : "#d7f0fb"));
                     b.style.flexDirection = FlexDirection.Column;
                     b.style.alignItems = Align.Center;
                     b.style.justifyContent = Justify.Center;

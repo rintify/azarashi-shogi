@@ -30,7 +30,7 @@ namespace Azarashi.UnityView.Editor
         [Serializable]
         private sealed class MotionCase
         {
-            public Position before; public Preview preview; public string stage; public float duration, playbackDuration; public Sample[] samples; public Capture[] captures; public Flight[] flights;
+            public Position before; public Preview preview; public string stage; public float duration, playbackDuration; public Sample[] samples; public Capture[] captures; public Flight[] flights; public NativeAudioCue[] audio, resolveAudio;
         }
         [Serializable]
         private sealed class Sample
@@ -61,6 +61,7 @@ namespace Azarashi.UnityView.Editor
         {
             ValidateRetainedScroll();
             ValidateRetainedOrder();
+            UirStagingPatch.ValidateBounds();
             ValidateShadowProjection(data.Assets.lighting, Vector3.zero);
             ValidateShadowProjection(data.Assets.catalogLighting, new Vector3(50, 0, 0));
             // Exported material colors are already linear. ShaderLab Color properties
@@ -98,6 +99,7 @@ namespace Azarashi.UnityView.Editor
                     item.preview.action.transformation = null;
                 var motion = new NativeMotion(data, item.before, item.preview, item.stage == "choice");
                 Close(motion.Duration, item.duration, "duration");
+                ValidateAudio(motion, item.audio);
                 if (item.stage != "choice")
                     Close(motion.PlaybackDuration, item.playbackDuration, "playback");
                 foreach (var sample in item.samples)
@@ -127,6 +129,10 @@ namespace Azarashi.UnityView.Editor
                         Close(motion.TransferLaunch(victim, index) - motion.Started, flight.launch, "orb launch");
                         Close(motion.TransferArrival(victim, index) - motion.Started, flight.arrival, "orb arrival");
                     }
+                motion.Resolve(item.preview);
+                ValidateAudio(motion, item.resolveAudio);
+                motion.Return();
+                if (NativeAudio.Cues(motion).Length != 0) throw new Exception("Returning choices must not play audio.");
             }
             foreach (var item in fixture.guides)
             {
@@ -167,6 +173,16 @@ namespace Azarashi.UnityView.Editor
             }
             finally { UnityEngine.Object.DestroyImmediate(host); }
             Debug.Log("Presentation parity passed: " + count + " motion samples, " + fixture.guides.Length + " guide states, " + cameraCount + " camera samples and camera startup against original TypeScript.");
+        }
+        private static void ValidateAudio(NativeMotion motion, NativeAudioCue[] expected)
+        {
+            var actual = NativeAudio.Cues(motion);
+            if (actual.Length != expected.Length) throw new Exception("Motion audio cue count differs from the source.");
+            for (var i = 0; i < actual.Length; i++)
+            {
+                if (actual[i].clip != expected[i].clip) throw new Exception("Motion audio clip differs from the source.");
+                Close(actual[i].at, expected[i].at, "audio " + actual[i].clip);
+            }
         }
         private static void ValidateShadowProjection(LightingSettings lighting, Vector3 offset)
         {
