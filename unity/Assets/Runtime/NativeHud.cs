@@ -194,8 +194,8 @@ namespace Azarashi.UnityView
         private void UpdateChoices()
         {
             var pending=match.Pending;var show=pending!=null&&match.Motion!=null&&(match.Motion.Stage=="choice-preview"||match.Motion.Progress>=1);
-            var count=show?pending.Length:0;if(count==choiceCount)return;choiceCount=count;choiceIndex=0;choice.Clear();if(count==0)return;
-            var y=height*.64f;
+            var count=show?pending.Length:0;if(count==choiceCount)return;choiceCount=count;choiceIndex=match.CurrentChoice;choice.Clear();if(count==0)return;
+            var y=height*.64f;Button evolve=null;
             var rotations=pending.Skip(1).Any(p=>p.action.transformation?.type=="rotate");
             if(rotations)
             {
@@ -204,18 +204,19 @@ namespace Azarashi.UnityView
                 for(var i=1;i<count;i++)
                 {
                     var index=i;var candidate=pending[i];
-                    var button=Button(choice,"",(width-total)*.5f+(i-1)*(w+6),y-66,w,52,()=>{choiceIndex=index;match.PreviewChoice(index);for(var n=0;n<buttons.Count;n++)Border(buttons[n],3,n+1==index?"#5aaac8":"#ffffff");},"#ecf9fc");buttons.Add(button);
+                    var button=Button(choice,"",(width-total)*.5f+(i-1)*(w+6),y-66,w,52,()=>{choiceIndex=index;match.PreviewChoice(index);for(var n=0;n<buttons.Count;n++)Border(buttons[n],3,n+1==index?"#5aaac8":"#ffffff");if(evolve!=null)evolve.style.backgroundColor=ChoiceTint(index,"#b8e6ef");},"#ecf9fc");button.style.backgroundColor=ChoiceTint(index,"#ecf9fc");if(choiceIndex==index)Border(button,3,"#5aaac8");buttons.Add(button);
                     var cellSize=Mathf.Min(12,Mathf.Min(48f/(maxX-minX+1),34f/(maxY-minY+1)));var offset=new Vector2((w-(maxX-minX+1)*cellSize)*.5f,(46-(maxY-minY+1)*cellSize)*.5f);
                     Func<Cell,Vector2> point=c=>offset+new Vector2((match.Viewer=="north"?maxX-c.x:c.x-minX)*cellSize,(match.Viewer=="north"?maxY-c.y:c.y-minY)*cellSize);
                     foreach(var cell in pending[0].footprint){var q=point(cell);var tile=Box(button,"old-footprint",q.x,q.y,cellSize-1,cellSize-1,null,3);Border(tile,1,"#9db9c7");}
-                    foreach(var cell in candidate.footprint){var q=point(cell);Box(button,"new-footprint",q.x,q.y,cellSize-1,cellSize-1,"#5aaac8",3);}
+                    foreach(var cell in candidate.footprint){var q=point(cell);Box(button,"new-footprint",q.x,q.y,cellSize-1,cellSize-1,match.ChoiceColor(index)==match.Data.Config.colors.safe?"#5aaac8":match.ChoiceColor(index),3);}
                     var pivot=pending[0].footprint[candidate.action.transformation.pivot];var center=point(pivot)+Vector2.one*(cellSize*.5f);Box(button,"pivot",center.x-2.5f,center.y-2.5f,5,5,"#ffe28a",3);Enter(button);
                 }
             }
-            var keep=Button(choice,"そのまま",width*.5f-119,y,110,50,()=>match.ResolveChoice(0),"#fffaf0",14);Enter(keep);
-            var evolve=Button(choice,"成る",width*.5f+1,y,110,50,()=>match.ResolveChoice(choiceIndex>0?choiceIndex:1),"#b8e6ef",14);Enter(evolve);
+            var keep=Button(choice,"そのまま",width*.5f-119,y,110,50,()=>match.ResolveChoice(0),"#fffaf0",14);keep.style.backgroundColor=ChoiceTint(0,"#fffaf0");Enter(keep);
+            evolve=Button(choice,"成る",width*.5f+1,y,110,50,()=>match.ResolveChoice(choiceIndex>0?choiceIndex:1),"#b8e6ef",14);evolve.style.backgroundColor=ChoiceTint(choiceIndex>0?choiceIndex:1,"#b8e6ef");Enter(evolve);
             Button(choice,"×",width*.5f+121,y+8,32,32,match.CancelChoice,"#fffaf0",18);
         }
+        private Color ChoiceTint(int index,string normal){var color=match.ChoiceColor(index);return color==match.Data.Config.colors.safe?C(normal):Color.Lerp(C(normal),C(color),.28f);}
         private void UpdateMarkers()
         {
             foreach(var node in markNodes.Values)node.style.display=DisplayStyle.None;

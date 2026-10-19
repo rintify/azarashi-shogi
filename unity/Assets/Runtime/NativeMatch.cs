@@ -123,7 +123,7 @@ namespace Azarashi.UnityView
         {
             if(choices.Length==1||choices[0].captured.Any(c=>c.kind=="walrus")){Commit(choices[0]);return;}
             if(choices[0].piece.kind=="seal"){Commit(choices.Last());return;}
-            Pending=choices;Motion=new NativeMotion(Data,State,choices[0],true);capturePlayed=false;Hud.Rebuild();
+            Pending=choices;HoverPreview=choices[0];Motion=new NativeMotion(Data,State,choices[0],true);capturePlayed=false;Hud.Rebuild();
         }
         public void PreviewChoice(int index){if(Pending==null||index<0||index>=Pending.Length)return;Motion.Preview(Pending[index]);HoverPreview=Pending[index];}
         public void ResolveChoice(int index){if(Pending==null)return;var choice=Pending[index];Motion.Resolve(choice);Pending=null;Apply(choice);Hud.Rebuild();}
@@ -148,6 +148,7 @@ namespace Azarashi.UnityView
                     foreach(var group in myMoves.Where(m=>m.piece.id!=king.id).GroupBy(m=>m.piece.id))if(group.Any(m=>!Assess(m.after,m.piece).kingDanger)&&(!Marks.TryGetValue(group.Key,out var mark)||mark!="king"))Marks[group.Key]="helper";
                 foreach(var piece in State.pieces.Where(p=>Marks.TryGetValue(p.id,out var mark)&&mark=="danger"))if(Assess(State,piece).Red&&myMoves.Where(m=>m.piece.id==piece.id).All(m=>Assess(m.after,m.piece).Red))Marks[piece.id]="trapped";
             }
+            if(SelectedId!=null||SelectedStock!=null)ComputeSafety();
             Hud.Rebuild();
         }
         public CellSafety Assess(Position next,PieceState piece)
@@ -164,9 +165,18 @@ namespace Azarashi.UnityView
             {
                 var safety=Assess(group.First().after,group.First().piece);var alternatives=group.Select(m=>Assess(m.after,m.piece)).ToArray();
                 var transformationSafe=safety.unsafeCell&&alternatives.Any(s=>!s.unsafeCell);Safety[group.Key]=safety;
-                cellColors[group.Key]=transformationSafe?Data.Config.colors.transformation:safety.kingDanger?Data.Config.colors.kingDanger:safety.trap?Data.Config.colors.kingCaptureTrap:safety.unsafeCell?Data.Config.colors.danger:Data.Config.colors.safe;
+                cellColors[group.Key]=transformationSafe?Data.Config.colors.transformation:SafetyColor(safety);
             }
             if(SelectedId!=null){var piece=State.pieces.First(p=>p.id==SelectedId);var stationary=Assess(State,piece);Safety["stationary"]=stationary;if(stationary.Red&&selected.All(m=>Assess(m.after,m.piece).Red)&&Marks.TryGetValue(piece.id,out var mark)&&mark=="danger")Marks[piece.id]="trapped";}
+        }
+        private string SafetyColor(CellSafety safety)=>safety.kingDanger?Data.Config.colors.kingDanger:safety.trap?Data.Config.colors.kingCaptureTrap:safety.unsafeCell?Data.Config.colors.danger:Data.Config.colors.safe;
+        public int CurrentChoice=>Pending==null?0:Mathf.Max(0,Array.IndexOf(Pending,HoverPreview??Motion?.Action));
+        public string ChoiceColor(int index)
+        {
+            if(Pending==null||index<0||index>=Pending.Length)return Data.Config.colors.safe;
+            var key="choice:"+index;
+            if(!Safety.TryGetValue(key,out var safety)){var option=Pending[index];safety=Assess(option.after,option.piece);Safety[key]=safety;}
+            return SafetyColor(safety);
         }
         public string CellColor(Preview preview)
         {
@@ -212,15 +222,20 @@ namespace Azarashi.UnityView
             var inspecting=SelectedId!=null&&State.pieces.Any(p=>p.id==SelectedId&&p.owner!=Viewer);
             if(!Busy)
             {
-                foreach(var group in selected.GroupBy(m=>m.action.Destination.x+","+m.action.Destination.y))
+                var guideOpacity=inspecting?.24f+.08f*Mathf.Sin(Time.unscaledTime*2.24f):.2f;
+                // Paint reachability first, then action anchors. An overlapping large body must
+                // never replace another destination's exact danger color.
+                foreach(var cell in selected.SelectMany(m=>m.captureCells.Concat(m.footprint)).GroupBy(c=>c.x+","+c.y).Select(g=>g.First()))Board.Guide(cell,inspecting?Data.Config.colors.enemy:Data.Config.colors.fill,guideOpacity);
+                foreach(var move in selected.GroupBy(m=>m.action.Destination.x+","+m.action.Destination.y).Select(g=>g.First()))
                 {
-                    var move=group.First();var color=inspecting?Data.Config.colors.enemy:CellColor(move);foreach(var c in group.SelectMany(m=>m.captureCells.Concat(m.footprint)).GroupBy(c=>c.x+","+c.y).Select(g=>g.First()))Board.Guide(c,color==Data.Config.colors.safe?Data.Config.colors.fill:color,inspecting?.24f+.08f*Mathf.Sin(Time.unscaledTime*2.24f):.2f);
-                    if(!inspecting)Board.Guide(new Cell(move.action.Destination.x+grab.x,move.action.Destination.y+grab.y),color,1,true);
+                    var color=inspecting?Data.Config.colors.enemy:CellColor(move);var anchor=new Cell(move.action.Destination.x+grab.x,move.action.Destination.y+grab.y);
+                    Board.Guide(anchor,color==Data.Config.colors.safe?Data.Config.colors.fill:color,guideOpacity);
+                    if(!inspecting)Board.Guide(anchor,color,1,true);
                 }
-                if(Stationary!=null){var p=State.pieces.First(v=>v.id==SelectedId);var s=Safety.TryGetValue("stationary",out var value)?value:new CellSafety();var color=inspecting?Data.Config.colors.enemy:s.kingDanger?Data.Config.colors.kingDanger:s.trap?Data.Config.colors.kingCaptureTrap:s.unsafeCell?Data.Config.colors.danger:Data.Config.colors.safe;foreach(var c in Data.Body(p))Board.Guide(c,color==Data.Config.colors.safe?Data.Config.colors.fill:color,.2f,layer:1);if(!inspecting)Board.Guide(new Cell(p.at.x+grab.x,p.at.y+grab.y),color,1,true,1);}
+                if(Stationary!=null){var p=State.pieces.First(v=>v.id==SelectedId);var s=Safety.TryGetValue("stationary",out var value)?value:new CellSafety();var color=inspecting?Data.Config.colors.enemy:SafetyColor(s);foreach(var c in Data.Body(p))if(!selected.Any(m=>m.action.Destination.x+grab.x==c.x&&m.action.Destination.y+grab.y==c.y))Board.Guide(c,color==Data.Config.colors.safe?Data.Config.colors.fill:color,guideOpacity);if(!inspecting)Board.Guide(new Cell(p.at.x+grab.x,p.at.y+grab.y),color,1,true,1);}
             }
             var preview=HoverPreview??(Motion?.Stage=="return"?null:Motion?.Action);
-            if(preview!=null){var color=inspecting?Data.Config.colors.enemy:CellColor(preview);foreach(var c in preview.captureCells.Concat(preview.footprint).GroupBy(c=>c.x+","+c.y).Select(g=>g.First())){Board.Guide(c,color==Data.Config.colors.safe?Data.Config.colors.fill:color,.34f,layer:2);if(Motion==null)Board.Outline(c,color);}if(preview.action.type=="place"&&Motion==null)Board.Piece(preview.piece,Data.Center(preview.piece),NativeGameData.Facing(preview.piece),.82f);}
+            if(preview!=null){var color=inspecting?Data.Config.colors.enemy:Pending!=null?ChoiceColor(CurrentChoice):CellColor(preview);foreach(var c in preview.captureCells.Concat(preview.footprint).GroupBy(c=>c.x+","+c.y).Select(g=>g.First())){Board.Guide(c,color==Data.Config.colors.safe?Data.Config.colors.fill:color,.34f,layer:2);if(Motion==null)Board.Outline(c,color);}if(preview.action.type=="place"&&Motion==null)Board.Piece(preview.piece,Data.Center(preview.piece),NativeGameData.Facing(preview.piece),.82f);}
             if(last!=null&&SelectedId==null&&SelectedStock==null)foreach(var c in last.footprint)Board.Guide(c,"#ffffff",.1f);
             if(Dialog=="catalog"){var variant=Data.Config.variants[Hud.CatalogIndex];var piece=new PieceState{id="catalog",kind=variant.kind,promoted=variant.promoted,owner="south",at=new Cell()};Board.Piece(piece,new Vector3(50,0,0),Hud.CatalogAngle);}
             NativeEffects.Draw(Board,Motion,Data);
