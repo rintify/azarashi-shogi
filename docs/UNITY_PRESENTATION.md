@@ -1,0 +1,29 @@
+# Unity版の表現の移植
+
+元版の表現の定義は `src/components`、`src/styles.css`、`src/scene`、`src/presentation` にある。Unity側で独自のデザインを作って置き換えない。
+
+## データの所有者
+
+- `NativeMatch`: 対局状態、操作意図、安全性。Rustが返した合法手を使う。
+- `NativeHud`: UI状態。Stock / Dialogs / Promotion / Feedbackに分割した部分クラスは同じ所有者のビュー。
+- `NativeViewTree`: 継続するUI要素の同一性と退場時の保持。再描画でフォーカスやポインターキャプチャーを破棄しない。
+- `NativeUi`: UIの登場・退場・値の切り替え・押下・ホバー。元のCSSの曲線を使う。
+- `NativeMotion`: 元のmotion / movement / captureTransfersの秒単位移植。駒、捕食、粒子、持ち駒は同じ時計を参照する。
+- `NativeGuides`: 元のguideStyleの優先順位、色、透過率。描画層で安全判定を追加しない。
+- `NativeBoard`: エクスポートされたモデル、連続したペンギンの姿、盤上ガイドの保持・補間。
+- `NativeEffects`: 元のTravelEffects / SnowImpact / ActionEffectsの粒子プール、形状、経路、寿命。
+- `SceneRenderer`: 右手座標からUnityへの変換、描画、元の物理照明式。UIやルールは持たない。
+
+## 元の素材の取り込み
+
+`npm run unity:build` は、TSXモデルと途中のペンギンの姿、粒子のジオメトリー、AnimalIconとLucideのSVG、CSSの多層シャドウ、ルール本文を生成する。影を厚い下枠に置き換えたり、記号を別の図形で描き直したりしない。生成PNGは高解像度で、影はスライスしてサイズ変更する。
+
+場面の環境照明は元のThree.jsが生成したPMREMをlinear RGBA half floatで保持する。UnityのStandardシェーダーへの単純置換ではなく、元のGGX、clearcoat、多重散乱、CubeUVサンプリングとACESを移植している。色をsRGBへ二度変換しない。図鑑には元の図鑑専用の照明と床を使う。
+
+環境照明と捕食音の再生成は開発サーバーの `?unity-environment` 画面から行う。環境は元のIceWorldを実際のWebGLで描画して保存し、音は元のscheduleBiteをOfflineAudioContextでレンダリングする。出力はそれぞれ `Native/Lighting/Environment.bytes`、`Native/Audio/Bite.bytes`。`PresentationSources.json` は採取元のSHA-256を保持し、変更後の古い素材の使用をビルド前に拒否する。
+
+## 検証
+
+`unity-presentation-fixtures.ts` が元のTypeScript関数から動作とガイドの照合データを生成する。Unity Editorの `PresentationValidation` が移動・変身・王の伸縮・飛行と持ち駒の到着時刻、全32,768通りのガイド状態を照合する。対局の15手の棋譜もRust経由で再生して確認する。
+
+数値の照合は見た目全体の一致を保証しない。シェーダー、シャドウ、UI Toolkitの文字組み、画面サイズ、hoverと退場中の入力について、実際のUnity Webビルドでも確認する。
