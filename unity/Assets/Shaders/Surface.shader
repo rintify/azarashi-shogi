@@ -15,6 +15,7 @@ Shader "Azarashi/Surface" {
         Tags { "RenderType"="Opaque" }
         Cull [_Cull] ZWrite [_ZWrite] ZTest [_ZTest] Blend [_SrcBlend] [_DstBlend]
         CGPROGRAM
+        // Grade one lighting pass: adding separately tone-mapped passes causes pale surfaces to clip.
         #pragma surface surf Standard noforwardadd noshadow addshadow keepalpha finalcolor:filmic
         #pragma target 3.0
         #pragma multi_compile_instancing
