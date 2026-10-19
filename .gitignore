@@ -28,6 +28,9 @@ unity/Assets/Plugins/macOS/*.dylib*
 
 .openai/unity-roundtrip.json
 .openai/validate-unity-record.mjs
+.openai/tooling/
+.openai/verification/
+unity/Assets/Plugins/Windows/*.dll
 
 unity/Assets/Resources/Native/Presentation.json*
 unity/Assets/Resources/Native/PresentationFixtures.json*

@@ -10,7 +10,9 @@ npm run unity:build
 npm run unity:preview
 ```
 
-<http://127.0.0.1:4174/> を開きます。成果物は `dist-unity/` です。Unityが生成するHTML・Build・StreamingAssetsを一緒に配信します。Unity Editorの場所は `UNITY_EDITOR=/path/to/Unity` で指定できます。macOSではRustのネイティブライブラリも自動ビルドするため、Rustのtoolchainが必要です。
+<http://127.0.0.1:4174/> を開きます。成果物は `dist-unity/` です。Unityが生成するHTML・Build・StreamingAssetsを一緒に配信します。Unity Editorのバージョンは `unity/ProjectSettings/ProjectVersion.txt` から読み、Windows/macOSの標準のHubインストール先を使用します。別の場所は `UNITY_EDITOR=/path/to/Unity` で指定できます。WindowsのPowerShellでは `$env:UNITY_EDITOR = 'C:\path\to\Unity.exe'` を使います。
+
+Windows/macOSとも、ビルド前の検証に使うRustネイティブライブラリーを自動ビルドします。指定されたRust toolchainが必要で、WindowsではMSVC C++ Build ToolsとWindows SDKも必要です。Cargoの場所は `CARGO`、または `CARGO_HOME` で指定できます。元のWASMは引き続き共用し、Rustのルール・探索は変更しません。ソースの鮮度チェックではパス区切りを `/`、テキストの改行をLFとして扱い、WindowsのCRLFチェックアウトだけで不一致にならないようにしています。
 
 `unity:build -- --reuse` は既存のUnity出力をコピーし直すだけです。ソース変更後は通常のビルドを実行してください。通常のReact版は `npm run dev` / `npm run build` で継続して利用できます。
 
@@ -27,7 +29,7 @@ npm run unity:preview
 
 ## Editorと検証
 
-一度 `unity:build` した後、Unity Hubで `unity/` を開き、`Assets/Scenes/Game.unity` をPlayできます。macOSのdylibはビルドスクリプトが `Assets/Plugins/macOS/` に配置します。Windows/Linux Editor用のRustバイナリやモバイルのネイティブ配布設定は今回含みません。
+一度 `unity:build` した後、Unity Hubで `unity/` を開き、`Assets/Scenes/Game.unity` をPlayできます。ビルドスクリプトがmacOSのdylibを `Assets/Plugins/macOS/`、WindowsのDLLを `Assets/Plugins/Windows/` に配置します。Linux Editor用のRustバイナリやモバイルのネイティブ配布設定は今回含みません。
 
 ビルド前に `NativeValidation` がUnityのJSONシリアライザとRustネイティブ境界で15手の検証棋譜を再生します。配置・複数捕食・ペンギン変身・シャチ回転・王捕食を通し、Unityが出力した棋譜を元のTypeScriptデコーダでも再生して互換性を確認します。画面からも棋譜一覧で `docs/fixtures/unity-smoke.json` を読み込めます。
 

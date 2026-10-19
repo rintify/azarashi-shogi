@@ -53,7 +53,11 @@ namespace Azarashi.UnityView.Editor
                     if (shaders.GetArrayElementAtIndex(i).objectReferenceValue != null)
                         included.Add(shaders.GetArrayElementAtIndex(i).objectReferenceValue);
                 var instancing = settings.FindProperty("m_InstancingStripping");
-                instancing.enumValueIndex = Array.FindIndex(instancing.enumNames, name => name == "KeepAll");
+                if (instancing == null)
+                    throw new InvalidOperationException("Missing GraphicsSettings instancing stripping setting.");
+                // This native property is serialized as an integer, without enumNames.
+                // Unity 6000.5 InstancingStrippingMode: StripUnused=0, StripAll=1, KeepAll=2.
+                instancing.intValue = 2;
                 foreach (var shaderName in new[] { "Azarashi/Surface", "Azarashi/Unlit", "Azarashi/Ocean" })
                 {
                     var shader = Shader.Find(shaderName);
