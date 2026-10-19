@@ -27,6 +27,9 @@ namespace Azarashi.UnityView.Editor
                     if(data.Body(preview.piece).Any(c=>c.x<0||c.x>9||c.y<0||c.y>9))throw new Exception("Native footprint is outside board.");
                 }
                 if(state.phase!="finished"||captures<3||changes<2)throw new Exception("Smoke record did not exercise capture, both transformations and a finished match.");
+                var library=NativeJson.Library(NativeJson.Encode(new ReplayList{items=new System.Collections.Generic.List<MatchRecord>{record}}));
+                if(library.items.Count!=1||library.items[0].settings.aiLevels!=null)throw new Exception("Optional AI levels changed during library persistence.");
+                record=library.items[0];
                 var encoded=NativeJson.Encode(record,true);
                 if(encoded.Contains("\"type\": \"\"")||encoded.Contains("\"south\": 0"))throw new Exception("Absent optional fields were not normalized.");
                 // Keep a concrete Unity-produced record for the original TypeScript decoder to verify.

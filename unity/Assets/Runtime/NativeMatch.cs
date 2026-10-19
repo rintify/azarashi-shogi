@@ -241,7 +241,7 @@ namespace Azarashi.UnityView
         private void SaveLibrary()=>NativeStorage.Write("replays",NativeJson.Encode(new ReplayList{items=Replays}));
         private void LoadLibrary()
         {
-            try{var text=NativeStorage.Read("replays","azarashi.unity.replays.v1");if(text.Length>0){var list=JsonUtility.FromJson<ReplayList>(text);if(list?.items!=null)Replays.AddRange(list.items.Where(r=>r?.settings!=null&&r.actions!=null));}}
+            try{var text=NativeStorage.Read("replays","azarashi.unity.replays.v1");if(text.Length>0){var list=NativeJson.Library(text);if(list?.items!=null)Replays.AddRange(list.items.Where(r=>r?.settings!=null&&r.actions!=null));}}
             catch(Exception error){Debug.LogWarning("Native replay library could not be loaded: "+error.Message);}
         }
         private List<Position> Validate(MatchRecord record)
@@ -259,7 +259,12 @@ namespace Azarashi.UnityView
             try{var record=NativeJson.Record(text);Validate(record);Replays.RemoveAll(r=>r.id==record.id);Replays.Insert(0,record);SaveLibrary();NativeStorage.Flush();Hud.Rebuild();}
             catch(Exception error){Hud.Notify(error.Message);}
         }
-        public void Watch(MatchRecord record){CancelThinking();replayStates=Validate(record);replayRecord=record;Settings=SettingsOf(record);ReplayCursor=0;ReplayPlaying=true;State=replayStates[0];Motion=null;Pending=null;Dialog=null;last=null;ClearSelection();Refresh();nextReplay=Time.unscaledTime+.3f;}
+        public void Watch(MatchRecord record)
+        {
+            CancelThinking();
+            try{var states=Validate(record);replayStates=states;replayRecord=record;Settings=SettingsOf(record);ReplayCursor=0;ReplayPlaying=true;State=replayStates[0];Motion=null;Pending=null;Dialog=null;last=null;ClearSelection();Refresh();nextReplay=Time.unscaledTime+.3f;}
+            catch(Exception error){Hud.Notify(error.Message);}
+        }
         public void StepReplay(int direction){if(!Replaying||Motion!=null)return;var next=Mathf.Clamp(ReplayCursor+direction,0,ReplayTotal);if(next==ReplayCursor)return;var before=State;var preview=next==ReplayCursor+1?Find(Engine.Inspect(before),replayRecord.actions[ReplayCursor]):null;ReplayCursor=next;if(next==ReplayTotal)ReplayPlaying=false;State=replayStates[next];last=preview;Motion=preview==null?null:new NativeMotion(Data,before,preview);Marks.Clear();Hud.Rebuild();}
         public void SeekReplay(int cursor){if(!Replaying)return;ReplayPlaying=false;Motion=null;ReplayCursor=Mathf.Clamp(cursor,0,ReplayTotal);State=replayStates[ReplayCursor];last=null;Refresh();}
         public void EndReplay(){replayRecord=null;ReplayPlaying=false;Motion=null;last=null;Settings=SettingsOf(Record);State=Validate(Record).Last();Refresh();}

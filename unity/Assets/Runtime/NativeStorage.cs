@@ -34,11 +34,22 @@ namespace Azarashi.UnityView
     public static class NativeJson
     {
         // JsonUtility represents absent inline classes as empty objects; restore the shared wire contract.
-        public static MatchRecord Record(string json)
+        private static MatchRecord Normalize(MatchRecord record)
         {
-            var record=JsonUtility.FromJson<MatchRecord>(json);
-            if(record?.settings!=null){if(string.IsNullOrEmpty(record.settings.mode))record.settings.mode="human-vs-ai";if(record.settings.aiLevels?.south==0&&record.settings.aiLevels?.north==0)record.settings.aiLevels=null;}
+            if(record?.settings!=null)
+            {
+                if(string.IsNullOrEmpty(record.settings.mode))record.settings.mode="human-vs-ai";
+                if(record.settings.aiLevels?.south==0&&record.settings.aiLevels?.north==0)record.settings.aiLevels=null;
+            }
             return record;
+        }
+        public static MatchRecord Record(string json)=>Normalize(JsonUtility.FromJson<MatchRecord>(json));
+        public static ReplayList Library(string json)
+        {
+            var library=JsonUtility.FromJson<ReplayList>(json)??new ReplayList();
+            if(library.items==null)library.items=new System.Collections.Generic.List<MatchRecord>();
+            foreach(var record in library.items)Normalize(record);
+            return library;
         }
         public static string Encode(object value,bool pretty=false)
         {
