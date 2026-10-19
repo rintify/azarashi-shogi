@@ -1,5 +1,5 @@
 import { Suspense, useMemo, useState, useEffect, type RefObject } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { GameCanvas } from './GameCanvas';
 import { ACESFilmicToneMapping, PCFSoftShadowMap } from 'three';
 import type { ActionPreview, Cell, GameState, Player, Threat } from '../game/types';
 import { cellKey } from '../game/types';
@@ -186,7 +186,7 @@ export function BoardScene(props: BoardProps) {
       <div className="scene-labels" ref={setLabelHost} />
       <Suspense fallback={<div className="canvas-loading">氷原に向かっています…</div>}>
         {htmlPortal && (
-          <Canvas
+          <GameCanvas
             shadows={{ type: PCFSoftShadowMap }}
             dpr={[1, 1.8]}
             camera={{ position: [0, 20, 10], fov: 38, near: 0.1, far: 160 }}
@@ -198,7 +198,7 @@ export function BoardScene(props: BoardProps) {
             }}
           >
             <BoardContents {...props} htmlPortal={htmlPortal} />
-          </Canvas>
+          </GameCanvas>
         )}
       </Suspense>
     </div>
