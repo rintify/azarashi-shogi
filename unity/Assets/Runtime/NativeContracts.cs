@@ -146,6 +146,19 @@ namespace Azarashi.UnityView
     public sealed class DirectionalSettings
     {
         public float[] position; public string color; public float intensity; public bool shadows;
+        public ShadowSettings shadow;
+    }
+    [Serializable]
+    public sealed class ShadowSettings
+    {
+        public float[] mapSize, matrix, view, projection;
+        public float bias, normalBias, intensity;
+        public ShadowSample[] samples;
+    }
+    [Serializable]
+    public sealed class ShadowSample
+    {
+        public float[] point, normal, uv;
     }
     [Serializable]
     public sealed class LightingSettings
@@ -166,7 +179,7 @@ namespace Azarashi.UnityView
     [Serializable]
     public sealed class SceneAssets
     {
-        public RenderFrame world, effects; public ModelAsset[] models; public LightingSettings lighting; public PenguinPoses[] penguinPoses; public EffectMesh[] effectMeshes;
+        public RenderFrame world, catalog, effects; public ModelAsset[] models; public LightingSettings lighting, catalogLighting; public PenguinPoses[] penguinPoses; public EffectMesh[] effectMeshes;
     }
     public static class NativeActions
     {

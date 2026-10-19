@@ -1,5 +1,7 @@
 Filmic.cginc and PhysicalLighting.cginc adapt the ACES fitted tone mapping,
 GGX BRDF, multiscattering and CubeUV environment sampling implementations from three.js.
+SourceDepth.shader and SourceShadow.cginc adapt its RGBA depth packing,
+receiver normal bias, and PCFSoft shadow filtering implementations.
 Native symbol assets are rasterized from lucide-react (ISC License); see node_modules/lucide-react/LICENSE.
 
 The MIT License

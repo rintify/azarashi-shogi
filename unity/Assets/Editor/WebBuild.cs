@@ -58,7 +58,7 @@ namespace Azarashi.UnityView.Editor
                 // This native property is serialized as an integer, without enumNames.
                 // Unity 6000.5 InstancingStrippingMode: StripUnused=0, StripAll=1, KeepAll=2.
                 instancing.intValue = 2;
-                foreach (var shaderName in new[] { "Azarashi/Surface", "Azarashi/Unlit", "Azarashi/Ocean" })
+                foreach (var shaderName in new[] { "Azarashi/Surface", "Azarashi/Unlit", "Azarashi/Ocean", "Azarashi/SourceDepth" })
                 {
                     var shader = Shader.Find(shaderName);
                     if (shader == null)

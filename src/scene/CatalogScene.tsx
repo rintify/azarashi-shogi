@@ -34,6 +34,26 @@ function Exhibit({ kind, promoted, reduced }: { kind: Kind; promoted: boolean; r
     </group>
   );
 }
+export function CatalogEnvironment() {
+  return (
+    <>
+      <color attach="background" args={['#d9edf3']} />
+      <hemisphereLight args={['#fff7ed', '#6d9cb3', 2]} />
+      <directionalLight
+        position={[-3, 6, 4]}
+        intensity={2.5}
+        castShadow
+        shadow-mapSize={[1024, 1024]}
+        shadow-normalBias={0.03}
+      />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.055, 0]} receiveShadow>
+        <planeGeometry args={[200, 200]} />
+        <meshStandardMaterial color="#edf8fa" roughness={0.9} />
+      </mesh>
+    </>
+  );
+}
+
 export function CatalogScene({
   kind,
   promoted,
@@ -52,20 +72,8 @@ export function CatalogScene({
       camera={{ position: [2.2, 1.9, 3.2], fov: 32 }}
     >
       <CameraFit />
-      <color attach="background" args={['#d9edf3']} />
-      <hemisphereLight args={['#fff7ed', '#6d9cb3', 2]} />
-      <directionalLight
-        position={[-3, 6, 4]}
-        intensity={2.5}
-        castShadow
-        shadow-mapSize={[1024, 1024]}
-        shadow-normalBias={0.03}
-      />
+      <CatalogEnvironment />
       <Exhibit key={`${kind}-${promoted}`} kind={kind} promoted={promoted} reduced={reduced} />
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.055, 0]} receiveShadow>
-        <planeGeometry args={[200, 200]} />
-        <meshStandardMaterial color="#edf8fa" roughness={0.9} />
-      </mesh>
       <OrbitControls
         makeDefault
         target={[0, 0.56, 0]}

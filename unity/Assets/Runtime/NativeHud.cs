@@ -39,7 +39,7 @@ namespace Azarashi.UnityView
         private readonly Dictionary<string, Texture2D> icons = new Dictionary<string, Texture2D>();
         private readonly List<VisualElement> orbs = new List<VisualElement>();
         private float uiScale = 1, width = 1280, height = 720, clockAmount;
-        private bool expanded, gridOpen, dirty = true;
+        private bool expanded, gridOpen, dirty = true, lastBusy;
         private int choiceCount = -1, choiceIndex;
         private string resultKey, message;
         private string replayWarning;
@@ -112,15 +112,6 @@ namespace Azarashi.UnityView
             catalogCamera.transform.LookAt(new Vector3(50, .5f, 0));
             catalogCamera.enabled = false;
             catalogCamera.nearClipPlane = .1f;
-            var catalogLight = new GameObject("Original catalog light").AddComponent<Light>();
-            catalogLight.type = LightType.Directional;
-            catalogLight.cullingMask = 1 << 1;
-            catalogLight.transform.position = new Vector3(47, 6, -4);
-            catalogLight.transform.LookAt(new Vector3(50, 0, 0));
-            catalogLight.intensity = 2.5f;
-            catalogLight.shadows = LightShadows.Soft;
-            catalogLight.shadowCustomResolution = 1024;
-            catalogLight.shadowNormalBias = .03f;
             Rebuild();
         }
         public void Notify(string text)
@@ -442,6 +433,13 @@ namespace Azarashi.UnityView
             }
             ResizeSceneTexture();
             document.panelSettings.scale = uiScale;
+            // Camera handoff can finish without a position revision or motion
+            // completing. Refresh retained controls when that input lock changes.
+            if (lastBusy != match.Busy)
+            {
+                lastBusy = match.Busy;
+                dirty = true;
+            }
             if (lastDockRevision != match.State.revision || match.Busy)
             {
                 lastDockRevision = match.State.revision;
@@ -455,6 +453,8 @@ namespace Azarashi.UnityView
                 draft = null;
             if (dirty)
                 Build();
+            if (match.Dialog != null)
+                measureFlowDialog?.Invoke();
             RestoreModalFocus();
             views.Tick();
             dialogViews.Tick();
@@ -508,7 +508,7 @@ namespace Azarashi.UnityView
             if (resultKey != null)
             {
                 var time = Time.unscaledTime - resultStarted;
-                spectacle?.MarkDirtyRepaint();
+                spectacle?.Tick();
                 if (resultSection != null)
                 {
                     var arrival = SlideEase(Mathf.Clamp01(time / .85f));
@@ -536,12 +536,12 @@ namespace Azarashi.UnityView
                     var duration = 2.5f + (i % 5) * .3f;
                     var elapsed = time - (i % 8) * .09f;
                     var p = elapsed < 0 ? 0 : (elapsed % duration) / duration;
-                    var ease = p * p;
+                    var ease = NativeUi.Cubic(p, .42f, 0, 1, 1);
                     var node = celebration[i];
                     node.style.left = width * ((i * 37 + 11) % 100) / 100f + (((i * 29) % 180) - 90) * ease;
                     node.style.top = -height * .08f + height * 1.1f * ease;
                     node.style.rotate = new Rotate(i * 71 + 250 * ease);
-                    node.style.opacity = elapsed < 0 ? 0 : p < .1f ? p * 9 : .9f * (1 - p) / .9f;
+                    node.style.opacity = elapsed < 0 ? 0 : p < .1f ? .9f * NativeUi.Cubic(p / .1f, .42f, 0, 1, 1) : .9f * (1 - NativeUi.Cubic((p - .1f) / .9f, .42f, 0, 1, 1));
                 }
             }
 

@@ -51,6 +51,7 @@ namespace Azarashi.UnityView
         }
         private void BuildDialog(string dialog)
         {
+            measureFlowDialog = null;
             if (dialog == "settings")
                 SettingsDialog();
             else if (dialog == "replays")

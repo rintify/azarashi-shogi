@@ -172,31 +172,73 @@ async function main() {
       htmlPortal: { current: document.createElement('div') },
     }),
   );
-  const lighting = {
-    environmentIntensity: sampledScene.environmentIntensity,
-    hemisphere: { sky: '#ffffff', ground: '#000000', intensity: 0 },
-    directional: [] as { position: number[]; color: string; intensity: number; shadows: boolean }[],
-  };
-  sampledScene.traverse((node) => {
-    if (node instanceof Three.HemisphereLight)
-      lighting.hemisphere = {
-        sky: '#' + node.color.getHexString(),
-        ground: '#' + node.groundColor.getHexString(),
-        intensity: node.intensity,
-      };
-    if (node instanceof Three.DirectionalLight)
-      lighting.directional.push({
-        position: node.getWorldPosition(new Three.Vector3()).toArray(),
-        color: '#' + node.color.getHexString(),
-        intensity: node.intensity,
-        shadows: node.castShadow,
-      });
-  });
+  function sampleLighting(scene: Three.Scene) {
+    const lighting = {
+      environmentIntensity: scene.environmentIntensity,
+      hemisphere: { sky: '#ffffff', ground: '#000000', intensity: 0 },
+      directional: [] as {
+        position: number[];
+        color: string;
+        intensity: number;
+        shadows: boolean;
+        shadow: unknown;
+      }[],
+    };
+    scene.updateMatrixWorld(true);
+    scene.traverse((node) => {
+      if (node instanceof Three.HemisphereLight)
+        lighting.hemisphere = {
+          sky: '#' + node.color.getHexString(),
+          ground: '#' + node.groundColor.getHexString(),
+          intensity: node.intensity,
+        };
+      if (node instanceof Three.DirectionalLight) {
+        node.target.updateMatrixWorld(true);
+        node.shadow.camera.updateProjectionMatrix();
+        node.shadow.updateMatrices(node);
+        lighting.directional.push({
+          position: node.getWorldPosition(new Three.Vector3()).toArray(),
+          color: '#' + node.color.getHexString(),
+          intensity: node.intensity,
+          shadows: node.castShadow,
+          shadow: {
+            mapSize: node.shadow.mapSize.toArray(),
+            matrix: node.shadow.matrix.toArray(),
+            view: node.shadow.camera.matrixWorldInverse.toArray(),
+            projection: node.shadow.camera.projectionMatrix.toArray(),
+            bias: node.shadow.bias,
+            normalBias: node.shadow.normalBias,
+            intensity: node.shadow.intensity,
+            samples: [-5, 0, 5].flatMap((x) =>
+              [0, 1, 3].flatMap((y) =>
+                [-5, 0, 5].map((z) => {
+                  const point = new Three.Vector3(x, y, z);
+                  const normal = new Three.Vector3(x + 1, 2, z - 1).normalize();
+                  const uv = point
+                    .clone()
+                    .addScaledVector(normal, node.shadow.normalBias)
+                    .applyMatrix4(node.shadow.matrix);
+                  uv.z += node.shadow.bias;
+                  return { point: point.toArray(), normal: normal.toArray(), uv: uv.toArray() };
+                }),
+              ),
+            ),
+          },
+        });
+      }
+    });
+    return lighting;
+  }
+  const lighting = sampleLighting(sampledScene);
+  const { CatalogEnvironment } = await import('../src/scene/CatalogScene');
+  const catalog = await sample(createElement(CatalogEnvironment));
+  const catalogLighting = sampleLighting(sampledScene);
   const directory = 'unity/Assets/Resources/Native';
   const seenMeshes = new Set<string>(),
     seenMaterials = new Set<string>();
   for (const frame of [
     world,
+    catalog,
     ...frames.map((entry) => entry.frame),
     fx,
     ...penguinPoses.flatMap((entry) => entry.frames),
@@ -228,7 +270,16 @@ async function main() {
     }
   await writeFile(
     `${directory}/SceneAssets.json`,
-    JSON.stringify({ world, models: frames, lighting, effects: fx, effectMeshes, penguinPoses }),
+    JSON.stringify({
+      world,
+      catalog,
+      models: frames,
+      lighting,
+      catalogLighting,
+      effects: fx,
+      effectMeshes,
+      penguinPoses,
+    }),
   );
   await writeFile(
     `${directory}/GameConfig.json`,

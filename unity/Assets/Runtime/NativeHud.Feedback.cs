@@ -76,6 +76,7 @@ namespace Azarashi.UnityView
         private readonly Dictionary<string, float> gainStarts = new Dictionary<string, float>();
         private readonly Dictionary<string, int> gainCounts = new Dictionary<string, int>();
         private readonly Dictionary<string, Label> gainLabels = new Dictionary<string, Label>();
+        private readonly Dictionary<string, VisualElement> gainRings = new Dictionary<string, VisualElement>();
         private NativeResultSpectacle spectacle;
         private TextElement resultKicker;
         private VisualElement resultSection;
@@ -139,8 +140,12 @@ namespace Azarashi.UnityView
                     if (!gainLabels.TryGetValue(item.Key, out var label))
                     {
                         label = Text(root, "", 0, 0, 48, 26, 17, "#107ca3", true, TextAnchor.MiddleCenter);
-                        label.style.textShadow = new TextShadow { color = C("#d3fbff"), blurRadius = 6, offset = Vector2.zero };
+                        NativeUi.TextShadows(label, "textGain");
                         gainLabels[item.Key] = label;
+                        var ring = Box(root, "stock-arrival", 0, 0, 0, 0);
+                        Border(ring, 2, parts[0] == "south" ? "#6fe9fa" : "#ffd282");
+                        NativeUi.Skin(ring, "stockArrival", 100);
+                        gainRings[item.Key] = ring;
                     }
                     gainLabels[item.Key].text = "+" + (count - old);
                 }
@@ -149,14 +154,29 @@ namespace Azarashi.UnityView
                     continue;
                 var p = (Time.unscaledTime - started) / .9f;
                 gain.style.display = p < 1 ? DisplayStyle.Flex : DisplayStyle.None;
+                var ringElement = gainRings[item.Key];
+                var ringP = (Time.unscaledTime - started) / .65f;
+                ringElement.style.display = ringP < 1 ? DisplayStyle.Flex : DisplayStyle.None;
+                var rect = target.worldBound;
+                ringElement.style.left = rect.xMin - 5;
+                ringElement.style.top = rect.yMin - 5;
+                ringElement.style.width = rect.width + 10;
+                ringElement.style.height = rect.height + 10;
+                Round(ringElement, 100);
+                var ringEase = NativeUi.Cubic(Mathf.Clamp01(ringP), 0, 0, .58f, 1);
+                ringElement.style.opacity = 1 - ringEase;
+                ringElement.style.scale = new Scale(Vector3.one * Mathf.Lerp(.55f, 1.75f, ringEase));
                 if (p >= 1)
                     continue;
-                var down = parts[0] != match.Viewer;
+                var down = !match.Replaying && parts[0] != match.Viewer;
                 var point = target.worldBound.center;
                 gain.style.left = point.x - 24;
-                gain.style.top = point.y + (down ? 16 : -26) + (down ? 1 : -1) * Mathf.Lerp(0, 30, NativeUi.Ease(p));
-                gain.style.opacity = p < .2f ? p / .2f : p < .7f ? 1 : (1 - p) / .3f;
-                gain.style.scale = new Scale(Vector3.one * (p < .2f ? Mathf.Lerp(.6f, 1.15f, p / .2f) : Mathf.Lerp(1.15f, 1, (p - .2f) / .8f)));
+                var first = NativeUi.Cubic(Mathf.Clamp01(p / .2f), .2f, .7f, .3f, 1);
+                var travel = NativeUi.Cubic(Mathf.Clamp01((p - .2f) / .8f), .2f, .7f, .3f, 1);
+                var distance = p < .2f ? Mathf.Lerp(0, 12, first) : Mathf.Lerp(12, 30, travel);
+                gain.style.top = (down ? rect.yMax + 8 - 26 : rect.yMin - 8) + (down ? 1 : -1) * distance;
+                gain.style.opacity = p < .2f ? first : p < .7f ? 1 : 1 - NativeUi.Cubic((p - .7f) / .3f, .2f, .7f, .3f, 1);
+                gain.style.scale = new Scale(Vector3.one * (p < .2f ? Mathf.Lerp(.6f, 1.15f, first) : Mathf.Lerp(1.15f, 1, travel)));
             }
         }
         private void UpdateResult()
@@ -198,6 +218,7 @@ namespace Azarashi.UnityView
             for (var i = 0; i < 32; i++)
             {
                 var bit = Box(result, "result-particle", 0, 0, defeatResult ? 2 : (i + 1) % 3 == 0 ? 5 : 7, defeatResult ? 35 : (i + 1) % 3 == 0 ? 8 : 14, defeatResult ? "#a5caff" : (i + 1) % 3 == 0 ? "#84e4ed" : light);
+                NativeUi.Skin(bit, "resultParticle", 0, glow);
                 celebration.Add(bit);
             }
             var compact = height <= 530;
@@ -246,7 +267,8 @@ namespace Azarashi.UnityView
             inspect.style.alignSelf = Align.Center;
             Border(inspect, 0, "#ffffff00");
             NativeUi.Bind(inspect, () => { match.ResultDismissed = true; Rebuild(); }, Color.clear, Color.clear);
-            foreach (var label in inspect.Children().OfType<Label>())
+            // TextShadows inserts a sibling, so snapshot the labels before adding it.
+            foreach (var label in inspect.Children().OfType<Label>().ToArray())
             {
                 label.style.unityFontStyleAndWeight = FontStyle.Normal;
                 NativeUi.TextShadows(label, "textResultFooter");

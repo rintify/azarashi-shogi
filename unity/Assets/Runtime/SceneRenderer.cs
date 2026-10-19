@@ -25,6 +25,14 @@ namespace Azarashi.UnityView
         private bool valid;
         private float environmentIntensity;
         private readonly MaterialPropertyBlock drawProperties = new MaterialPropertyBlock();
+        private readonly SourceShadow[] sourceShadows = new SourceShadow[2];
+        private readonly Material[] shadowCasters = new Material[3];
+        private sealed class SourceShadow
+        {
+            public Camera camera;
+            public RenderTexture texture;
+            public Matrix4x4 matrix;
+        }
         private readonly Dictionary<string, Vector2> anchors = new Dictionary<string, Vector2>();
         private Matrix4x4 anchorCamera;
         public Camera Camera => view;
@@ -158,7 +166,7 @@ namespace Azarashi.UnityView
             view.clearFlags = CameraClearFlags.SolidColor;
             view.backgroundColor = new Color(0.45f, 0.74f, 0.88f);
             view.allowHDR = false;
-            view.cullingMask = ~(1 << 1);
+            view.cullingMask = 1;
             view.allowMSAA = true;
             view.nearClipPlane = 0.1f;
             view.farClipPlane = 160;
@@ -166,7 +174,7 @@ namespace Azarashi.UnityView
             RenderSettings.ambientSkyColor = new Color(0.68f, 0.77f, 0.81f);
             RenderSettings.ambientEquatorColor = new Color(0.38f, 0.45f, 0.49f);
             RenderSettings.ambientGroundColor = new Color(0.18f, 0.23f, 0.27f);
-            QualitySettings.shadows = ShadowQuality.All;
+            QualitySettings.shadows = ShadowQuality.Disable;
             QualitySettings.shadowResolution = ShadowResolution.High;
             QualitySettings.shadowDistance = 60;
             QualitySettings.antiAliasing = 2;
@@ -174,7 +182,7 @@ namespace Azarashi.UnityView
 
         }
 
-        public void ConfigureLighting(LightingSettings settings)
+        public void ConfigureLighting(LightingSettings settings, LightingSettings catalog)
         {
             environmentIntensity = settings.environmentIntensity;
             ColorUtility.TryParseHtmlString(settings.hemisphere.sky, out var sky);
@@ -193,10 +201,14 @@ namespace Azarashi.UnityView
                 ColorUtility.TryParseHtmlString(light.color, out var c);
                 colors[i] = (Vector4)(c.linear * light.intensity);
             }
-            ColorUtility.TryParseHtmlString("#fff7ed", out var catalogSky);
-            ColorUtility.TryParseHtmlString("#6d9cb3", out var catalogGround);
-            Shader.SetGlobalVector("_CatalogSky", (Vector4)(catalogSky.linear * 2));
-            Shader.SetGlobalVector("_CatalogGround", (Vector4)(catalogGround.linear * 2));
+            ColorUtility.TryParseHtmlString(catalog.hemisphere.sky, out var catalogSky);
+            ColorUtility.TryParseHtmlString(catalog.hemisphere.ground, out var catalogGround);
+            Shader.SetGlobalVector("_CatalogSky", (Vector4)(catalogSky.linear * catalog.hemisphere.intensity));
+            Shader.SetGlobalVector("_CatalogGround", (Vector4)(catalogGround.linear * catalog.hemisphere.intensity));
+            var catalogLight = catalog.directional[0];
+            Shader.SetGlobalVector("_CatalogLightDirection", new Vector3(catalogLight.position[0], catalogLight.position[1], -catalogLight.position[2]).normalized);
+            ColorUtility.TryParseHtmlString(catalogLight.color, out var catalogColor);
+            Shader.SetGlobalVector("_CatalogLightColor", (Vector4)(catalogColor.linear * catalogLight.intensity));
             Shader.SetGlobalVectorArray("_OriginalLightDirection", directions);
             Shader.SetGlobalVectorArray("_OriginalLightColor", colors);
             var bytes = Resources.Load<TextAsset>("Native/Lighting/Environment").bytes;
@@ -210,25 +222,37 @@ namespace Azarashi.UnityView
             textures["original-environment"] = environment;
             Shader.SetGlobalTexture("_OriginalEnvironment", environment);
             Shader.SetGlobalVector("_OriginalEnvironmentSize", new Vector4(width, height, Mathf.Log(height / 4f, 2), 0));
-            foreach (var light in settings.directional)
+            CreateShadow(settings.directional[0].shadow, 0, Vector3.zero);
+            CreateShadow(catalogLight.shadow, 1, new Vector3(50, 0, 0));
+            for (var i = 0; i < shadowCasters.Length; i++)
             {
-                ColorUtility.TryParseHtmlString(light.color, out var color);
-                Sun("Original scene light", new Vector3(light.position[0], light.position[1], -light.position[2]), color, light.intensity, light.shadows);
+                shadowCasters[i] = new Material(Shader.Find("Azarashi/SourceDepth"));
+                shadowCasters[i].SetFloat("_Cull", i);
             }
         }
-        private static void Sun(string name, Vector3 position, Color color, float intensity, bool shadows)
+        private void CreateShadow(ShadowSettings settings, int index, Vector3 offset)
         {
-            var light = new GameObject(name).AddComponent<Light>();
-            light.type = LightType.Directional;
-            light.cullingMask = ~(1 << 1);
-            light.transform.position = position;
-            light.transform.LookAt(Vector3.zero);
-            light.color = color;
-            light.intensity = intensity;
-            light.shadows = shadows ? LightShadows.Soft : LightShadows.None;
-            light.shadowBias = .0001f;
-            light.shadowNormalBias = .025f;
-            light.shadowCustomResolution = 2048;
+            var camera = new GameObject("Original shadow camera " + index).AddComponent<Camera>();
+            var texture = new RenderTexture((int)settings.mapSize[0], (int)settings.mapSize[1], 24, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear)
+            { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp, antiAliasing = 1 };
+            texture.Create();
+            camera.depth = -10 + index;
+            camera.clearFlags = CameraClearFlags.SolidColor;
+            camera.backgroundColor = Color.white;
+            camera.allowHDR = camera.allowMSAA = false;
+            camera.cullingMask = 1 << (2 + index);
+            camera.targetTexture = texture;
+            camera.orthographic = true;
+            camera.worldToCameraMatrix = Matrix(settings.view) * Mirror * Matrix4x4.Translate(-offset);
+            camera.projectionMatrix = Matrix(settings.projection);
+            camera.transform.position = camera.worldToCameraMatrix.inverse.GetColumn(3);
+            var matrix = Matrix(settings.matrix) * Mirror * Matrix4x4.Translate(-offset);
+            sourceShadows[index] = new SourceShadow { camera = camera, texture = texture, matrix = matrix };
+            var prefix = index == 0 ? "_SourceShadow" : "_CatalogShadow";
+            Shader.SetGlobalMatrix(prefix + "Matrix", matrix);
+            Shader.SetGlobalTexture(prefix + "Map", texture);
+            Shader.SetGlobalVector(prefix + "Settings", new Vector4(settings.mapSize[0], settings.mapSize[1], settings.bias, settings.normalBias));
+            Shader.SetGlobalFloat(prefix + "Intensity", settings.intensity);
         }
 
         [Preserve]
@@ -379,10 +403,22 @@ namespace Azarashi.UnityView
             if (material.renderQueue != queue)
                 material.renderQueue = queue;
             drawProperties.Clear();
-            drawProperties.SetFloat("_Catalog", node.id.StartsWith("piece:catalog:") ? 1 : 0);
-            Graphics.DrawMesh(mesh, world, material, node.id.StartsWith("piece:catalog:") ? 1 : 0, null, submesh, drawProperties,
-                node.castShadow ? ShadowCastingMode.On : ShadowCastingMode.Off,
-                node.receiveShadow, null, LightProbeUsage.Off);
+            var catalog = node.id.StartsWith("piece:catalog:");
+            drawProperties.SetFloat("_Catalog", catalog ? 1 : 0);
+            drawProperties.SetFloat("_ReceiveSourceShadow", node.receiveShadow ? 1 : 0);
+            Graphics.DrawMesh(mesh, world, material, catalog ? 1 : 0, null, submesh, drawProperties,
+                ShadowCastingMode.Off, false, null, LightProbeUsage.Off);
+            if (node.castShadow)
+            {
+                var shadow = sourceShadows[catalog ? 1 : 0];
+                // Three's depth pass reverses FrontSide and BackSide for PCF shadows.
+                var cull = (int)material.GetFloat("_Cull");
+                var caster = shadowCasters[cull == 0 ? 0 : cull == 1 ? 2 : 1];
+                drawProperties.Clear();
+                drawProperties.SetMatrix("_CasterShadowMatrix", shadow.matrix);
+                Graphics.DrawMesh(mesh, world, caster, catalog ? 3 : 2, shadow.camera, submesh, drawProperties,
+                    ShadowCastingMode.Off, false, null, LightProbeUsage.Off);
+            }
         }
 
         private void LateUpdate()
@@ -405,6 +441,15 @@ namespace Azarashi.UnityView
 
         private void OnDestroy()
         {
+            foreach (var shadow in sourceShadows)
+                if (shadow != null)
+                {
+                    shadow.texture.Release();
+                    Destroy(shadow.texture);
+                    Destroy(shadow.camera.gameObject);
+                }
+            foreach (var caster in shadowCasters)
+                if (caster != null) Destroy(caster);
             foreach (var mesh in meshes.Values)
                 Destroy(mesh);
             foreach (var material in materials.Values)

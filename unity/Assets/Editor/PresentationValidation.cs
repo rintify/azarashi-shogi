@@ -61,6 +61,8 @@ namespace Azarashi.UnityView.Editor
         {
             ValidateRetainedScroll();
             ValidateRetainedOrder();
+            ValidateShadowProjection(data.Assets.lighting, Vector3.zero);
+            ValidateShadowProjection(data.Assets.catalogLighting, new Vector3(50, 0, 0));
             // Exported material colors are already linear. ShaderLab Color properties
             // convert from sRGB on upload, even when their values are set with SetVector.
             foreach (var name in new[] { "Azarashi/Surface", "Azarashi/Ocean", "Azarashi/Unlit" })
@@ -165,6 +167,26 @@ namespace Azarashi.UnityView.Editor
             }
             finally { UnityEngine.Object.DestroyImmediate(host); }
             Debug.Log("Presentation parity passed: " + count + " motion samples, " + fixture.guides.Length + " guide states, " + cameraCount + " camera samples and camera startup against original TypeScript.");
+        }
+        private static void ValidateShadowProjection(LightingSettings lighting, Vector3 offset)
+        {
+            var mirror = Matrix4x4.Scale(new Vector3(1, 1, -1));
+            foreach (var light in lighting.directional)
+            {
+                if (!light.shadows) continue;
+                var s = light.shadow;
+                var matrix = SceneRenderer.Matrix(s.matrix) * mirror * Matrix4x4.Translate(-offset);
+                foreach (var sample in s.samples)
+                {
+                    var p = new Vector3(sample.point[0], sample.point[1], -sample.point[2]) + offset;
+                    var n = new Vector3(sample.normal[0], sample.normal[1], -sample.normal[2]).normalized;
+                    var uv = matrix.MultiplyPoint(p + n * s.normalBias);
+                    Close(uv.x, sample.uv[0], "shadow u");
+                    Close(uv.y, sample.uv[1], "shadow v");
+                    Close(uv.z + s.bias, sample.uv[2], "shadow depth");
+                }
+                Debug.Log("Source shadow projection parity passed: " + s.samples.Length + " receiver samples, map=" + s.mapSize[0]);
+            }
         }
         private static void ValidateRetainedScroll()
         {

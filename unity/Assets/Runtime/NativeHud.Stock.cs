@@ -171,7 +171,7 @@ namespace Azarashi.UnityView
             var compact = mobile && height <= 670;
             var h = own ? 44 : landscape || compact ? 34 : mobile ? 38 : 42;
             var x = own ? DockLeft : landscape ? width - 14 - w : (width - w) * .5f;
-            var p = Box(parent, "stock-" + owner, x, y, w, h, own ? "#f4fcff" : "#fff7ef", 24, true);
+            var p = Box(parent, own ? "reserve-dock" : "opponent-bar", x, y, w, h, own ? "#f4fcff" : "#fff7ef", 24, true);
             Border(p, 2, "#ffffff");
             NativeUi.Skin(p, own ? "reserve" : "opponent", 24);
             NativeUi.EnterOnce(p, !own, own ? 0 : .07f);

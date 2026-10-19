@@ -8,6 +8,7 @@ namespace Azarashi.UnityView
 {
     public sealed partial class NativeHud
     {
+        private Action measureFlowDialog;
         private VisualElement FlowBox(VisualElement parent, string name, string fill = null, float radius = 0)
         {
             var box = Box(parent, name, 0, 0, 0, 0, fill, radius);
@@ -75,6 +76,8 @@ namespace Azarashi.UnityView
             scroll.style.right = scroll.style.bottom = 0;
             var content = scroll.contentContainer;
             content.style.height = StyleKeyword.Auto;
+            content.style.flexGrow = 0;
+            content.style.minHeight = 0;
             content.style.paddingLeft = content.style.paddingRight = padding;
             content.style.paddingTop = content.style.paddingBottom = padding;
             var headerHeight = match.Dialog == "settings" ? 60 : 56;
@@ -112,16 +115,23 @@ namespace Azarashi.UnityView
             {
                 scroll.AddToClassList("sticky-bound");
                 scroll.verticalScroller.valueChanged += value => header.style.top = Mathf.Max(match.Dialog == "replays" && width <= 760 ? 16 : 24, value);
-                content.RegisterCallback<GeometryChangedEvent>(_ =>
-                {
-                    var measured = content.layout.height + 8;
-                    if (float.IsNaN(measured) || measured < 80)
-                        return;
-                    var cardHeight = Mathf.Min(measured, height - 24);
-                    card.style.height = cardHeight;
-                    card.style.top = (height - cardHeight) / 2;
-                });
+                content.RegisterCallback<GeometryChangedEvent>(_ => measureFlowDialog?.Invoke());
             }
+            // A retained rebuild can reset the card size while leaving content
+            // geometry unchanged. Measure flow children independently of the
+            // ScrollView viewport's minimum extent on every layout tick.
+            measureFlowDialog = () =>
+            {
+                var bottom = 0f;
+                foreach (var child in content.Children())
+                    if (child.resolvedStyle.position == UnityEngine.UIElements.Position.Relative && child.resolvedStyle.display != DisplayStyle.None)
+                        bottom = Mathf.Max(bottom, child.layout.yMax + child.resolvedStyle.marginBottom);
+                var measured = bottom + content.resolvedStyle.paddingBottom + 8;
+                if (float.IsNaN(measured) || measured < 80) return;
+                var cardHeight = Mathf.Min(measured, height - 24);
+                card.style.height = cardHeight;
+                card.style.top = (height - cardHeight) / 2;
+            };
             header.BringToFront();
             header.schedule.Execute(header.BringToFront);
             return content;

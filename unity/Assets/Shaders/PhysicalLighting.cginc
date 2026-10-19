@@ -3,6 +3,7 @@
 sampler2D _OriginalEnvironment;
 float4 _OriginalEnvironmentSize;
 float3 _OriginalSky, _OriginalGround,_CatalogSky,_CatalogGround;
+float3 _CatalogLightDirection, _CatalogLightColor;
 float _Catalog;
 float4 _OriginalLightDirection[2], _OriginalLightColor[2];
 float3 EnvironmentTile(float3 direction,float mip)
@@ -70,8 +71,8 @@ float3 PhysicalLight(float3 normal,float3 view,float3 albedo,float roughness,flo
     for(int k=0;k<2;k++)
     {
         if(_Catalog>.5&&k==1)break;
-        float3 light=_Catalog>.5?normalize(float3(-3,6,-4)):_OriginalLightDirection[k].xyz;
-        float3 irradiance=saturate(dot(normal,light))*(_Catalog>.5?float3(2.5,2.5,2.5):_OriginalLightColor[k].rgb)*(k==0?shadow:1);
+        float3 light=_Catalog>.5?_CatalogLightDirection:_OriginalLightDirection[k].xyz;
+        float3 irradiance=saturate(dot(normal,light))*(_Catalog>.5?_CatalogLightColor:_OriginalLightColor[k].rgb)*(k==0?shadow:1);
         color+=irradiance*(diffuse*invPi+GGX(normal,view,light,specular,roughness));
         coat+=irradiance*GGX(normal,view,light,float3(.04,.04,.04),coatRoughness);
     }

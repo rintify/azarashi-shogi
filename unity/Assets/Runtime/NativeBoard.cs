@@ -28,8 +28,9 @@ namespace Azarashi.UnityView
             this.data = data;
             models = data.Assets.models.ToDictionary(m => m.key);
             sphereMesh = data.Assets.models[0].frame.nodes[0].mesh;
-            renderer.ConfigureLighting(data.Assets.lighting);
+            renderer.ConfigureLighting(data.Assets.lighting, data.Assets.catalogLighting);
             renderer.LoadAssets(data.Assets.world);
+            renderer.LoadAssets(data.Assets.catalog);
             foreach (var model in data.Assets.models)
                 renderer.LoadAssets(model.frame);
             renderer.LoadAssets(data.Assets.effects);
@@ -108,6 +109,8 @@ namespace Azarashi.UnityView
             active.Clear();
             foreach (var id in next)
                 active.Add(id);
+            foreach (var id in actorCache.Keys.Where(id => actorCache[id].ids.Length == 0 || !active.Contains(actorCache[id].ids[0])).ToArray())
+                actorCache.Remove(id);
         }
         public void Piece(PieceState piece, Vector3 position, float yaw, float scale = 1, float morph = -1, bool beforePromoted = false, float pitch = 0, float roll = 0, Vector3? stretch = null)
         {
@@ -193,17 +196,12 @@ namespace Azarashi.UnityView
         public void OceanTime(float time) => renderer.OceanTime(time);
         public void CatalogFloor()
         {
-            const string material = "catalog-floor";
-            if (guideMaterials.Add(material))
+            foreach (var source in data.Assets.catalog.nodes)
             {
-                var color = new Color(.847f, .939f, .956f);
-                ColorUtility.TryParseHtmlString("#edf8fa", out color);
-                color = color.linear;
-                renderer.LoadAssets(new RenderFrame { meshes = Array.Empty<MeshResource>(), materials = new[] { new MaterialResource { id = material, shader = "lit", color = new[] { color.r, color.g, color.b }, emissive = new[] { 0f, 0f, 0f }, opacity = 1, roughness = .9f, toneMapped = true, depthWrite = true, depthTest = true, envMapIntensity = 0 } } });
+                var id = "piece:catalog:floor:" + source.id;
+                next.Add(id);
+                renderer.PutNode(new RenderNode { id = id, mesh = source.mesh, materials = source.materials, matrix = ArrayOf(Matrix4x4.Translate(new Vector3(50, 0, 0)) * Matrix(source.matrix)), visible = source.visible, castShadow = source.castShadow, receiveShadow = source.receiveShadow });
             }
-            const string id = "piece:catalog:floor";
-            next.Add(id);
-            renderer.PutNode(new RenderNode { id = id, mesh = EffectMesh("catalog-floor"), materials = new[] { material }, matrix = ArrayOf(Matrix4x4.TRS(new Vector3(50, -.055f, 0), Quaternion.Euler(-90, 0, 0), Vector3.one)), visible = true, receiveShadow = true });
         }
         private sealed class GuideVisual
         {
