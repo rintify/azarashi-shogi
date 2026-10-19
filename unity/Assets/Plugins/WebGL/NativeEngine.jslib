@@ -1,4 +1,5 @@
 mergeInto(LibraryManager.library, {
+  AzarashiFlushStorage__deps: ['$FS', '$IDBFS'],
   AzarashiFlushStorage:function(){
     if(Module.azarashiSyncing){Module.azarashiSyncAgain=true;return;}
     var sync=function(){Module.azarashiSyncing=true;FS.syncfs(false,function(error){Module.azarashiSyncing=false;if(error){console.error(error);Module.SendMessage('NativeMatch','StorageError','');}if(Module.azarashiSyncAgain){Module.azarashiSyncAgain=false;sync();}});};sync();

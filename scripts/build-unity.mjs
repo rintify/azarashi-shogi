@@ -4,6 +4,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { homedir } from 'node:os';
 import { createRequire } from 'node:module';
+import { prepareUnityEditor } from './unity-editor-copy.mjs';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const require = createRequire(import.meta.url);
 const version = (await readFile(join(root, 'unity/ProjectSettings/ProjectVersion.txt'), 'utf8'))
@@ -35,7 +36,11 @@ async function run(command, args, env = {}) {
     child.on('exit', (code) =>
       code === 0
         ? resolveRun()
-        : reject(new Error(`${command} failed (${code}). Unity log: ${log}`)),
+        : reject(
+            new Error(
+              `${command} failed (${code}). Unity log: ${args.includes('-logFile') ? args[args.indexOf('-logFile') + 1] : log}`,
+            ),
+          ),
     );
   });
 }
@@ -80,8 +85,9 @@ if (!process.argv.includes('--reuse')) {
   }
   await mkdir(dirname(log), { recursive: true });
   console.log(`Building native Unity UI and game (log: ${log})`);
+  const buildEditor = await prepareUnityEditor(root, editor, version, run);
   await run(
-    editor,
+    buildEditor,
     [
       '-batchmode',
       '-quit',

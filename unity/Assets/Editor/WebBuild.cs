@@ -41,7 +41,9 @@ namespace Azarashi.UnityView.Editor
             PlayerSettings.WebGL.maximumMemorySize = 512;
             PlayerSettings.WebGL.decompressionFallback = false;
             PlayerSettings.WebGL.dataCaching = true;
+            PlayerSettings.WebGL.nameFilesAsHashes = true;
             PlayerSettings.WebGL.exceptionSupport = WebGLExceptionSupport.ExplicitlyThrownExceptionsOnly;
+            PlayerSettings.WebGL.debugSymbolMode = WebGLDebugSymbolMode.External;
             // Include the native scene shaders even though runtime meshes are generated from assets.
             var graphics = AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/GraphicsSettings.asset");
             if (graphics.Length > 0)
