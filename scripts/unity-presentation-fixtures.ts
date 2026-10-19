@@ -12,6 +12,7 @@ import { bodyDynamics } from '../src/presentation/movement';
 import { captureTransfers, playbackDuration } from '../src/presentation/captureTransfers';
 import { guideStyle, type GuideState } from '../src/presentation/guideStyle';
 import type { GameState, ActionPreview } from '../src/game/types';
+import { sampleCameraOrbit } from '../src/presentation/cameraOrbit';
 
 export async function exportPresentationFixtures(directory: string) {
   const record = JSON.parse(await readFile('docs/fixtures/unity-smoke.json', 'utf8'));
@@ -109,5 +110,41 @@ export async function exportPresentationFixtures(directory: string) {
       outlineOpacity: value.outlineOpacity,
     });
   }
-  await writeFile('.openai/unity-presentation-fixtures.json', JSON.stringify({ cases, guides }));
+  const cameraOrbits = [
+    [
+      { x: 0, y: 20, z: 9 },
+      { x: 0, y: 20, z: -9 },
+    ],
+    [
+      { x: 0, y: 20, z: -9 },
+      { x: 0, y: 20, z: 9 },
+    ],
+    [
+      { x: 0, y: 24, z: 0.024 },
+      { x: 0, y: 24, z: -0.024 },
+    ],
+    [
+      { x: 0, y: 24, z: -0.024 },
+      { x: 0, y: 24, z: 0.024 },
+    ],
+    [
+      { x: 3, y: 12, z: 8 },
+      { x: -5, y: 18, z: -10 },
+    ],
+    [
+      { x: -5, y: 18, z: -10 },
+      { x: 3, y: 12, z: 8 },
+    ],
+  ].map(([from, to]) => ({
+    from,
+    to,
+    samples: Array.from({ length: 41 }, (_, i) => ({
+      t: i / 40,
+      position: sampleCameraOrbit(from, to, i / 40),
+    })),
+  }));
+  await writeFile(
+    '.openai/unity-presentation-fixtures.json',
+    JSON.stringify({ cases, guides, cameraOrbits }),
+  );
 }

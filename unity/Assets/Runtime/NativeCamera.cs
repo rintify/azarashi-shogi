@@ -21,6 +21,10 @@ namespace Azarashi.UnityView
         }
         public void Frame(Rect area, string human, bool top, PieceState focus, NativeGameData data, bool reduced, float ceiling = 1.7f)
         {
+            // Like SceneCamera, wait for a measured HUD rectangle. The engine can become
+            // ready before the first HUD layout; dividing by its zero width poisons the camera.
+            if (!(area.width >= 1 && area.height >= 1))
+                return;
             var direction = new Vector3(0, top ? 1 : 1.9f, (human == "south" ? -1 : 1) * (top ? .001f : 1)).normalized;
             var rotation = Quaternion.LookRotation(-direction, Vector3.up);
             var inverse = Quaternion.Inverse(rotation);
@@ -72,23 +76,34 @@ namespace Azarashi.UnityView
         }
         public void Tick(bool reduced)
         {
+            if (!initialized)
+                return;
             var blend = reduced ? 1 : 1 - Mathf.Exp(-Time.unscaledDeltaTime * (focused ? 2.4f : 6));
             if (Rotating)
             {
-                var t = Mathf.SmoothStep(0, 1, (Time.unscaledTime - orbitStarted) / .9f);
-                var fromAngle = Mathf.Atan2(orbitFrom.x, orbitFrom.z);
-                var toAngle = Mathf.Atan2(destination.x, destination.z);
-                var turn = Mathf.Atan2(Mathf.Sin(toAngle - fromAngle), Mathf.Cos(toAngle - fromAngle));
-                if (Mathf.Abs(Mathf.Abs(turn) - Mathf.PI) < .00001f)
-                    turn = Mathf.PI;
-                var angle = fromAngle + turn * t;
-                var radius = Mathf.Lerp(new Vector2(orbitFrom.x, orbitFrom.z).magnitude, new Vector2(destination.x, destination.z).magnitude, t);
-                camera.transform.position = new Vector3(Mathf.Sin(angle) * radius, Mathf.Lerp(orbitFrom.y, destination.y, t), Mathf.Cos(angle) * radius);
+                camera.transform.position = SampleOrbit(orbitFrom, destination, (Time.unscaledTime - orbitStarted) / .9f);
             }
             else
                 camera.transform.position = Vector3.Lerp(camera.transform.position, destination, blend);
             look = Vector3.Lerp(look, target, blend);
             camera.transform.LookAt(look);
+        }
+        public static Vector3 SampleOrbit(Vector3 from, Vector3 to, float progress)
+        {
+            // Interpolate in the original right-handed coordinates, then mirror Z once.
+            // Choosing +PI in Unity coordinates reverses the original half-turn path.
+            from.z = -from.z;
+            to.z = -to.z;
+            var t = Mathf.Clamp01(progress);
+            var ease = t * t * (3 - 2 * t);
+            var fromAngle = Mathf.Atan2(from.x, from.z);
+            var toAngle = Mathf.Atan2(to.x, to.z);
+            var turn = Mathf.Atan2(Mathf.Sin(toAngle - fromAngle), Mathf.Cos(toAngle - fromAngle));
+            if (Mathf.Abs(Mathf.Abs(turn) - Mathf.PI) < .00001f)
+                turn = Mathf.PI;
+            var angle = fromAngle + turn * ease;
+            var radius = Mathf.Lerp(new Vector2(from.x, from.z).magnitude, new Vector2(to.x, to.z).magnitude, ease);
+            return new Vector3(Mathf.Sin(angle) * radius, Mathf.Lerp(from.y, to.y, ease), -Mathf.Cos(angle) * radius);
         }
     }
 }

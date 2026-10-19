@@ -10,7 +10,17 @@ namespace Azarashi.UnityView.Editor
         [Serializable]
         private sealed class Fixture
         {
-            public MotionCase[] cases; public GuideCase[] guides;
+            public MotionCase[] cases; public GuideCase[] guides; public CameraOrbit[] cameraOrbits;
+        }
+        [Serializable]
+        private sealed class CameraOrbit
+        {
+            public Vector3 from, to; public CameraSample[] samples;
+        }
+        [Serializable]
+        private sealed class CameraSample
+        {
+            public float t; public Vector3 position;
         }
         [Serializable]
         private sealed class MotionCase
@@ -93,7 +103,34 @@ namespace Azarashi.UnityView.Editor
                 Close(actual.dotOpacity, item.dotOpacity, "dot alpha");
                 Close(actual.outlineOpacity, item.outlineOpacity, "outline alpha");
             }
-            Debug.Log("Presentation parity passed: " + count + " motion samples, " + fixture.guides.Length + " guide states against original TypeScript.");
+            var cameraCount = 0;
+            foreach (var item in fixture.cameraOrbits)
+                foreach (var sample in item.samples)
+                {
+                    var actual = NativeCamera.SampleOrbit(new Vector3(item.from.x, item.from.y, -item.from.z), new Vector3(item.to.x, item.to.y, -item.to.z), sample.t);
+                    Close(actual.x, sample.position.x, "camera x");
+                    Close(actual.y, sample.position.y, "camera y");
+                    Close(actual.z, -sample.position.z, "camera z");
+                    cameraCount++;
+                }
+            var host = new GameObject("Camera startup validation");
+            try
+            {
+                var camera = host.AddComponent<Camera>();
+                var native = new NativeCamera(camera);
+                native.Frame(Rect.zero, "south", false, null, data, false);
+                native.Tick(false);
+                native.Frame(new Rect(8, 144, 1264, 502), "south", false, null, data, false);
+                native.Tick(false);
+                var p = camera.transform.position;
+                if (float.IsNaN(p.x) || float.IsNaN(p.y) || float.IsNaN(p.z) || float.IsInfinity(p.sqrMagnitude))
+                    throw new Exception("Camera startup before HUD layout produced a non-finite position.");
+                for (var i = 0; i < 16; i++)
+                    if (float.IsNaN(camera.projectionMatrix[i]) || float.IsInfinity(camera.projectionMatrix[i]))
+                        throw new Exception("Camera startup produced a non-finite projection.");
+            }
+            finally { UnityEngine.Object.DestroyImmediate(host); }
+            Debug.Log("Presentation parity passed: " + count + " motion samples, " + fixture.guides.Length + " guide states, " + cameraCount + " camera samples and camera startup against original TypeScript.");
         }
     }
 }
