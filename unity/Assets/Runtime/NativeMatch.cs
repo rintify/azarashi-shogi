@@ -109,6 +109,8 @@ namespace Azarashi.UnityView
         public bool Busy => Motion != null || orbit != null && orbit.Rotating;
         public string Viewer => Settings.mode == "local-pvp" && !Replaying ? (Motion?.BeforeState.turn ?? State.turn) : Settings.human;
         public bool HumanTurn => Settings.mode == "local-pvp" || Settings.mode == "human-vs-ai" && State.turn == Settings.human;
+        public Preview LastAction => last;
+        public bool KingThreatened { get; private set; }
         public string Actor(string side) => Settings.mode == "local-pvp" ? (side == "south" ? "先手" : "後手") : Settings.mode == "ai-vs-ai" ? (side == "south" ? "先手AI" : "後手AI") : side == Settings.human ? "あなた" : "NPC";
         public IEnumerable<Preview> SelectedMoves => selected;
         public Cell Grab => grab;
@@ -315,7 +317,9 @@ namespace Azarashi.UnityView
                 inspected = State.Copy();
                 inspected.turn = piece.owner;
             }
-            selected = Engine.Inspect(inspected, false).moves.Where(m => m.action.pieceId == piece.id).ToArray();
+            selected = Engine.Inspect(inspected, false).moves.Where(m => m.action.pieceId == piece.id)
+                .GroupBy(m => m.action.Destination.x + "," + m.action.Destination.y)
+                .SelectMany(group => NativeChoices.Offered(piece, group.ToArray())).ToArray();
             if (piece.owner == Viewer)
                 ComputeSafety();
             else
@@ -329,19 +333,15 @@ namespace Azarashi.UnityView
         }
         private void ChooseDestination(Preview[] choices)
         {
-            if (choices.Length == 1 || choices[0].captured.Any(c => c.kind == "walrus"))
+            choices = NativeChoices.Offered(State.pieces.FirstOrDefault(p => p.id == choices[0].action.pieceId), choices);
+            if (!NativeChoices.RequiresChoice(choices, Viewer))
             {
                 Commit(choices[0]);
                 return;
             }
-            if (choices[0].piece.kind == "seal")
-            {
-                Commit(choices.Last());
-                return;
-            }
             Pending = choices;
             HoverPreview = choices[0];
-            Motion = new NativeMotion(Data, State, choices[0], true);
+            Motion = choices.Length > 1 ? new NativeMotion(Data, State, choices[0], true) : null;
             capturePlayed = false;
             Hud.Rebuild();
         }
@@ -357,6 +357,12 @@ namespace Azarashi.UnityView
             if (Pending == null)
                 return;
             var choice = Pending[index];
+            if (Motion == null)
+            {
+                Pending = null;
+                Commit(choice);
+                return;
+            }
             Motion.Resolve(choice);
             Pending = null;
             Apply(choice);
@@ -366,7 +372,7 @@ namespace Azarashi.UnityView
         {
             if (Pending == null)
                 return;
-            Motion.Return();
+            Motion?.Return();
             Pending = null;
             HoverPreview = null;
             Hud.Rebuild();
@@ -395,6 +401,7 @@ namespace Azarashi.UnityView
             legal = Engine.Inspect(State);
             Marks.Clear();
             Safety.Clear();
+            KingThreatened = false;
             if (State.phase == "playing")
             {
                 var enemy = State.Copy();
@@ -410,6 +417,7 @@ namespace Azarashi.UnityView
                     if (move.captured.Any(p => p.owner != Viewer && p.kind == "walrus"))
                         Marks[move.piece.id] = "king";
                 var king = State.pieces.FirstOrDefault(p => p.owner == Viewer && p.kind == "walrus");
+                KingThreatened = king != null && enemyMoves.Any(m => m.captured.Any(p => p.id == king.id));
                 if (king != null && enemyMoves.Any(m => m.captured.Any(p => p.id == king.id)) && myMoves.Where(m => m.piece.id == king.id).All(m => Assess(m.after, m.piece).unsafeCell))
                     foreach (var group in myMoves.Where(m => m.piece.id != king.id).GroupBy(m => m.piece.id))
                         if (group.Any(m => !Assess(m.after, m.piece).kingDanger) && (!Marks.TryGetValue(group.Key, out var mark) || mark != "king"))
@@ -446,8 +454,7 @@ namespace Azarashi.UnityView
             foreach (var group in selected.GroupBy(m => m.action.Destination.x + "," + m.action.Destination.y))
             {
                 var safety = Assess(group.First().after, group.First().piece);
-                var alternatives = group.Select(m => Assess(m.after, m.piece)).ToArray();
-                var transformationSafe = safety.unsafeCell && alternatives.Any(s => !s.unsafeCell);
+                var transformationSafe = group.First().piece.kind == "orca" && safety.unsafeCell && group.Any(m => m.action.transformation?.type == "rotate" && !Assess(m.after, m.piece).unsafeCell);
                 Safety[group.Key] = safety;
                 cellColors[group.Key] = transformationSafe ? Data.Config.colors.transformation : SafetyColor(safety);
             }
@@ -528,7 +535,12 @@ namespace Azarashi.UnityView
                     CancelChoice();
                 else if (Dialog != null)
                     Close();
-                else
+                else if (State.phase == "finished" && !Replaying && !ResultDismissed)
+                {
+                    ResultDismissed = true;
+                    Hud.Rebuild();
+                }
+                else if (!Hud.EscapeUi())
                     ClearSelection();
             }
             var mouse = (Vector2)Input.mousePosition;
@@ -678,7 +690,7 @@ namespace Azarashi.UnityView
                 var piece = new PieceState { id = "catalog", kind = variant.kind, promoted = variant.promoted, owner = "catalog", at = new Cell() };
                 var born = Hud.CatalogBirth;
                 var ease = 1 - Mathf.Pow(1 - Mathf.Clamp01((Time.unscaledTime - born) / .42f), 3);
-                Board.Piece(piece, new Vector3(50, (1 - ease) * .16f, 0), Hud.CatalogAngle + (piece.kind == "orca" && piece.promoted ? 90 : -.35f * Mathf.Rad2Deg), .88f + .12f * ease);
+                Board.Piece(piece, new Vector3(50, (1 - ease) * .16f, 0), (piece.kind == "orca" && piece.promoted ? 90 : -.35f * Mathf.Rad2Deg), .88f + .12f * ease);
                 Board.CatalogFloor();
             }
             NativeEffects.Draw(Board, Motion, Data);
@@ -740,7 +752,23 @@ namespace Azarashi.UnityView
                     throw new InvalidOperationException("棋譜に不正な手があります。");
                 states.Add(move.after);
             }
+            var result = states.Last().result;
+            replayCaptions[record.id + ":" + record.actions.Count] = result == null ? "対局の途中まで" : result.winner == null ? "引き分け" : (result.winner == "south" ? "先手" : "後手") + "の勝ち";
             return states;
+        }
+        private readonly Dictionary<string, string> replayCaptions = new Dictionary<string, string>();
+        public string ReplayCaption(MatchRecord record)
+        {
+            if (record.id == Record?.id)
+                return "いまの対局";
+            var key = record.id + ":" + record.actions.Count;
+            if (!replayCaptions.TryGetValue(key, out var caption))
+            {
+                try { Validate(record); }
+                catch (Exception error) { replayCaptions[key] = error.Message; }
+                caption = replayCaptions[key];
+            }
+            return caption;
         }
         public void ImportReplay(string text)
         {
@@ -752,6 +780,7 @@ namespace Azarashi.UnityView
                 Replays.Insert(0, record);
                 SaveLibrary();
                 NativeStorage.Flush();
+                Hud.ClearReplayWarning();
                 Hud.Rebuild();
             }
             catch (Exception error) { Hud.Notify(error.Message); }

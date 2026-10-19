@@ -13,6 +13,7 @@ namespace Azarashi.UnityView
         {
             userData = "native-ui";
             focusable = true;
+            NativeUi.Focusable(this);
             tabIndex = 0;
             style.position = UnityEngine.UIElements.Position.Absolute;
             style.height = 18;
@@ -41,6 +42,17 @@ namespace Azarashi.UnityView
                 Change(next, true);
                 e.StopPropagation();
             });
+            RegisterCallback<GeometryChangedEvent>(e =>
+            {
+                width = e.newRect.width;
+                track.style.width = width;
+                Change(value, false);
+            });
+        }
+        public void SetTrackHeight(float height)
+        {
+            track.style.top = fill.style.top = (height - 8) / 2;
+            thumb.style.top = (height - ThumbSize) / 2;
         }
         private VisualElement Part(Color color, float top, float height)
         {
@@ -80,6 +92,9 @@ namespace Azarashi.UnityView
             this.value = value;
             changed = callback;
             var accent = replay ? new Color(44f / 255, 159f / 255, 197f / 255) : new Color(38f / 255, 127f / 255, 158f / 255);
+            track.style.backgroundColor = replay ? new Color(59f / 255, 59f / 255, 59f / 255) : new Color(239f / 255, 239f / 255, 239f / 255);
+            track.style.borderLeftWidth = track.style.borderRightWidth = track.style.borderTopWidth = track.style.borderBottomWidth = replay ? 0 : 1;
+            track.style.borderLeftColor = track.style.borderRightColor = track.style.borderTopColor = track.style.borderBottomColor = new Color(178f / 255, 178f / 255, 178f / 255);
             fill.style.backgroundColor = accent;
             thumb.style.backgroundColor = accent;
             style.left = x;

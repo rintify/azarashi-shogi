@@ -1,3 +1,4 @@
+import { offeredMoveOptions, requiresChoice } from './choiceOptions';
 import { useEffect, useMemo, useState } from 'react';
 import {
   getThreats,
@@ -72,15 +73,7 @@ export function useBoardInteraction(
       new Map(
         actionCells.map((at) => {
           const moves = selected ? moveOptions(analysisGame, selected, at) : [];
-          const preferred =
-            selected?.kind === 'seal' && !selected.promoted && moves.some((p) => p.piece.promoted)
-              ? moves.filter((p) => p.piece.promoted)
-              : moves;
-          // A king captured on landing ends the match; no transformation decision remains.
-          // Keep the existing loss warning if the landing also captures our own king.
-          const offered = preferred[0]?.captured.some((piece) => piece.kind === 'walrus')
-            ? preferred.slice(0, 1)
-            : preferred;
+          const offered = offeredMoveOptions(selected ?? undefined, moves);
           const placement =
             !selected && activeKind
               ? previewAction(game, { type: 'place', kind: activeKind, at })
@@ -244,10 +237,7 @@ export function useBoardInteraction(
     if (!inspectingEnemy && legalCells.some((c) => sameCell(c, cell))) {
       if (selected) {
         const options = destinations.get(cellKey(cell)) ?? [];
-        if (
-          options.length > 1 ||
-          options[0]?.captured.some((p) => p.kind === 'walrus' && p.owner === human)
-        ) {
+        if (requiresChoice(options, human)) {
           setPending(options);
           if (options.length > 1) onCaptureChoice?.(options[0]);
           setOptionIndex(0);

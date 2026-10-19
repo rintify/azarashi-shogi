@@ -13,6 +13,7 @@ import { captureTransfers, playbackDuration } from '../src/presentation/captureT
 import { guideStyle, type GuideState } from '../src/presentation/guideStyle';
 import type { GameState, ActionPreview } from '../src/game/types';
 import { sampleCameraOrbit } from '../src/presentation/cameraOrbit';
+import { offeredMoveOptions, requiresChoice } from '../src/components/choiceOptions';
 
 export async function exportPresentationFixtures(directory: string) {
   const record = JSON.parse(await readFile('docs/fixtures/unity-smoke.json', 'utf8'));
@@ -145,6 +146,35 @@ export async function exportPresentationFixtures(directory: string) {
   }));
   await writeFile(
     '.openai/unity-presentation-fixtures.json',
-    JSON.stringify({ cases, guides, cameraOrbits }),
+    JSON.stringify({
+      cases,
+      guides,
+      cameraOrbits,
+      choices: cases.flatMap(({ before }) => {
+        const groups = new Map<string, ActionPreview[]>();
+        for (const preview of legalPreviews(before)) {
+          if (preview.action.type !== 'move') continue;
+          const key = `${preview.action.pieceId}:${preview.action.to.x}:${preview.action.to.y}`;
+          groups.set(key, [...(groups.get(key) ?? []), preview]);
+        }
+        return [...groups.values()].map((options) => {
+          const selected = before.pieces.find(
+            (piece: any) => piece.id === (options[0].action as any).pieceId,
+          );
+          const offered = offeredMoveOptions(selected, options);
+          return {
+            selected,
+            owner: before.turn,
+            options: options.map((p) => ({
+              action: p.action,
+              piece: p.piece,
+              captured: p.captured,
+            })),
+            offered: offered.map((p) => options.indexOf(p)),
+            warning: requiresChoice(offered, before.turn),
+          };
+        });
+      }),
+    }),
   );
 }

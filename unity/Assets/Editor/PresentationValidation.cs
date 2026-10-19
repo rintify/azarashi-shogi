@@ -11,7 +11,11 @@ namespace Azarashi.UnityView.Editor
         [Serializable]
         private sealed class Fixture
         {
-            public MotionCase[] cases; public GuideCase[] guides; public CameraOrbit[] cameraOrbits;
+            public MotionCase[] cases; public GuideCase[] guides; public CameraOrbit[] cameraOrbits; public ChoiceCase[] choices;
+        }
+        [Serializable] private sealed class ChoiceCase
+        {
+            public PieceState selected; public string owner; public Preview[] options; public int[] offered; public bool warning;
         }
         [Serializable]
         private sealed class CameraOrbit
@@ -56,6 +60,7 @@ namespace Azarashi.UnityView.Editor
         public static void Run(NativeGameData data)
         {
             ValidateRetainedScroll();
+            ValidateRetainedOrder();
             // Exported material colors are already linear. ShaderLab Color properties
             // convert from sRGB on upload, even when their values are set with SetVector.
             foreach (var name in new[] { "Azarashi/Surface", "Azarashi/Ocean", "Azarashi/Unlit" })
@@ -69,6 +74,21 @@ namespace Azarashi.UnityView.Editor
                 }
             }
             var fixture = JsonUtility.FromJson<Fixture>(File.ReadAllText(Path.GetFullPath("../.openai/unity-presentation-fixtures.json")));
+            var ownKingWarnings = 0;
+            foreach (var item in fixture.choices)
+            {
+                var offered = NativeChoices.Offered(item.selected, item.options);
+                if (offered.Length != item.offered.Length || NativeChoices.RequiresChoice(offered, item.owner) != item.warning)
+                    throw new Exception("Capture choice differs from the source UI.");
+                for (var i = 0; i < offered.Length; i++)
+                    if (offered[i] != item.options[item.offered[i]])
+                        throw new Exception("Offered capture action differs from the source UI.");
+                if (offered.Length == 1 && item.warning)
+                    ownKingWarnings++;
+            }
+            if (ownKingWarnings == 0)
+                throw new Exception("Capture choice fixtures did not cover the own-king confirmation.");
+            Debug.Log("Capture choice parity passed: " + fixture.choices.Length + " destinations, including " + ownKingWarnings + " own-king confirmations.");
             var count = 0;
             foreach (var item in fixture.cases)
             {
@@ -173,6 +193,24 @@ namespace Azarashi.UnityView.Editor
                 Debug.Log("Retained scroll validation passed: stable identity, one child after rebuild, inactive exit.");
             }
             finally { NativeUi.Forget(root); }
+        }
+        private static void ValidateRetainedOrder()
+        {
+            var root = new VisualElement();
+            var tree = new NativeViewTree();
+            tree.Begin(root);
+            tree.Get(root, "intro", () => new Label("Intro"));
+            var action = tree.Get(root, "action", () => new Button());
+            tree.End();
+            tree.Begin(root);
+            tree.Get(root, "intro", () => new Label());
+            var inserted = tree.Get(root, "new-mode-note", () => new Label("Local play"));
+            var retainedAction = tree.Get(root, "action", () => new Button());
+            tree.End();
+            if (action != retainedAction || root.IndexOf(inserted) >= root.IndexOf(action))
+                throw new Exception("Retained form fields moved after the action buttons.");
+            NativeUi.Forget(root);
+            Debug.Log("Retained form validation passed: inserted content precedes the same action button.");
         }
     }
 }

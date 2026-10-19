@@ -21,12 +21,16 @@ namespace Azarashi.UnityView
         private float announcementAt = -2;
         private VisualElement turnNotice;
         private Label turnNoticeCopy;
+        private VisualElement turnNoticeSpark;
         private float clockStarted, clockFrom, clockTo;
         private bool clockVisible;
         private Rect playArea;
 
         private UIDocument document;
         private VisualElement root, hud, markers, choice, clock, result;
+        private VisualElement presentation;
+        private RenderTexture sceneTexture;
+        private bool backdropBlurred;
         private Label status, opponentLabel;
         private NativeSymbol clockIcon;
         private readonly Dictionary<string, Label> counts = new Dictionary<string, Label>();
@@ -38,6 +42,7 @@ namespace Azarashi.UnityView
         private bool expanded, gridOpen, dirty = true;
         private int choiceCount = -1, choiceIndex;
         private string resultKey, message;
+        private string replayWarning;
         private Settings draft;
         private float messageUntil, resultStarted;
         private readonly List<VisualElement> celebration = new List<VisualElement>();
@@ -73,6 +78,23 @@ namespace Azarashi.UnityView
             root.style.unityFontDefinition = FontDefinition.FromFont(Resources.Load<Font>("Native/NotoSansJP"));
             root.style.color = C("#375775");
             root.style.fontSize = 14;
+            root.RegisterCallback<KeyDownEvent>(evt =>
+            {
+                NativeUi.KeyboardFocus = true;
+                var modal = resultKey != null ? result : choiceModal ? promotionPopup : null;
+                if (match.Dialog == null && modal != null && evt.keyCode == KeyCode.Tab)
+                {
+                    CycleFocus(modal, evt.shiftKey);
+                    evt.StopImmediatePropagation();
+                    root.focusController.IgnoreEvent(evt);
+                }
+            }, TrickleDown.TrickleDown);
+            root.RegisterCallback<PointerDownEvent>(_ => NativeUi.KeyboardFocus = false, TrickleDown.TrickleDown);
+            presentation = new VisualElement { name = "native-presentation", pickingMode = PickingMode.Ignore };
+            presentation.style.position = UnityEngine.UIElements.Position.Absolute;
+            presentation.style.left = presentation.style.right = presentation.style.top = presentation.style.bottom = 0;
+            root.Add(presentation);
+            ResizeSceneTexture();
             foreach (var variant in match.Data.Config.variants)
             {
                 var key = variant.kind + "-" + (variant.promoted ? 1 : 0);
@@ -103,9 +125,21 @@ namespace Azarashi.UnityView
         }
         public void Notify(string text)
         {
+            if (match.Dialog == "replays")
+            {
+                replayWarning = text;
+                dialogSignature = null;
+                Rebuild();
+                return;
+            }
             message = text;
             messageUntil = Time.unscaledTime + 6;
             dirty = true;
+        }
+        public void ClearReplayWarning()
+        {
+            replayWarning = null;
+            dialogSignature = null;
         }
         public void Rebuild()
         {
@@ -113,6 +147,7 @@ namespace Azarashi.UnityView
         }
         private VisualElement Box(VisualElement parent, string name, float x, float y, float w, float h, string fill = null, float radius = 0, bool block = false)
         {
+            parent = PresentationParent(parent);
             var v = activeViews.Get(parent, "box-" + name, () => new VisualElement { name = name, pickingMode = block ? PickingMode.Position : PickingMode.Ignore, userData = block ? "native-ui" : null });
             v.style.position = UnityEngine.UIElements.Position.Absolute;
             v.style.left = x;
@@ -145,6 +180,7 @@ namespace Azarashi.UnityView
         }
         private Label Text(VisualElement parent, string text, float x, float y, float w, float h, int size = 14, string color = "#375775", bool bold = false, TextAnchor anchor = TextAnchor.MiddleLeft)
         {
+            parent = PresentationParent(parent);
             var v = activeViews.Get(parent, "label", () => new Label(text) { pickingMode = PickingMode.Ignore });
             v.style.display = DisplayStyle.Flex;
             if (text.Length > 0)
@@ -174,12 +210,14 @@ namespace Azarashi.UnityView
             if (!icons.TryGetValue(kind + "-" + (promoted ? 1 : 0), out var texture) || texture == null)
                 return null;
             var v = Box(parent, "animal-icon", x, y, size, size);
+            v.style.flexShrink = 0;
             v.style.backgroundImage = new StyleBackground(texture);
             v.style.unityBackgroundScaleMode = ScaleMode.ScaleToFit;
             return v;
         }
         private Button Button(VisualElement parent, string label, float x, float y, float w, float h, Action action, string fill = "#fff8e9", int size = 14)
         {
+            parent = PresentationParent(parent);
             var b = activeViews.Get(parent, "button", () => new Button() { userData = "native-ui" });
             NativeUi.Swap(b, label);
             b.style.position = UnityEngine.UIElements.Position.Absolute;
@@ -191,9 +229,10 @@ namespace Azarashi.UnityView
             b.style.marginRight = 0;
             b.style.marginTop = 0;
             b.style.marginBottom = 0;
-            b.style.paddingLeft = 4;
-            b.style.paddingRight = 4;
+            b.style.paddingLeft = b.style.paddingRight = b.style.paddingTop = b.style.paddingBottom = 0;
+            b.style.unityTextAlign = TextAnchor.MiddleCenter;
             b.style.fontSize = size;
+            b.style.opacity = 1;
             b.style.color = C("#375775");
             b.style.unityFontStyleAndWeight = FontStyle.Bold;
             Round(b, Mathf.Min(h * .5f, 22));
@@ -205,20 +244,28 @@ namespace Azarashi.UnityView
         private void Enter(VisualElement v) => NativeUi.Enter(v);
         private VisualElement Symbol(VisualElement parent, string name, float x, float y, float size, string color = "#507497")
         {
-            var v = Box(parent, "symbol-" + name, x, y, size, size);
+            var v = Box(parent, "symbol", x, y, size, size);
+            v.style.flexShrink = 0;
             NativeUi.Symbol(v, name, C(color));
             return v;
         }
         private static void NoSkin(VisualElement element)
         {
-            var shadow = element.Q<VisualElement>("css-shadow");
-            shadow?.RemoveFromHierarchy();
+            NativeUi.RemoveSkin(element);
+        }
+        private VisualElement CenteredSymbol(VisualElement parent, string name, float size, string color = "#507497")
+        {
+            var symbol = Symbol(parent, name, 0, 0, size, color);
+            NativeUi.Center(symbol);
+            return symbol;
         }
 
         private void Build()
         {
             dirty = false;
-            views.Begin(root);
+            if (match.Pending?.Length > 1)
+                gridOpen = false;
+            views.Begin(presentation);
             counts.Clear();
             stockTargets.Clear();
             var vignette = Box(root, "screen-vignette", 0, 0, width, height);
@@ -226,7 +273,8 @@ namespace Azarashi.UnityView
             hud = Box(root, "native-hud", 0, 0, width, height);
             hud.style.transitionProperty = new List<StylePropertyName> { new StylePropertyName("opacity") };
             hud.style.transitionDuration = new List<TimeValue> { new TimeValue(.25f) };
-            hud.style.opacity = resultKey == null ? 1 : 0;
+            hud.style.opacity = 1;
+            hud.SetEnabled(true);
             markers = Box(root, "native-markers", 0, 0, width, height);
             var mobile = width <= 760;
             var compact = mobile && height <= 670;
@@ -252,14 +300,17 @@ namespace Azarashi.UnityView
             NativeUi.EnterOnce(brand, true);
             var brandButton = Button(brand, "", 0, 0, mascotWidth, mascotHeight, () => match.Open("catalog"));
             brandButton.style.backgroundColor = Color.clear;
+            NativeUi.Bind(brandButton, () => match.Open("catalog"), Color.clear, Color.clear);
             Border(brandButton, 0, "#ffffff");
             NoSkin(brandButton);
             Icon(brandButton, "seal", false, 0, (mascotHeight - mascotWidth) * .5f, mascotWidth);
-            Text(brand, "図鑑", 0, mascotHeight + 1, mascotWidth, 15, 9, "#ffffff", true, TextAnchor.MiddleCenter);
+            var catalogCaption = Text(brand, "図鑑", 0, mascotHeight + 1, mascotWidth, 15, 9, "#ffffff", true, TextAnchor.MiddleCenter);
+            NativeUi.TextShadows(catalogCaption, "textCatalogCaption");
             var titleHeight = mobile ? 30 : 44;
             var title = Text(brand, "アザラシ将棋", mascotWidth + (mobile ? 3 : 10), (brandHeight - titleHeight) * .5f, mobile ? 102 : 200, titleHeight, landscape ? 14 : mobile ? width <= 360 ? 12 : 13 : 18, "#ffffff", true);
             title.style.display = width <= 350 ? DisplayStyle.None : DisplayStyle.Flex;
-            title.style.textShadow = new TextShadow { offset = new Vector2(0, 3), color = C("#3985a5"), blurRadius = 0 };
+            title.style.letterSpacing = (mobile ? -.02f : .03f) * (landscape ? 14 : mobile ? width <= 360 ? 12 : 13 : 18);
+            NativeUi.TextShadows(title, "textBrand");
             var labels = new[] { match.Muted ? "mute" : "sound", "book", "replay", "reset", match.TopView ? "cube" : "view", gridOpen ? "x" : "grid" };
             Action[] actions = { () => { match.Muted = !match.Muted; Rebuild(); }, () => match.Open("rules"), () => match.Open("replays"), () => match.Open("settings"), () => { match.TopView = !match.TopView; Rebuild(); }, () => { gridOpen = !gridOpen; Rebuild(); } };
             for (var i = 0; i < labels.Length; i++)
@@ -268,27 +319,32 @@ namespace Azarashi.UnityView
                 var color = pressed ? "#795e49" : i == 1 ? "#7a6ea1" : i == 2 ? "#a36471" : "#507497";
                 var fill = pressed ? "#ffe08d" : i == 1 ? "#e6e4ff" : i == 2 ? "#ffdedc" : "#fff9e9";
                 var b = Button(hud, "", width - margin - (labels.Length - i) * (size + gap) + gap, headerTop + (brandHeight - buttonHeight) * .5f, size, buttonHeight, actions[i], fill);
+                Border(b, 2, pressed ? "#fff8dc" : "#ffffff");
+                NativeUi.Bind(b, actions[i], C(fill), C(pressed || i == 1 || i == 2 ? fill : "#fff1bd"));
                 NativeUi.EnterOnce(b, true);
-                Symbol(b, labels[i], (size - 18) * .5f, (buttonHeight - 18) * .5f, 18, color);
+                CenteredSymbol(b, labels[i], 18, color);
             }
             var opponent = NativeGameData.Other(match.Viewer);
             var stockWidth = landscape ? 240 : mobile ? width - 28 : Mathf.Min(420, width - 32);
             var opponentTop = landscape || compact ? 54 : mobile ? 64 : 78;
             StockBar(hud, opponent, opponentTop, stockWidth, false);
             var bannerTop = landscape ? 100 : compact ? 98 : mobile ? 115 : 132;
-            status = Text(hud, "", landscape ? width - 254 : 14, bannerTop, landscape ? 240 : width - 28, 20, mobile ? 11 : 12, "#ffffff", true, TextAnchor.MiddleCenter);
-            status.style.textShadow = new TextShadow { offset = new Vector2(0, 2), color = C("#3986a3"), blurRadius = 0 };
+            BuildStatus(bannerTop, landscape);
             var bottom = compact || landscape ? 22 : 20;
             var playTop = landscape ? 52 : compact ? 116 : mobile ? 132 : 144;
             playArea = new Rect(landscape ? 14 : mobile ? 0 : 8, playTop, width - (landscape ? width >= 840 ? 128 : 274 : mobile ? 0 : 16), Mathf.Max(80, height - playTop - (landscape ? 20 : 74)));
             if (match.Replaying)
                 BuildReplayDock();
-            else if (match.State.phase == "finished" && !match.Busy)
+            else if (match.State.phase == "finished" && match.Motion == null)
             {
                 if (match.ResultDismissed)
                 {
-                    Button(hud, "結果を見る", DockLeft, height - DockBottom - 44, DockWidth * .48f, 44, () => { match.ResultDismissed = false; Rebuild(); }, "#48afc8", 12);
-                    Button(hud, "新しい対局", DockLeft + DockWidth * .52f, height - DockBottom - 44, DockWidth * .48f, 44, () => match.Open("settings"), "#48afc8", 12);
+                    var actionsRow = Box(hud, "result-actions", DockLeft, height - DockBottom - 44, DockWidth, 44);
+                    Row(actionsRow, true);
+                    var reopen = FlowAction(actionsRow, "結果を見る", null, () => { match.ResultDismissed = false; Rebuild(); }, "#48afc8", "#ffffff", "primary");
+                    reopen.style.height = 44;
+                    reopen.style.marginRight = 10;
+                    FlowAction(actionsRow, "新しい対局", null, () => match.Open("settings"), "#48afc8", "#ffffff", "primary").style.height = 44;
                 }
             }
             else if (match.Settings.mode == "ai-vs-ai")
@@ -303,11 +359,29 @@ namespace Azarashi.UnityView
             clockIcon.style.width = 24;
             clockIcon.style.height = 24;
             Text(clock, "AI 思考中", 0, 29, 48, 10, 8, "#ffffff99", false, TextAnchor.MiddleCenter);
-            turnNotice = Box(root, "turn-notice", width - 148, landscape ? 136 : 164, 132, 32, "#ffffffb8", 20);
-            Symbol(turnNotice, "snowflake", 10, 9, 14, match.State.turn == "south" ? "#3badd0" : "#e9a05c");
-            turnNoticeCopy = Text(turnNotice, "", 30, 0, 94, 32, 13, match.State.turn == "south" ? "#3badd0" : "#e9a05c", true);
+            turnNotice = Box(root, "turn-notice", 0, 164, 0, 0, "#ffffffb8", 20);
+            turnNotice.style.left = StyleKeyword.Auto;
+            turnNotice.style.right = 16;
+            turnNotice.style.width = turnNotice.style.height = StyleKeyword.Auto;
+            turnNotice.style.paddingTop = turnNotice.style.paddingBottom = 7;
+            turnNotice.style.paddingLeft = turnNotice.style.paddingRight = 11;
+            Row(turnNotice);
+            NativeUi.Skin(turnNotice, "turnNotice", 20);
+            var turnColor = match.State.turn == "south" ? "#3badd0" : "#e9a05c";
+            turnNoticeSpark = Symbol(turnNotice, "snowflake", 0, 0, 14, turnColor);
+            Inline(turnNoticeSpark);
+            turnNoticeSpark.style.marginRight = 6;
+            turnNoticeCopy = FlowText(turnNotice, "", 13, turnColor, true);
+            turnNoticeCopy.style.letterSpacing = .26f;
+            var suffix = FlowText(turnNotice, "の番", 13, turnColor, true);
+            suffix.style.marginLeft = 1.56f;
             if (gridOpen)
                 BuildGrid();
+            else
+            {
+                gridCells.Clear();
+                gridPulses.Clear();
+            }
             choice = Box(root, "native-promotion", 0, 0, width, height);
             result = Box(root, "native-result", 0, 0, width, height);
             views.End();
@@ -322,15 +396,10 @@ namespace Azarashi.UnityView
                 dialogViews.End();
                 activeViews = views;
             }
-            if (message != null && Time.unscaledTime < messageUntil)
-            {
-                var n = Box(root, "notice", 14, height - 142, width - 28, 48, "#fff6e9", 18);
-                Text(n, message, 12, 4, width - 52, 40, 12);
-            }
         }
         public bool Blocks(Vector2 screen)
         {
-            if (match.Dialog != null)
+            if (match.Dialog != null || resultKey != null || choiceModal)
                 return true;
             if (root?.panel == null)
                 return true;
@@ -371,6 +440,7 @@ namespace Azarashi.UnityView
                 height = h;
                 dirty = true;
             }
+            ResizeSceneTexture();
             document.panelSettings.scale = uiScale;
             if (lastDockRevision != match.State.revision || match.Busy)
             {
@@ -385,9 +455,17 @@ namespace Azarashi.UnityView
                 draft = null;
             if (dirty)
                 Build();
+            RestoreModalFocus();
             views.Tick();
             dialogViews.Tick();
+            var blur = match.Dialog != null || dialogLayer?.parent != null;
+            if (blur != backdropBlurred)
+            {
+                backdropBlurred = blur;
+                NativeUi.Blur(presentation, blur ? 7 : 0);
+            }
             NativeUi.Tick();
+            UpdateGridPulse();
             if (match.State == null)
                 return;
             foreach (var item in counts)
@@ -395,7 +473,7 @@ namespace Azarashi.UnityView
                 var parts = item.Key.Split(':');
                 NativeUi.Swap(item.Value, StockCount(parts[0], parts[1]).ToString());
             }
-            status.text = !match.Engine.Ready ? "氷原を準備しています" : match.Replaying ? "リプレイ  " + match.ReplayCursor + " / " + match.ReplayTotal + "手" : match.SelectedStock != null ? "置く場所を選んでね" : match.SelectedId != null ? match.Data.Name(match.State.pieces.First(p => p.id == match.SelectedId)) : match.Actor(match.State.turn) + "の手番  " + (match.State.revision + 1) + "手目";
+            UpdateStatus();
             var showClock = match.Thinking && Time.unscaledTime - match.ThinkingStarted > 3.5f;
             if (showClock != clockVisible)
             {
@@ -410,16 +488,19 @@ namespace Azarashi.UnityView
             clock.style.opacity = clockAmount > .001f ? 1 : 0;
             clockIcon.Progress = match.Thinking ? Mathf.Clamp01((Time.unscaledTime - match.ThinkingStarted) / Mathf.Max(1, match.ThinkingBudget)) : clockIcon.Progress;
             clockIcon.MarkDirtyRepaint();
-            if (!match.Busy && match.State.phase == "playing" && announcedTurn != match.State.turn)
+            if (!match.Replaying && !match.Busy && match.State.phase == "playing" && announcedTurn != match.State.turn)
             {
                 announcedTurn = match.State.turn;
                 announcementAt = Time.unscaledTime;
-                turnNoticeCopy.text = (match.Settings.mode == "human-vs-ai" && !match.HumanTurn ? "相手" : match.Actor(match.State.turn)) + "の番";
+                turnNoticeCopy.text = match.Settings.mode == "human-vs-ai" && !match.HumanTurn ? "相手" : match.Actor(match.State.turn);
             }
             var notice = (Time.unscaledTime - announcementAt) / 1.05f;
             var noticeOpacity = notice < .2f ? NativeUi.Ease(notice / .2f) : notice < .72f ? 1 : 1 - NativeUi.Ease((notice - .72f) / .28f);
-            turnNotice.style.opacity = match.State.phase == "playing" ? Mathf.Clamp01(noticeOpacity) : 0;
+            turnNotice.style.opacity = !match.Replaying && match.State.phase == "playing" ? Mathf.Clamp01(noticeOpacity) : 0;
             turnNotice.style.translate = new Translate(0, notice < .2f ? (1 - noticeOpacity) * 5 : notice < .72f ? 0 : (1 - noticeOpacity) * -4);
+            var spark = notice < .3f ? NativeUi.Ease(Mathf.Clamp01(notice / .3f)) : notice <= .75f ? 1 : 1 - NativeUi.Ease(Mathf.Clamp01((notice - .75f) / .25f));
+            turnNoticeSpark.style.scale = new Scale(Vector3.one * Mathf.Lerp(.9f, 1, spark));
+            turnNoticeSpark.style.rotate = new Rotate(notice < .3f ? -15 * (1 - spark) : 15 * (1 - spark));
             UpdateChoices();
             UpdateMarkers();
             UpdateOrbs();
@@ -428,6 +509,13 @@ namespace Azarashi.UnityView
             {
                 var time = Time.unscaledTime - resultStarted;
                 spectacle?.MarkDirtyRepaint();
+                if (resultSection != null)
+                {
+                    var arrival = SlideEase(Mathf.Clamp01(time / .85f));
+                    resultSection.style.opacity = arrival;
+                    resultSection.style.translate = new Translate(0, 35 * (1 - arrival));
+                    resultSection.style.scale = new Scale(Vector3.one * Mathf.Lerp(.92f, 1, arrival));
+                }
                 if (resultEmblem != null)
                 {
                     var ease = SlideEase(Mathf.Clamp01(time / 1.1f));
@@ -441,6 +529,7 @@ namespace Azarashi.UnityView
                     var ease = SlideEase(Mathf.Clamp01((time - .12f) / .7f));
                     resultKicker.style.opacity = ease;
                     resultKicker.style.scale = new Scale(Vector3.one * Mathf.Lerp(1.8f, 1, ease));
+                    NativeUi.Blur(resultKicker, 8 * (1 - ease));
                 }
                 for (var i = 0; i < celebration.Count; i++)
                 {
@@ -457,8 +546,8 @@ namespace Azarashi.UnityView
             }
 
             catalogCamera.enabled = match.Dialog == "catalog";
-            if (catalogCamera.enabled && CatalogSpins)
-                CatalogAngle += Time.unscaledDeltaTime * 4.2f;
+            if (catalogCamera.enabled && catalogStage != null)
+                UpdateCatalogCamera();
         }
         private static float SlideEase(float t)
         {
@@ -479,6 +568,12 @@ namespace Azarashi.UnityView
         }
         private void OnDestroy()
         {
+            if (sceneTexture != null)
+            {
+                match.Board.Camera.targetTexture = null;
+                sceneTexture.Release();
+                Destroy(sceneTexture);
+            }
             if (catalogTexture != null)
             {
                 catalogTexture.Release();
@@ -486,6 +581,26 @@ namespace Azarashi.UnityView
             }
             if (catalogCamera != null)
                 Destroy(catalogCamera.gameObject);
+        }
+        private VisualElement PresentationParent(VisualElement parent) => parent == root && activeViews == views ? presentation : parent;
+        private void ResizeSceneTexture()
+        {
+            var w = Mathf.Max(1, Screen.width);
+            var h = Mathf.Max(1, Screen.height);
+            if (sceneTexture != null && sceneTexture.width == w && sceneTexture.height == h)
+                return;
+            if (sceneTexture != null)
+            {
+                sceneTexture.Release();
+                Destroy(sceneTexture);
+            }
+            // Composite the live native scene and its HUD into one layer so the
+            // original backdrop blur covers both, while dialog text stays sharp.
+            sceneTexture = new RenderTexture(w, h, 24, RenderTextureFormat.ARGB32) { antiAliasing = Mathf.Max(1, QualitySettings.antiAliasing) };
+            sceneTexture.Create();
+            match.Board.Camera.targetTexture = sceneTexture;
+            presentation.style.backgroundImage = new StyleBackground(Background.FromRenderTexture(sceneTexture));
+            presentation.style.unityBackgroundScaleMode = ScaleMode.StretchToFill;
         }
     }
 

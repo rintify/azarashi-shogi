@@ -45,6 +45,9 @@ namespace Azarashi.UnityView
                 v.SetEnabled(true);
                 NativeUi.Enter(v);
             }
+            // Retention preserves identity, not the previous DOM order. Conditional
+            // fields can be inserted before existing buttons in the source layout.
+            v.BringToFront();
             seen.Add(key);
             return (T)v;
         }
@@ -69,6 +72,18 @@ namespace Azarashi.UnityView
                 if (parent != null && paths.TryGetValue(parent, out var key) && key != "root" && !seen.Contains(key))
                     continue;
                 exiting[item.Key] = Time.unscaledTime;
+                if (item.Value.resolvedStyle.position == UnityEngine.UIElements.Position.Relative)
+                {
+                    // Retired flow content must not reserve space in the new form.
+                    // Retain its last pixels while the source-sized container changes.
+                    var rect = item.Value.layout;
+                    item.Value.style.position = UnityEngine.UIElements.Position.Absolute;
+                    item.Value.style.left = rect.x - (parent?.resolvedStyle.borderLeftWidth ?? 0);
+                    item.Value.style.top = rect.y - (parent?.resolvedStyle.borderTopWidth ?? 0);
+                    item.Value.style.width = rect.width;
+                    item.Value.style.height = rect.height;
+                    item.Value.style.marginLeft = item.Value.style.marginRight = item.Value.style.marginTop = item.Value.style.marginBottom = 0;
+                }
                 item.Value.SetEnabled(false);
                 NativeUi.Exit(item.Value);
             }
@@ -114,17 +129,32 @@ namespace Azarashi.UnityView
         }
         private sealed class Control
         {
-            public Action action; public Color normal, hover; public bool down, over; public float offset, start, fromScale = 1, toScale = 1, fromY, toY; public bool animating;
+            public Action action; public Color normal, hover; public bool down, over; public float offset, restingY, start, fromScale = 1, toScale = 1, fromY, toY; public bool animating;
         }
         private static readonly List<Tween> tweens = new List<Tween>();
         private static readonly Dictionary<Button, Control> controls = new Dictionary<Button, Control>();
         private static readonly Dictionary<string, Texture2D> symbols = new Dictionary<string, Texture2D>();
+        public static bool KeyboardFocus;
+        private sealed class FocusState { public bool focused; public VisualElement ring; }
+        private static readonly Dictionary<VisualElement, FocusState> focusStates = new Dictionary<VisualElement, FocusState>();
+        public static void Focusable(VisualElement element)
+        {
+            if (focusStates.ContainsKey(element))
+                return;
+            var state = new FocusState();
+            focusStates[element] = state;
+            element.RegisterCallback<FocusInEvent>(_ => state.focused = true);
+            element.RegisterCallback<FocusOutEvent>(_ => state.focused = false);
+        }
         public static float Ease(float t, bool spring = false)
         {
             var x1 = spring ? .22f : .2f;
             var y1 = spring ? 1.3f : .8f;
             var x2 = spring ? .35f : .2f;
-            var y2 = 1f;
+            return Cubic(t, x1, y1, x2, 1);
+        }
+        public static float Cubic(float t, float x1, float y1, float x2, float y2)
+        {
             var lo = 0f;
             var hi = 1f;
             for (var i = 0; i < 16; i++)
@@ -168,9 +198,18 @@ namespace Azarashi.UnityView
                 old.style.color = label.resolvedStyle.color;
                 old.style.unityTextAlign = label.resolvedStyle.unityTextAlign;
                 old.style.unityFontStyleAndWeight = label.resolvedStyle.unityFontStyleAndWeight;
-                label.parent.Add(old);
+                old.style.marginLeft = old.style.marginRight = old.style.marginTop = old.style.marginBottom = 0;
+                old.style.paddingLeft = label.resolvedStyle.paddingLeft;
+                old.style.paddingRight = label.resolvedStyle.paddingRight;
+                old.style.paddingTop = label.resolvedStyle.paddingTop;
+                old.style.paddingBottom = label.resolvedStyle.paddingBottom;
+                old.style.letterSpacing = label.resolvedStyle.letterSpacing;
+                old.style.whiteSpace = label.resolvedStyle.whiteSpace;
+                label.parent.Insert(label.parent.IndexOf(label), old);
                 Animate(old, .18f, 0, 1, 0, 0, -6, 1, 1, false);
-                old.schedule.Execute(() => old.RemoveFromHierarchy()).StartingIn(180);
+                if (shadows.TryGetValue(label, out var sourceShadow) && sourceShadow.text)
+                    TextShadows(old, sourceShadow.name, sourceShadow.dangerColor);
+                old.schedule.Execute(() => { Forget(old); old.RemoveFromHierarchy(); }).StartingIn(180);
             }
             label.text = value;
             Animate(label, .22f, 0, 0, 1, 6, 0, 1, 1, false);
@@ -181,11 +220,12 @@ namespace Azarashi.UnityView
             {
                 c = new Control();
                 controls[button] = c;
+                Focusable(button);
                 button.clicked += () => c.action?.Invoke();
-                button.RegisterCallback<PointerEnterEvent>(_ => { c.over = true; button.style.backgroundColor = c.hover; if (!c.down) Move(button, c, 1, c.offset); });
-                button.RegisterCallback<PointerLeaveEvent>(_ => { c.over = false; c.down = false; button.style.backgroundColor = c.normal; Move(button, c, 1, 0); });
-                button.RegisterCallback<PointerDownEvent>(_ => { c.down = true; Move(button, c, .94f, c.offset < 0 ? 3 : 0); });
-                button.RegisterCallback<PointerUpEvent>(_ => { c.down = false; Move(button, c, 1, c.over ? c.offset : 0); });
+                button.RegisterCallback<PointerEnterEvent>(_ => { c.over = true; button.style.backgroundColor = c.hover; if (!c.down) Move(button, c, 1, c.restingY + c.offset); });
+                button.RegisterCallback<PointerLeaveEvent>(_ => { c.over = false; c.down = false; button.style.backgroundColor = c.normal; Move(button, c, 1, c.restingY); });
+                button.RegisterCallback<PointerDownEvent>(_ => { c.down = true; Move(button, c, .94f, c.restingY + (c.offset < 0 ? 3 : 0)); });
+                button.RegisterCallback<PointerUpEvent>(_ => { c.down = false; Move(button, c, 1, c.restingY + (c.over ? c.offset : 0)); });
                 button.style.transitionProperty = new List<StylePropertyName> { new StylePropertyName("background-color"), new StylePropertyName("color"), new StylePropertyName("border-color") };
                 button.style.transitionDuration = new List<TimeValue> { new TimeValue(.18f) };
             }
@@ -194,6 +234,12 @@ namespace Azarashi.UnityView
             c.hover = hover;
             c.offset = hoverOffset;
             button.style.backgroundColor = c.over ? hover : normal;
+        }
+        public static void RestingY(Button button, float y)
+        {
+            if (controls.TryGetValue(button, out var control))
+                control.restingY = y;
+            button.style.translate = new Translate(0, y);
         }
         private static void Move(Button button, Control c, float scale, float y)
         {
@@ -209,8 +255,20 @@ namespace Azarashi.UnityView
             tweens.RemoveAll(t => t.element == element);
             if (element is Button button)
                 controls.Remove(button);
-            foreach (var child in element.Children())
+            RemoveSkin(element);
+            if (focusStates.TryGetValue(element, out var focus))
+            {
+                focus.ring?.RemoveFromHierarchy();
+                focusStates.Remove(element);
+            }
+            foreach (var child in new List<VisualElement>(element.Children()))
                 Forget(child);
+        }
+        public static void ClearChildren(VisualElement element)
+        {
+            foreach (var child in new List<VisualElement>(element.Children()))
+                Forget(child);
+            element.Clear();
         }
         public static void EnterOnce(VisualElement element, bool header = false, float delay = 0)
         {
@@ -226,37 +284,182 @@ namespace Azarashi.UnityView
         {
             if (!symbols.TryGetValue(name, out var texture))
                 symbols[name] = texture = Resources.Load<Texture2D>("Native/Symbols/" + name);
-            element.style.backgroundImage = new StyleBackground(texture);
-            element.style.unityBackgroundImageTintColor = tint;
-            element.style.unityBackgroundScaleMode = ScaleMode.ScaleToFit;
-        }
-        public static void Skin(VisualElement element, string name, float radius)
-        {
-            VisualElement shadow = null;
-            foreach (var child in element.Children())
-                if (child.name == "css-shadow")
-                {
-                    shadow = child;
-                    break;
-                }
-            if (shadow == null)
+            var current = element.Q<VisualElement>("source-symbol-current");
+            if (current == null)
             {
-                shadow = new VisualElement { name = "css-shadow", pickingMode = PickingMode.Ignore };
-                shadow.style.position = UnityEngine.UIElements.Position.Absolute;
-                shadow.style.left = -80;
-                shadow.style.right = -80;
-                shadow.style.top = -80;
-                shadow.style.bottom = -80;
-                element.Insert(0, shadow);
+                current = new VisualElement { name = "source-symbol-current", pickingMode = PickingMode.Ignore };
+                current.style.position = UnityEngine.UIElements.Position.Absolute;
+                current.style.left = current.style.right = current.style.top = current.style.bottom = 0;
+                element.Add(current);
             }
-            shadow.style.backgroundImage = new StyleBackground(Resources.Load<Texture2D>("Native/Shadows/" + name));
-            var slice = Mathf.RoundToInt((80 + Mathf.Min(radius, 48)) * 2);
-            shadow.style.unitySliceTop = slice;
-            shadow.style.unitySliceBottom = slice;
-            shadow.style.unitySliceLeft = slice;
-            shadow.style.unitySliceRight = slice;
-            shadow.style.unitySliceScale = .5f;
-
+            var previous = current.style.backgroundImage.value.texture;
+            if (previous != null && previous != texture)
+            {
+                var old = new VisualElement { pickingMode = PickingMode.Ignore };
+                old.style.position = UnityEngine.UIElements.Position.Absolute;
+                old.style.left = old.style.right = old.style.top = old.style.bottom = 0;
+                old.style.backgroundImage = new StyleBackground(previous);
+                old.style.unityBackgroundImageTintColor = current.style.unityBackgroundImageTintColor;
+                old.style.unityBackgroundScaleMode = ScaleMode.ScaleToFit;
+                element.Insert(0, old);
+                Animate(old, .18f, 0, 1, 0, 0, -6, 1, 1, false);
+                Animate(current, .22f, 0, 0, 1, 6, 0, 1, 1, false);
+                old.schedule.Execute(() => { Forget(old); old.RemoveFromHierarchy(); }).StartingIn(180);
+            }
+            current.style.backgroundImage = new StyleBackground(texture);
+            current.style.unityBackgroundImageTintColor = tint;
+            current.style.unityBackgroundScaleMode = ScaleMode.ScaleToFit;
+        }
+        public static void Center(VisualElement element)
+        {
+            // Percentages use the parent's inner box. This remains centered when a
+            // control gains a border or changes size at a responsive breakpoint.
+            element.style.left = Length.Percent(50);
+            element.style.top = Length.Percent(50);
+            element.style.translate = new Translate(Length.Percent(-50), Length.Percent(-50));
+        }
+        [Serializable] private sealed class CssPresentation { public CssSurface[] surfaces; }
+        [Serializable] private sealed class CssSurface { public string name; public CssShadow[] layers; }
+        [Serializable] private sealed class CssShadow { public float x, y, blur, spread, opacity = 1; public string color; }
+        private sealed class Shadow
+        {
+            public VisualElement host;
+            public string name, dangerColor;
+            public float radius;
+            public bool text;
+        }
+        private static readonly Dictionary<VisualElement, Shadow> shadows = new Dictionary<VisualElement, Shadow>();
+        private static Dictionary<string, CssShadow[]> shadowStyles;
+        public static void Blur(VisualElement element, float sigma)
+        {
+            var previous = element.style.filter.value;
+            if (previous != null && (sigma <= 0 && previous.Count == 0 || previous.Count == 1 && previous[0].type == FilterFunctionType.Blur && Mathf.Approximately(previous[0].GetParameter(0).floatValue, sigma)))
+                return;
+            var filters = new List<FilterFunction>();
+            if (sigma > 0)
+            {
+                var blur = new FilterFunction(FilterFunctionType.Blur);
+                blur.AddParameter(new FilterParameter(sigma));
+                filters.Add(blur);
+            }
+            element.style.filter = filters;
+        }
+        public static void Skin(VisualElement element, string name, float radius, string dangerColor = null) => ShadowLayers(element, name, radius, dangerColor, false);
+        public static void TextShadows(TextElement element, string name, string tint = null)
+        {
+            element.style.textShadow = default(TextShadow);
+            ShadowLayers(element, name, 0, tint, true);
+        }
+        private static void ShadowLayers(VisualElement element, string name, float radius, string dangerColor, bool text)
+        {
+            if (shadowStyles == null)
+            {
+                shadowStyles = new Dictionary<string, CssShadow[]>();
+                var presentation = JsonUtility.FromJson<CssPresentation>(Resources.Load<TextAsset>("Native/Presentation").text);
+                foreach (var surface in presentation.surfaces)
+                    shadowStyles[surface.name] = surface.layers;
+            }
+            if (!shadows.TryGetValue(element, out var shadow))
+            {
+                shadow = new Shadow { host = new VisualElement { name = "css-shadow", pickingMode = PickingMode.Ignore } };
+                shadow.host.style.position = UnityEngine.UIElements.Position.Absolute;
+                shadow.text = text;
+                shadows[element] = shadow;
+            }
+            shadow.radius = radius;
+            if (shadow.name != name || shadow.dangerColor != dangerColor)
+            {
+                shadow.name = name;
+                shadow.dangerColor = dangerColor;
+                shadow.host.Clear();
+                if (!shadowStyles.TryGetValue(name, out var layers) || layers == null)
+                    throw new InvalidOperationException("Missing source CSS shadow: " + name);
+                foreach (var layer in layers)
+                {
+                    VisualElement shape = text ? new Label() : new VisualElement();
+                    shape.pickingMode = PickingMode.Ignore;
+                    shape.userData = layer;
+                    shape.style.position = UnityEngine.UIElements.Position.Absolute;
+                    var color = layer.color.StartsWith("var(") ? dangerColor : layer.color;
+                    ColorUtility.TryParseHtmlString(color ?? "#b52b4b", out var tint);
+                    tint.a *= layer.opacity;
+                    if (text)
+                    {
+                        shape.style.color = tint;
+                        shape.style.marginLeft = shape.style.marginRight = shape.style.marginTop = shape.style.marginBottom = 0;
+                    }
+                    else
+                        shape.style.backgroundColor = tint;
+                    Blur(shape, layer.blur / 2);
+                    shadow.host.Add(shape);
+                }
+            }
+            LayoutShadow(element, shadow);
+        }
+        private static void LayoutShadow(VisualElement element, Shadow shadow)
+        {
+            var parent = element.parent;
+            if (parent == null)
+                return;
+            if (shadow.host.parent != parent || parent.IndexOf(shadow.host) != parent.IndexOf(element) - 1)
+            {
+                shadow.host.RemoveFromHierarchy();
+                parent.Insert(parent.IndexOf(element), shadow.host);
+            }
+            var box = element.layout;
+            if (float.IsNaN(box.width) || float.IsNaN(box.height) || box.width <= 0 || box.height <= 0)
+                return;
+            var style = element.resolvedStyle;
+            shadow.host.style.left = box.x - parent.resolvedStyle.borderLeftWidth;
+            shadow.host.style.top = box.y - parent.resolvedStyle.borderTopWidth;
+            shadow.host.style.width = box.width;
+            shadow.host.style.height = box.height;
+            shadow.host.style.translate = style.translate;
+            shadow.host.style.scale = style.scale;
+            shadow.host.style.rotate = style.rotate;
+            shadow.host.style.transformOrigin = new TransformOrigin(style.transformOrigin.x, style.transformOrigin.y, style.transformOrigin.z);
+            shadow.host.style.opacity = style.opacity;
+            shadow.host.style.display = style.display;
+            var radius = Mathf.Min(shadow.radius, box.width / 2, box.height / 2);
+            foreach (var shape in shadow.host.Children())
+            {
+                var layer = (CssShadow)shape.userData;
+                shape.style.left = layer.x - layer.spread;
+                shape.style.top = layer.y - layer.spread;
+                shape.style.width = box.width + 2 * layer.spread;
+                shape.style.height = box.height + 2 * layer.spread;
+                var r = Mathf.Max(0, radius + layer.spread);
+                if (shadow.text)
+                {
+                    var source = (TextElement)element;
+                    var copy = (Label)shape;
+                    copy.text = source.text;
+                    copy.enableRichText = source.enableRichText;
+                    shape.style.fontSize = style.fontSize;
+                    shape.style.unityFontDefinition = style.unityFontDefinition;
+                    shape.style.unityFontStyleAndWeight = style.unityFontStyleAndWeight;
+                    shape.style.unityTextAlign = style.unityTextAlign;
+                    shape.style.letterSpacing = style.letterSpacing;
+                    shape.style.wordSpacing = style.wordSpacing;
+                    shape.style.whiteSpace = style.whiteSpace;
+                    shape.style.paddingLeft = style.paddingLeft;
+                    shape.style.paddingRight = style.paddingRight;
+                    shape.style.paddingTop = style.paddingTop;
+                    shape.style.paddingBottom = style.paddingBottom;
+                }
+                else
+                {
+                    shape.style.borderTopLeftRadius = shape.style.borderTopRightRadius = r;
+                    shape.style.borderBottomLeftRadius = shape.style.borderBottomRightRadius = r;
+                }
+            }
+        }
+        public static void RemoveSkin(VisualElement element)
+        {
+            if (!shadows.TryGetValue(element, out var shadow))
+                return;
+            shadow.host.RemoveFromHierarchy();
+            shadows.Remove(element);
         }
         public static void Tick()
         {
@@ -287,6 +490,41 @@ namespace Azarashi.UnityView
                 t.element.style.scale = new Scale(Vector3.one * Mathf.LerpUnclamped(t.fromScale, t.toScale, ease));
                 if (p >= 1)
                     tweens.RemoveAt(i);
+            }
+            foreach (var item in shadows)
+                LayoutShadow(item.Key, item.Value);
+            foreach (var item in focusStates)
+            {
+                var element = item.Key;
+                var focus = item.Value;
+                var visible = focus.focused && KeyboardFocus && element.enabledInHierarchy;
+                if (focus.ring == null && visible && element.parent != null)
+                {
+                    focus.ring = new VisualElement { name = "source-focus-outline", pickingMode = PickingMode.Ignore };
+                    focus.ring.style.position = UnityEngine.UIElements.Position.Absolute;
+                    focus.ring.style.borderLeftWidth = focus.ring.style.borderRightWidth = focus.ring.style.borderTopWidth = focus.ring.style.borderBottomWidth = 2;
+                    var color = new Color(116f / 255, 220f / 255, 1);
+                    focus.ring.style.borderLeftColor = focus.ring.style.borderRightColor = focus.ring.style.borderTopColor = focus.ring.style.borderBottomColor = color;
+                    element.parent.Add(focus.ring);
+                }
+                if (focus.ring == null)
+                    continue;
+                focus.ring.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
+                if (!visible || element.parent == null)
+                    continue;
+                var rect = element.layout;
+                var style = element.resolvedStyle;
+                focus.ring.style.left = rect.x - element.parent.resolvedStyle.borderLeftWidth - 4;
+                focus.ring.style.top = rect.y - element.parent.resolvedStyle.borderTopWidth - 4;
+                focus.ring.style.width = rect.width + 8;
+                focus.ring.style.height = rect.height + 8;
+                focus.ring.style.borderTopLeftRadius = style.borderTopLeftRadius + 4;
+                focus.ring.style.borderTopRightRadius = style.borderTopRightRadius + 4;
+                focus.ring.style.borderBottomLeftRadius = style.borderBottomLeftRadius + 4;
+                focus.ring.style.borderBottomRightRadius = style.borderBottomRightRadius + 4;
+                focus.ring.style.translate = style.translate;
+                focus.ring.style.scale = style.scale;
+                focus.ring.style.opacity = style.opacity;
             }
         }
     }

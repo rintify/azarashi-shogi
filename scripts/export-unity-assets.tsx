@@ -238,7 +238,11 @@ async function main() {
         level: Number(level),
         ...config,
       })),
-      pieces: KINDS.map((kind) => ({ kind, ...DEFINITIONS[kind] })),
+      pieces: KINDS.map((kind) => ({
+        kind,
+        ...DEFINITIONS[kind],
+        shortName: DEFINITIONS[kind].short,
+      })),
       variants: KINDS.flatMap((kind) =>
         (['seal', 'penguin', 'orca'].includes(kind) ? [false, true] : [false]).map((promoted) => ({
           kind,

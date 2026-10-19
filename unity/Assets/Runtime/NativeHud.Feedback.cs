@@ -8,41 +8,69 @@ namespace Azarashi.UnityView
 {
     public sealed partial class NativeHud
     {
+        private readonly HashSet<string> visibleMarks = new HashSet<string>();
+        private readonly Dictionary<string, float> exitingMarks = new Dictionary<string, float>();
         private void UpdateMarkers()
         {
-            foreach (var node in markNodes.Values)
-                node.style.display = DisplayStyle.None;
-            if (gridOpen || match.Busy || match.Thinking || match.Dialog != null || !match.HumanTurn)
-                return;
-            foreach (var entry in match.Marks)
+            var show = !gridOpen && !match.Busy && !match.Thinking && match.Dialog == null && match.HumanTurn;
+            var desired = new HashSet<string>();
+            if (show)
+                foreach (var entry in match.Marks)
+                {
+                    var piece = match.State.pieces.FirstOrDefault(p => p.id == entry.Key);
+                    if (piece == null)
+                        continue;
+                    desired.Add(piece.id);
+                    if (!markNodes.TryGetValue(piece.id, out var mark))
+                    {
+                        mark = Box(markers, "native-piece-mark", 0, 0, 25, 25, null, 13);
+                        markNodes[piece.id] = mark;
+                    }
+                    if (mark.userData as string != entry.Value)
+                    {
+                        mark.userData = entry.Value;
+                        NativeUi.ClearChildren(mark);
+                        mark.style.backgroundColor = C(entry.Value == "king" ? "#f7cc61" : entry.Value == "helper" ? "#bce7ce" : entry.Value == "trapped" ? "#8f2038" : "#d56b37");
+                        Border(mark, 2, entry.Value == "king" ? "#fff9df" : entry.Value == "helper" ? "#edfff2" : entry.Value == "trapped" ? "#ffe1e7" : "#fff3e7");
+                        if (entry.Value == "danger")
+                        {
+                            var copy = Text(mark, "!", 0, 0, 21, 21, 16, "#ffffff", true, TextAnchor.MiddleCenter);
+                            NativeUi.Center(copy);
+                        }
+                        else
+                            CenteredSymbol(mark, entry.Value == "king" ? "crown" : entry.Value == "trapped" ? "x-mark" : "helper", 18, entry.Value == "king" ? "#785122" : entry.Value == "helper" ? "#206c53" : "#ffffff");
+                        NativeUi.Skin(mark, entry.Value, 12.5f);
+                    }
+                    if (!visibleMarks.Contains(piece.id))
+                        NativeUi.Enter(mark);
+                    exitingMarks.Remove(piece.id);
+                    mark.style.display = DisplayStyle.Flex;
+                    var anchor = match.Board.Marker(piece.id);
+                    mark.style.left = anchor.x / uiScale + 8 - 12.5f;
+                    mark.style.top = (Screen.height - anchor.y) / uiScale - 8 - 12.5f;
+                }
+            foreach (var id in visibleMarks)
+                if (!desired.Contains(id) && markNodes.TryGetValue(id, out var mark))
+                {
+                    exitingMarks[id] = Time.unscaledTime;
+                    NativeUi.Exit(mark);
+                }
+            visibleMarks.Clear();
+            visibleMarks.UnionWith(desired);
+            foreach (var id in exitingMarks.Keys.ToArray())
             {
-                var piece = match.State.pieces.FirstOrDefault(p => p.id == entry.Key);
-                if (piece == null)
+                if (Time.unscaledTime - exitingMarks[id] < .18f)
                     continue;
-                if (!markNodes.TryGetValue(piece.id, out var mark))
+                exitingMarks.Remove(id);
+                if (!markNodes.TryGetValue(id, out var mark))
+                    continue;
+                mark.style.display = DisplayStyle.None;
+                if (!match.State.pieces.Any(p => p.id == id))
                 {
-                    mark = Box(markers, "native-piece-mark", 0, 0, 25, 25, null, 13);
-                    Border(mark, 2, "#fff3e7");
-                    markNodes[piece.id] = mark;
+                    NativeUi.Forget(mark);
+                    mark.RemoveFromHierarchy();
+                    markNodes.Remove(id);
                 }
-                mark.style.display = DisplayStyle.Flex;
-                if (mark.userData as string != entry.Value)
-                {
-                    mark.userData = entry.Value;
-                    mark.Clear();
-                    var color = entry.Value == "king" ? "#f7cc61" : entry.Value == "helper" ? "#bce7ce" : entry.Value == "trapped" ? "#8f2038" : "#d56b37";
-                    mark.style.backgroundColor = C(color);
-                    Border(mark, 2, entry.Value == "king" ? "#fff9df" : entry.Value == "helper" ? "#edfff2" : entry.Value == "trapped" ? "#ffe1e7" : "#fff3e7");
-                    if (entry.Value == "danger")
-                        Text(mark, "!", 0, -1, 21, 22, 16, "#ffffff", true, TextAnchor.MiddleCenter);
-                    else
-                        Symbol(mark, entry.Value == "king" ? "crown" : entry.Value == "trapped" ? "x" : "helper", 1.5f, 1.5f, 18, entry.Value == "king" ? "#785122" : entry.Value == "helper" ? "#206c53" : "#ffffff");
-                    NativeUi.Skin(mark, entry.Value, 12.5f);
-                    NativeUi.Enter(mark);
-                }
-                var anchor = match.Board.Marker(piece.id);
-                mark.style.left = anchor.x / uiScale + 8 - 12.5f;
-                mark.style.top = (Screen.height - anchor.y) / uiScale - 8 - 12.5f;
             }
         }
         private readonly Dictionary<string, float> gainStarts = new Dictionary<string, float>();
@@ -50,6 +78,8 @@ namespace Azarashi.UnityView
         private readonly Dictionary<string, Label> gainLabels = new Dictionary<string, Label>();
         private NativeResultSpectacle spectacle;
         private TextElement resultKicker;
+        private VisualElement resultSection;
+        private float resultWidth, resultHeight;
         private VisualElement resultEmblem;
         private bool defeatResult;
         private void UpdateOrbs()
@@ -131,22 +161,29 @@ namespace Azarashi.UnityView
         }
         private void UpdateResult()
         {
-            var key = match.State.phase == "finished" && !match.Busy && !match.Replaying && !match.ResultDismissed ? match.State.result?.winner ?? "draw" : null;
-            if (key == resultKey)
+            var key = match.State.phase == "finished" && match.Motion == null && !match.Replaying && !match.ResultDismissed ? match.State.result?.winner ?? "draw" : null;
+            var changed = key != resultKey;
+            if (!changed && (key == null || resultWidth == width && resultHeight == height))
                 return;
             resultKey = key;
-            hud.style.opacity = key == null ? 1 : 0;
+            resultWidth = width;
+            resultHeight = height;
             if (key == null)
             {
                 NativeUi.Exit(result);
                 result.SetEnabled(false);
+                result.schedule.Execute(() => { if (resultKey == null) result.style.display = DisplayStyle.None; }).StartingIn(180);
                 return;
             }
             result.SetEnabled(true);
-            result.Clear();
+            result.pickingMode = PickingMode.Position;
+            result.userData = "native-ui";
+            result.style.display = DisplayStyle.Flex;
+            NativeUi.ClearChildren(result);
             result.style.opacity = 1;
             celebration.Clear();
-            resultStarted = Time.unscaledTime;
+            if (changed)
+                resultStarted = Time.unscaledTime;
             var draw = key == "draw";
             defeatResult = !draw && match.Settings.mode == "human-vs-ai" && key != match.Settings.human;
             var light = draw ? "#c2fff3" : defeatResult ? "#cadfff" : "#ffe19a";
@@ -163,26 +200,58 @@ namespace Azarashi.UnityView
                 var bit = Box(result, "result-particle", 0, 0, defeatResult ? 2 : (i + 1) % 3 == 0 ? 5 : 7, defeatResult ? 35 : (i + 1) % 3 == 0 ? 8 : 14, defeatResult ? "#a5caff" : (i + 1) % 3 == 0 ? "#84e4ed" : light);
                 celebration.Add(bit);
             }
-            var heading = Box(result, "result-heading", 20, 32, width - 40, 170);
-            resultEmblem = Symbol(heading, defeatResult || draw ? "snowflake" : "crown", (width - 40 - 52) * .5f, 0, 52, light);
-            resultKicker = Text(heading, draw ? "DRAW" : defeatResult ? "DEFEAT" : "VICTORY", 0, 58, width - 40, 68, Mathf.RoundToInt(Mathf.Clamp(width * .09f, 32, 56)), light, true, TextAnchor.MiddleCenter);
+            var compact = height <= 530;
+            var sectionWidth = width - 40;
+            resultSection = Box(result, "result-content", 20, 20, sectionWidth, height - 40);
+            var heading = Box(resultSection, "result-heading", 0, compact ? 8 : 12, compact ? sectionWidth * .4f : sectionWidth, 0);
+            heading.style.height = StyleKeyword.Auto;
+            var emblem = FlowBox(heading, "result-emblem");
+            emblem.style.width = compact ? 50 : 52;
+            emblem.style.height = compact ? 50 : 52;
+            emblem.style.alignSelf = Align.Center;
+            resultEmblem = emblem;
+            var emblemName = defeatResult || draw ? "snowflake" : "crown-result";
+            var glowIcon = CenteredSymbol(emblem, emblemName, compact ? 36 : 54, glow);
+            NativeUi.Blur(glowIcon, 22);
+            CenteredSymbol(emblem, emblemName, compact ? 36 : 54, light);
+            var kickerSize = compact ? 38 : Mathf.RoundToInt(Mathf.Clamp(width * .09f, 32, 56));
+            resultKicker = FlowText(heading, draw ? "DRAW" : defeatResult ? "DEFEAT" : "VICTORY", kickerSize, light, true);
             resultKicker.style.unityFontStyleAndWeight = FontStyle.BoldAndItalic;
-            resultKicker.style.textShadow = new TextShadow { offset = new Vector2(0, 4), color = C("#20304f"), blurRadius = 0 };
-            var title = draw ? "引き分けです" : match.Settings.mode == "human-vs-ai" ? (defeatResult ? "あなたの負けです" : "あなたの勝ちです") : match.Actor(key) + "の勝ちです";
-            Text(heading, title, 0, 130, width - 40, 38, Mathf.RoundToInt(Mathf.Clamp(width * .05f, 20, 28)), "#ffffff", true, TextAnchor.MiddleCenter);
-            var footerWidth = Mathf.Min(360, (width - 40) * .95f);
-            var footer = Box(result, "result-footer", (width - footerWidth) * .5f, height - 174, footerWidth, 148);
-            Text(footer, draw ? "両方の王が同じ一手で捕食されました。" : "王を捕食して決着しました。", 0, 0, footerWidth, 34, 12, "#23465c", false, TextAnchor.MiddleCenter);
-            var next = Button(footer, "新しい対局", 0, 48, footerWidth, 44, () => match.Open("settings"), "#48afc8", 12);
-            next.style.color = Color.white;
-            NativeUi.Skin(next, "primary", 24);
-            var inspect = Button(footer, "盤面を見る", 0, 100, footerWidth, 36, () => { match.ResultDismissed = true; Rebuild(); }, "#ffffff00", 12);
-            Border(inspect, 0, "#ffffff");
-            NoSkin(inspect);
+            resultKicker.style.unityTextAlign = TextAnchor.MiddleCenter;
+            resultKicker.style.letterSpacing = kickerSize * .045f;
+            resultKicker.style.marginTop = resultKicker.style.marginBottom = compact ? 8 : 6;
+            NativeUi.TextShadows(resultKicker, "textResultKicker", glow);
+            var title = draw ? "引き分けです" : match.Settings.mode == "human-vs-ai" ? (defeatResult ? "NPCの勝ちです" : "あなたの勝ち！") : match.Actor(key) + "の勝ちです";
+            var titleCopy = FlowText(heading, title, Mathf.RoundToInt(Mathf.Clamp(width * .05f, 20, 28)), "#ffffff", true);
+            titleCopy.style.unityTextAlign = TextAnchor.MiddleCenter;
+            NativeUi.TextShadows(titleCopy, "textResultHeading");
+            var footerWidth = compact ? sectionWidth * .34f : Mathf.Min(360, sectionWidth * .95f);
+            var footer = Box(resultSection, "result-footer", compact ? sectionWidth - footerWidth : (sectionWidth - footerWidth) / 2, 0, footerWidth, 0);
+            footer.style.top = StyleKeyword.Auto;
+            footer.style.bottom = 6;
+            footer.style.height = StyleKeyword.Auto;
+            var last = match.LastAction;
+            var detail = draw ? "両方の王が同じ一手で捕食されました。" : (last != null ? match.Data.Name(last.piece) : "駒") + "が" + match.Actor(last?.captured.FirstOrDefault(p => p.kind == "walrus")?.owner ?? match.State.turn) + "の王を捕食しました。";
+            var detailCopy = FlowText(footer, detail, 12, "#23465c", lineHeight: 21.6f);
+            detailCopy.style.unityTextAlign = TextAnchor.MiddleCenter;
+            detailCopy.style.marginTop = 10;
+            detailCopy.style.marginBottom = 14;
+            NativeUi.TextShadows(detailCopy, "textResultFooter");
+            var next = FlowAction(footer, "新しい対局", null, () => match.Open("settings"), "#48afc8", "#ffffff", "resultPrimary");
+            next.style.height = 44;
+            NativeUi.Bind(next, () => match.Open("settings"), C("#48afc8"), C("#65c0d3"));
+            var inspect = FlowAction(footer, "盤面を見る", null, () => { match.ResultDismissed = true; Rebuild(); }, "#ffffff00", "#23465c");
+            inspect.style.height = 44;
+            inspect.style.marginTop = compact ? 8 : 10;
+            inspect.style.alignSelf = Align.Center;
+            Border(inspect, 0, "#ffffff00");
             NativeUi.Bind(inspect, () => { match.ResultDismissed = true; Rebuild(); }, Color.clear, Color.clear);
-            inspect.style.color = C("#23465c");
-            NativeUi.Enter(heading);
-            NativeUi.Enter(footer);
+            foreach (var label in inspect.Children().OfType<Label>())
+            {
+                label.style.unityFontStyleAndWeight = FontStyle.Normal;
+                NativeUi.TextShadows(label, "textResultFooter");
+            }
+
         }
     }
 }

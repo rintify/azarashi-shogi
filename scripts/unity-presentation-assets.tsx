@@ -20,6 +20,9 @@ import {
   X,
   Sparkles,
   ChevronUp,
+  ChevronDown,
+  ArrowRight,
+  Info,
   ChevronLeft,
   ChevronRight,
   Play,
@@ -60,7 +63,7 @@ export async function exportPresentationAssets(directory: string) {
     });
   });
   const resolve = (value: string) =>
-    value.replace(/var\((--[\w-]+)\)/g, (_, key) => variables[key] ?? '');
+    value.replace(/var\((--[\w-]+)\)/g, (_, key) => variables[key] ?? `var(${key})`);
   const declarations = (selector: string) => {
     const result: Record<string, string> = {};
     sheet.walkRules((rule) => {
@@ -81,14 +84,21 @@ export async function exportPresentationAssets(directory: string) {
     mute: VolumeX,
     replay: Film,
     crown: Crown,
+    'crown-result': Crown,
     helper: ShieldPlus,
     x: X,
     sparkles: Sparkles,
     'chevron-up': ChevronUp,
+    'chevron-down': ChevronDown,
+    'arrow-right': ArrowRight,
+    info: Info,
+    'x-mark': X,
     left: ChevronLeft,
     right: ChevronRight,
     play: Play,
     pause: Pause,
+    'play-filled': Play,
+    'pause-filled': Pause,
     first: ChevronsLeft,
     last: ChevronsRight,
     step: StepForward,
@@ -104,7 +114,8 @@ export async function exportPresentationAssets(directory: string) {
     const svg = renderToStaticMarkup(
       createElement(Icon, {
         size: 24,
-        strokeWidth: name === 'crown' || name === 'helper' ? 2.7 : name === 'x' ? 3 : 2,
+        strokeWidth: name === 'crown' || name === 'helper' ? 2.7 : name === 'x-mark' ? 3 : 2,
+        fill: name === 'triangle' || name.endsWith('-filled') ? 'white' : 'none',
         color: 'white',
       }),
     ).replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ');
@@ -153,9 +164,43 @@ export async function exportPresentationAssets(directory: string) {
     catalog: '.catalog-stage',
     catalogArrow: '.catalog-arrow',
     optionSelected: '.side-options button.active',
+    stockSelected: '.reserve-grid button.selected',
+    replayPlay: '.replay-controls .replay-play',
+    replayWatch: '.replay-watch',
+    replayImport: '.replay-import',
+    warning: '.promotion-warning',
+    rotationDanger: ".rotation-choice[data-danger='true'][aria-pressed='true']",
+    promotionDanger: ".promotion-button[data-danger='true']",
+    pulse: '.turn-banner .status-pulse',
+    pulseHuman: '.turn-banner .human',
+    turnNotice: '.turn-splash-copy',
+    coordinate: '.coordinate-board',
+    resultPrimary: '.result-overlay .primary-button',
+    textStatus: '.turn-banner',
+    textBrand: '.game-brand',
+    textCatalogCaption: '.brand-catalog',
+    textMessage: '.match-message',
+    textGain: '.stock-gain',
+    textResultHeading: '.result-overlay section',
+    textResultKicker: '.result-kicker',
+    textResultFooter: '.result-overlay .result-footer p',
   };
-  await mkdir(`${directory}/Shadows`, { recursive: true });
   const surfaces = [];
+  const splitLayers = (value: string) => {
+    let depth = 0,
+      start = 0;
+    const layers: string[] = [];
+    for (let i = 0; i < value.length; i++) {
+      if (value[i] === '(') depth++;
+      if (value[i] === ')') depth--;
+      if (value[i] === ',' && depth === 0) {
+        layers.push(value.slice(start, i));
+        start = i + 1;
+      }
+    }
+    layers.push(value.slice(start));
+    return layers.map((v) => v.trim()).filter(Boolean);
+  };
   for (const [name, selector] of Object.entries(selectors)) {
     const values = {
       ...(name === 'keep' || name === 'evolve' ? declarations('.promotion-button') : {}),
@@ -167,34 +212,47 @@ export async function exportPresentationAssets(directory: string) {
     const radius = values['border-radius']?.endsWith('%')
       ? (parseFloat(values.width) || 25) / 2
       : parseFloat(values['border-radius']) || 0;
-    const size = 256,
-      pad = 80,
-      body = size - pad * 2;
-    const layers = (values['box-shadow'] ?? '')
-      .split(/,\s*(?![^()]*\))/)
-      .map((v) => v.trim())
+    const shadowLayers = splitLayers(
+      values[name.startsWith('text') ? 'text-shadow' : 'box-shadow'] ?? '',
+    )
       .filter((v) => v && !v.startsWith('inset'))
-      .map((layer, i) => {
-        const color = layer.match(/#[\da-f]{3,8}/i)?.[0] ?? '#000';
-        const nums = layer
-          .replace(/#[\da-f]{3,8}/i, '')
-          .trim()
-          .split(/\s+/)
-          .map(parseFloat);
+      .map((layer) => {
+        const lengths = layer.match(/^(?:-?[\d.]+(?:px)?\s+){2,4}/)?.[0] ?? '';
+        const nums = lengths.trim().split(/\s+/).map(parseFloat);
         const [x = 0, y = 0, blur = 0, spread = 0] = nums;
-        return `<filter id="s${i}" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="${blur / 2}"/></filter><rect x="${pad + x - spread}" y="${pad + y - spread}" width="${body + spread * 2}" height="${body + spread * 2}" rx="${Math.min(radius, body / 2) + spread}" fill="${color}" filter="url(#s${i})"/>`;
+        let color = layer.slice(lengths.length).trim();
+        let opacity = 1;
+        const mix = color.match(
+          /^color-mix\(in srgb,\s*(var\(--[\w-]+\)|#[\da-f]{3,8})\s+([\d.]+)%,\s*transparent\)$/,
+        );
+        if (mix) {
+          color = mix[1];
+          opacity = Number(mix[2]) / 100;
+        }
+        return { x, y, blur, spread, color, opacity };
       })
       .reverse();
-    if (layers.length)
-      await writeFile(
-        `${directory}/Shadows/${name}.png`,
-        new Resvg(
-          `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}"><defs><mask id="outside"><rect width="256" height="256" fill="white"/><rect x="80" y="80" width="96" height="96" rx="${Math.min(radius, 48)}" fill="black"/></mask></defs><g mask="url(#outside)">${layers.join('')}</g></svg>`,
-          { fitTo: { mode: 'zoom', value: 2 } },
-        )
-          .render()
-          .asPng(),
+    if (name === 'textBrand') {
+      const stroke = declarations('.game-brand h1')['-webkit-text-stroke']?.match(
+        /([\d.]+)px\s+(#[\da-f]{3,8})/i,
       );
+      if (stroke) {
+        // paint-order: stroke fill. The visible stroke is half of the CSS
+        // centered stroke width; keep it in UI pixels, not SDF outline units.
+        for (let i = 0; i < 16; i++)
+          shadowLayers.push({
+            x: (Math.cos((i * Math.PI) / 8) * Number(stroke[1])) / 2,
+            y: (Math.sin((i * Math.PI) / 8) * Number(stroke[1])) / 2,
+            blur: 0,
+            spread: 0,
+            color: stroke[2],
+            opacity: 1,
+          });
+      }
+    }
+    // The runtime draws these layers behind the border box using native UI
+    // Toolkit blur (CSS box-shadow's sigma is blur-radius / 2). No nine-slice
+    // scaling of the blur, no SVG filter-region clipping.
     surfaces.push({
       name,
       selector,
@@ -202,9 +260,8 @@ export async function exportPresentationAssets(directory: string) {
       color: values.color ?? '',
       radius,
       border: values.border ?? '',
-      shadow: layers.length > 0,
-      padding: pad,
-      slice: pad + Math.min(radius, body / 2),
+      shadow: shadowLayers.length > 0,
+      layers: shadowLayers,
       values: Object.entries(values).map(([key, value]) => ({ key, value })),
     });
   }
