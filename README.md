@@ -2,7 +2,7 @@
 
 青空と南極の雪氷を舞台に、立体の動物たちで遊ぶオリジナル将棋です。React 19 / TypeScript / Vite / Three.js / React Three Fiber 9 を使い、AIの計算はRust / WebAssemblyで実行します。
 
-既存のReact・Rustを共用してUnityで3Dを描画する [Unity Web版のビルド・起動手順](docs/UNITY_PORT.md) もあります。
+既存のモデルとRustを再利用し、UI・対局管理をUnity内に移植した [Unity Web版のビルド・起動手順](docs/UNITY_PORT.md) もあります。
 
 ## 起動
 

@@ -15,7 +15,7 @@ Shader "Azarashi/Surface" {
         Tags { "RenderType"="Opaque" }
         Cull [_Cull] ZWrite [_ZWrite] ZTest [_ZTest] Blend [_SrcBlend] [_DstBlend]
         CGPROGRAM
-        #pragma surface surf Standard fullforwardshadows addshadow keepalpha finalcolor:filmic
+        #pragma surface surf Standard noforwardadd noshadow addshadow keepalpha finalcolor:filmic
         #pragma target 3.0
         #pragma multi_compile_instancing
         #include "Filmic.cginc"

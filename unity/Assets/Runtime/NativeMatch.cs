@@ -84,13 +84,13 @@ namespace Azarashi.UnityView
         private void Restore()
         {
             var json=NativeStorage.Read("match", "azarashi.unity.match.v1");
-            if(!string.IsNullOrEmpty(json))try{var record=NativeJson.Record(json);var timeline=Validate(record);Record=record;Settings=SettingsOf(record);State=timeline.Last();history.Clear();foreach(var p in timeline)history.Add(Engine.Inspect(p).positionIdentity);Refresh();return;}catch(Exception error){Debug.LogWarning("Saved Unity match could not be restored: "+error.Message);}
+            if(!string.IsNullOrEmpty(json))try{var record=NativeJson.Record(json);var timeline=Validate(record);Record=record;Settings=SettingsOf(record);State=timeline.Last();last=record.actions.Count>0?Find(Engine.Inspect(timeline[timeline.Count-2]),record.actions.Last()):null;history.Clear();foreach(var p in timeline)history.Add(Engine.Inspect(p).positionIdentity);Refresh();return;}catch(Exception error){Debug.LogWarning("Saved Unity match could not be restored: "+error.Message);}
             NewGame(Settings);
         }
         public void NewGame(Settings settings)
         {
             if(!Engine.Ready){Settings=settings;Dialog=null;Hud.Rebuild();return;}
-            Engine.Cancel();Thinking=false;SaveRecord();Settings=settings;replayRecord=null;ReplayPlaying=false;Motion=null;Pending=null;Dialog=null;ResultDismissed=false;State=Data.Config.initial.Copy();
+            Engine.Cancel();Thinking=false;SaveRecord();Settings=settings;replayRecord=null;ReplayPlaying=false;Motion=null;Pending=null;Dialog=null;ResultDismissed=false;last=null;State=Data.Config.initial.Copy();
             Record=new MatchRecord{rulesVersion=Data.Config.initial.rulesVersion,id=Guid.NewGuid().ToString(),createdAt=DateTime.UtcNow.ToString("o"),seed=(uint)UnityEngine.Random.Range(1,int.MaxValue),settings=new RecordSettings{mode=settings.mode,human=settings.human,difficulty=settings.difficulty,aiLevels=new RecordLevels{south=settings.southLevel,north=settings.difficulty}}};
             Paused=false;history.Clear();Engine.ClearCache();history.Add(Engine.Inspect(State).positionIdentity);ClearSelection();Refresh();SaveRecord();
         }
@@ -102,7 +102,7 @@ namespace Azarashi.UnityView
         public void Open(string dialog){CancelThinking();Dialog=dialog;ReplayPlaying=false;ClearSelection();Hud.Rebuild();}
         public void Close(){Dialog=null;Hud.Rebuild();}
         public void ClearSelection(){SelectedId=null;SelectedStock=null;selected=Array.Empty<Preview>();Safety.Clear();cellColors.Clear();HoverPreview=null;hover=null;Hud?.Rebuild();}
-        public void SelectStock(string kind){if(!CanInput||State.stocks.Of(State.turn).Count(kind)<=0)return;SelectedStock=kind;SelectedId=null;grab=new Cell();selected=legal.moves.Where(m=>m.action.type=="place"&&m.action.kind==kind).ToArray();ComputeSafety();Hud.Rebuild();}
+        public void SelectStock(string kind){if(!CanInput||State.stocks.Of(State.turn).Count(kind)<=0)return;if(SelectedStock==kind){ClearSelection();return;}SelectedStock=kind;SelectedId=null;grab=AnchorOffset(new PieceState{kind=kind,promoted=false});selected=legal.moves.Where(m=>m.action.type=="place"&&m.action.kind==kind).ToArray();ComputeSafety();Hud.Rebuild();}
         private bool CanInput=>Engine.Ready&&!Busy&&Dialog==null&&Pending==null&&!Replaying&&HumanTurn&&State.phase=="playing";
         public void Click(Cell cell)
         {
@@ -112,15 +112,16 @@ namespace Azarashi.UnityView
             if(choices.Length>0&&(SelectedStock!=null||State.pieces.Any(p=>p.id==SelectedId&&p.owner==State.turn))){ChooseDestination(choices);return;}
             var piece=State.pieces.FirstOrDefault(p=>Data.Body(p).Any(c=>c.Same(cell)));
             if(piece==null){ClearSelection();return;}
-            SelectedId=piece.id;SelectedStock=null;grab=new Cell(cell.x-piece.at.x,cell.y-piece.at.y);
+            if(SelectedId==piece.id){ClearSelection();return;}
+            SelectedId=piece.id;SelectedStock=null;HoverPreview=null;hover=null;grab=AnchorOffset(piece);
             var inspected=State;if(piece.owner!=State.turn){inspected=State.Copy();inspected.turn=piece.owner;}
             selected=Engine.Inspect(inspected,false).moves.Where(m=>m.action.pieceId==piece.id).ToArray();
             if(piece.owner==Viewer)ComputeSafety();else Safety.Clear();Hud.Rebuild();
         }
+        private Cell AnchorOffset(PieceState piece){var size=Data.Variant(piece);return Viewer=="north"?new Cell(size.width-1,size.height-1):new Cell();}
         private void ChooseDestination(Preview[] choices)
         {
-            var decisive=choices.FirstOrDefault(p=>p.captured.Any(c=>c.kind=="walrus"));
-            if(decisive!=null||choices.Length==1){Commit(decisive??choices[0]);return;}
+            if(choices.Length==1||choices[0].captured.Any(c=>c.kind=="walrus")){Commit(choices[0]);return;}
             if(choices[0].piece.kind=="seal"){Commit(choices.Last());return;}
             Pending=choices;Motion=new NativeMotion(Data,State,choices[0],true);capturePlayed=false;Hud.Rebuild();
         }
@@ -151,7 +152,7 @@ namespace Azarashi.UnityView
         }
         public CellSafety Assess(Position next,PieceState piece)
         {
-            var owner=piece.owner;if(next.phase=="finished")return new CellSafety{unsafeCell=next.result?.winner==NativeGameData.Other(owner)};
+            var owner=piece.owner;if(next.phase=="finished")return new CellSafety{unsafeCell=next.result?.winner==NativeGameData.Other(owner),kingDanger=next.result?.winner==NativeGameData.Other(owner)};
             var inspected=next;if(next.turn==owner){inspected=next.Copy();inspected.turn=NativeGameData.Other(owner);}
             var replies=Engine.Inspect(inspected,false).moves;var captures=replies.Where(m=>m.captured.Any(c=>c.id==piece.id)).ToArray();var kingDanger=replies.Any(m=>m.captured.Any(c=>c.kind=="walrus"&&c.owner==owner));
             var trap=!kingDanger&&piece.kind!="walrus"&&captures.Length>0&&captures.All(m=>m.piece.kind=="walrus"&&m.after.phase=="playing"&&Engine.Inspect(m.after,false).moves.Any(counter=>counter.captured.Any(c=>c.id==m.piece.id)&&counter.after.result?.winner==owner));
@@ -181,7 +182,7 @@ namespace Azarashi.UnityView
             if(Input.GetKeyDown(KeyCode.Escape)){if(Pending!=null)CancelChoice();else if(Dialog!=null)Close();else ClearSelection();}
             var mouse=(Vector2)Input.mousePosition;
             if(Input.GetMouseButtonDown(0)&&!Hud.Blocks(mouse)){pointerDown=true;down=mouse;}
-            if(CanInput&&ResolveCell(mouse,out var cell))
+            if(CanInput&&(SelectedId==null||State.pieces.Any(p=>p.id==SelectedId&&p.owner==Viewer))&&ResolveCell(mouse,out var cell))
             {
                 if(hover==null||!hover.Same(cell)){hover=cell;var at=new Cell(cell.x-grab.x,cell.y-grab.y);HoverPreview=selected.FirstOrDefault(m=>m.action.Destination.Same(at));}
             }else if(Pending==null){hover=null;HoverPreview=null;}
@@ -211,9 +212,9 @@ namespace Azarashi.UnityView
             var inspecting=SelectedId!=null&&State.pieces.Any(p=>p.id==SelectedId&&p.owner!=Viewer);
             if(!Busy)
             {
-                foreach(var move in selected.GroupBy(m=>m.action.Destination.x+","+m.action.Destination.y).Select(g=>g.First()))
+                foreach(var group in selected.GroupBy(m=>m.action.Destination.x+","+m.action.Destination.y))
                 {
-                    var color=inspecting?Data.Config.colors.enemy:CellColor(move);foreach(var c in move.footprint)Board.Guide(c,color==Data.Config.colors.safe?Data.Config.colors.fill:color,inspecting?.24f+.08f*Mathf.Sin(Time.unscaledTime*2.24f):.2f);
+                    var move=group.First();var color=inspecting?Data.Config.colors.enemy:CellColor(move);foreach(var c in group.SelectMany(m=>m.captureCells.Concat(m.footprint)).GroupBy(c=>c.x+","+c.y).Select(g=>g.First()))Board.Guide(c,color==Data.Config.colors.safe?Data.Config.colors.fill:color,inspecting?.24f+.08f*Mathf.Sin(Time.unscaledTime*2.24f):.2f);
                     if(!inspecting)Board.Guide(new Cell(move.action.Destination.x+grab.x,move.action.Destination.y+grab.y),color,1,true);
                 }
                 if(Stationary!=null){var p=State.pieces.First(v=>v.id==SelectedId);var s=Safety.TryGetValue("stationary",out var value)?value:new CellSafety();var color=inspecting?Data.Config.colors.enemy:s.kingDanger?Data.Config.colors.kingDanger:s.trap?Data.Config.colors.kingCaptureTrap:s.unsafeCell?Data.Config.colors.danger:Data.Config.colors.safe;foreach(var c in Data.Body(p))Board.Guide(c,color==Data.Config.colors.safe?Data.Config.colors.fill:color,.2f,layer:1);if(!inspecting)Board.Guide(new Cell(p.at.x+grab.x,p.at.y+grab.y),color,1,true,1);}
@@ -258,10 +259,10 @@ namespace Azarashi.UnityView
             try{var record=NativeJson.Record(text);Validate(record);Replays.RemoveAll(r=>r.id==record.id);Replays.Insert(0,record);SaveLibrary();NativeStorage.Flush();Hud.Rebuild();}
             catch(Exception error){Hud.Notify(error.Message);}
         }
-        public void Watch(MatchRecord record){CancelThinking();replayStates=Validate(record);replayRecord=record;ReplayCursor=0;ReplayPlaying=true;State=replayStates[0];Motion=null;Pending=null;Dialog=null;last=null;ClearSelection();Refresh();nextReplay=Time.unscaledTime+.3f;}
-        public void StepReplay(int direction){if(!Replaying||Motion!=null)return;var next=Mathf.Clamp(ReplayCursor+direction,0,ReplayTotal);if(next==ReplayCursor)return;var before=State;var preview=next==ReplayCursor+1?Find(Engine.Inspect(before),replayRecord.actions[ReplayCursor]):null;ReplayCursor=next;State=replayStates[next];last=preview;Motion=preview==null?null:new NativeMotion(Data,before,preview);Marks.Clear();Hud.Rebuild();}
+        public void Watch(MatchRecord record){CancelThinking();replayStates=Validate(record);replayRecord=record;Settings=SettingsOf(record);ReplayCursor=0;ReplayPlaying=true;State=replayStates[0];Motion=null;Pending=null;Dialog=null;last=null;ClearSelection();Refresh();nextReplay=Time.unscaledTime+.3f;}
+        public void StepReplay(int direction){if(!Replaying||Motion!=null)return;var next=Mathf.Clamp(ReplayCursor+direction,0,ReplayTotal);if(next==ReplayCursor)return;var before=State;var preview=next==ReplayCursor+1?Find(Engine.Inspect(before),replayRecord.actions[ReplayCursor]):null;ReplayCursor=next;if(next==ReplayTotal)ReplayPlaying=false;State=replayStates[next];last=preview;Motion=preview==null?null:new NativeMotion(Data,before,preview);Marks.Clear();Hud.Rebuild();}
         public void SeekReplay(int cursor){if(!Replaying)return;ReplayPlaying=false;Motion=null;ReplayCursor=Mathf.Clamp(cursor,0,ReplayTotal);State=replayStates[ReplayCursor];last=null;Refresh();}
-        public void EndReplay(){replayRecord=null;ReplayPlaying=false;Motion=null;State=Validate(Record).Last();Refresh();}
+        public void EndReplay(){replayRecord=null;ReplayPlaying=false;Motion=null;last=null;Settings=SettingsOf(Record);State=Validate(Record).Last();Refresh();}
         public void Export(MatchRecord record,bool text){NativeEngine.AzarashiDownload("azarashi-"+record.id+(text?".txt":".json"),text?Commentary(record):NativeJson.Encode(record,true));}
         private string Commentary(MatchRecord record){var states=Validate(record);var lines=new List<string>{"アザラシ将棋 対局記録","ルールバージョン: "+record.rulesVersion,"先手は南（前方y減少）、後手は北（前方y増加）。座標はx=0〜9、y=0〜9。王の捕食で決着。"};for(var i=0;i<record.actions.Count;i++){var preview=Find(Engine.Inspect(states[i]),record.actions[i]);lines.Add((i+1)+"手目 "+states[i].turn+" "+Data.Name(preview.piece)+" "+NativeJson.Encode(preview.action)+" 捕食: "+string.Join(",",preview.captured.Select(p=>p.owner+" "+Data.Name(p)))+"\n局面: "+NativeJson.Encode(states[i+1]));}return string.Join("\n",lines);}
         public void StorageError(string _)=>Hud.Notify("棋譜を端末に保存できませんでした。ファイルに保存してください。");

@@ -21,8 +21,8 @@ namespace Azarashi.UnityView
         private readonly Dictionary<string,Texture2D> icons=new Dictionary<string,Texture2D>();
         private readonly List<VisualElement> orbs=new List<VisualElement>();
         private float uiScale=1,width=1280,height=720,clockAmount;
-        private bool expanded,dirty=true;
-        private int choiceCount=-1;
+        private bool expanded,gridOpen,dirty=true;
+        private int choiceCount=-1,choiceIndex;
         private string resultKey,message;
         private Settings draft;
         private float messageUntil,resultStarted;
@@ -73,16 +73,30 @@ namespace Azarashi.UnityView
             var mobile=width<600;var margin=mobile?12:24;var size=mobile?35:44;var gap=mobile?5:8;
             var brand=Button(hud,"",margin,18,mobile?35:48,mobile?35:48,()=>match.Open("catalog"),"#e6f8ff");Icon(brand,"seal",false,2,1,mobile?26:36);
             if(!mobile)Text(hud,"アザラシ将棋",82,20,220,40,22,"#ffffff",true);
-            var labels=new[]{match.Muted?"mute":"sound","book","replay","reset",match.TopView?"cube":"view","full"};
-            Action[] actions={ ()=>{match.Muted=!match.Muted;Rebuild();},()=>match.Open("rules"),()=>match.Open("replays"),()=>match.Open("settings"),()=>{match.TopView=!match.TopView;Rebuild();},()=>Screen.fullScreen=!Screen.fullScreen };
+            var labels=new[]{match.Muted?"mute":"sound","book","replay","reset",match.TopView?"cube":"view","grid"};
+            Action[] actions={ ()=>{match.Muted=!match.Muted;Rebuild();},()=>match.Open("rules"),()=>match.Open("replays"),()=>match.Open("settings"),()=>{match.TopView=!match.TopView;Rebuild();},()=>{gridOpen=!gridOpen;Rebuild();} };
             for(var i=0;i<labels.Length;i++){var index=i;var b=Button(hud,"",width-margin-(labels.Length-i)*(size+gap)+gap,18,size,size,actions[i],i==0?"#ffdf81":i==1?"#e5dfff":i==2?"#ffe1e8":"#fff8e9");var symbol=new NativeSymbol(labels[index]){pickingMode=PickingMode.Ignore};symbol.style.position=UnityEngine.UIElements.Position.Absolute;symbol.style.left=7;symbol.style.top=7;symbol.style.width=size-18;symbol.style.height=size-18;b.Add(symbol);}
             var opponent=NativeGameData.Other(match.Viewer);StockBar(hud,opponent,80,Mathf.Min(420,width-28),false);
             status=Text(hud,"",14,126,width-28,28,12,"#ffffff",true,TextAnchor.MiddleCenter);
             if(match.Replaying)BuildReplayDock();else if(match.Settings.mode=="ai-vs-ai")BuildSpectatorDock();else BuildStockDock();
             clock=Box(root,"native-thinking-clock",width+80,mobile?132:85,64,65);clockIcon=new NativeSymbol("clock"){pickingMode=PickingMode.Ignore};clockIcon.style.position=UnityEngine.UIElements.Position.Absolute;clockIcon.style.left=20;clockIcon.style.top=0;clockIcon.style.width=24;clockIcon.style.height=24;clock.Add(clockIcon);Text(clock,"AI 思考中",0,26,64,20,9,"#e0f3ff",false,TextAnchor.MiddleCenter);
+            if(gridOpen)BuildGrid();
             choice=Box(root,"native-promotion",0,0,width,height);result=Box(root,"native-result",0,0,width,height);
             if(match.Dialog!=null)BuildDialog(match.Dialog);
             if(message!=null&&Time.unscaledTime<messageUntil){var n=Box(root,"notice",14,height-142,width-28,48,"#fff6e9",18);Text(n,message,12,4,width-52,40,12);}
+        }
+        private void BuildGrid()
+        {
+            var size=Mathf.Min(width-28,height-218);var cellSize=size/10;var panel=Box(root,"native-coordinate-board",(width-size)*.5f,132+(height-218-size)*.5f,size,size,null,0,true);var buttons=new List<Button>();
+            var moves=match.SelectedMoves.ToArray();var enemy=match.SelectedId!=null&&match.State.pieces.Any(p=>p.id==match.SelectedId&&p.owner!=match.Viewer);
+            for(var index=0;index<100;index++)
+            {
+                var display=index;var n=match.Viewer=="south"?index:99-index;var cell=new Cell(n%10,n/10);var piece=match.State.pieces.FirstOrDefault(p=>match.Data.Body(p).Any(c=>c.Same(cell)));var move=moves.FirstOrDefault(m=>m.footprint.Any(c=>c.Same(cell)));
+                var color=move==null?(cell.x+cell.y)%2==0?"#e3f0f5":"#b9d4e0":enemy?match.Data.Config.colors.enemy:match.CellColor(move);
+                var button=Button(panel,"",index%10*cellSize,index/10*cellSize,cellSize-1,cellSize-1,()=>match.Click(cell),color,10);Round(button,4);Border(button,1,"#eefaff");button.style.borderBottomWidth=1;buttons.Add(button);button.tooltip=(cell.x+1)+","+(cell.y+1)+(piece==null?"":" "+match.Data.Name(piece));
+                if(piece!=null){var iconSize=Mathf.Min(28,cellSize-7);Icon(button,piece.kind,piece.promoted,(cellSize-iconSize)*.5f,(cellSize-iconSize)*.5f,iconSize);if(piece.owner!=match.Viewer)Border(button,1,"#e89d72");}
+                button.RegisterCallback<KeyDownEvent>(evt=>{var offset=evt.keyCode==KeyCode.LeftArrow?-1:evt.keyCode==KeyCode.RightArrow?1:evt.keyCode==KeyCode.UpArrow?-10:evt.keyCode==KeyCode.DownArrow?10:0;if(offset!=0){buttons[Mathf.Clamp(display+offset,0,99)].Focus();evt.StopPropagation();}});
+            }
         }
         private void StockBar(VisualElement parent,string owner,float y,float w,bool own)
         {
@@ -180,11 +194,27 @@ namespace Azarashi.UnityView
         private void UpdateChoices()
         {
             var pending=match.Pending;var show=pending!=null&&match.Motion!=null&&(match.Motion.Stage=="choice-preview"||match.Motion.Progress>=1);
-            var count=show?pending.Length:0;if(count==choiceCount)return;choiceCount=count;choice.Clear();if(count==0)return;
-            var buttonW=Mathf.Min(110,(width-24)/Mathf.Min(count,4));var rows=Mathf.CeilToInt(count/4f);var total=Mathf.Min(count,4)*buttonW;var y=height*.62f;
-            for(var i=0;i<count;i++)
-            {var index=i;var candidate=pending[i];var text=candidate.action.transformation==null?"そのまま":candidate.piece.kind=="orca"?"↻ 成る":"成る";var b=Button(choice,text,(width-total)*.5f+(i%4)*buttonW,y+(i/4)*58,buttonW-6,50,()=>match.ResolveChoice(index),candidate.action.transformation==null?"#fffaf0":"#b8e6ef",14);b.RegisterCallback<PointerEnterEvent>(_=>{match.PreviewChoice(index);});Enter(b);}
-            Button(choice,"×",width*.5f-16,y+rows*58+3,32,32,match.CancelChoice,"#fffaf0",18);
+            var count=show?pending.Length:0;if(count==choiceCount)return;choiceCount=count;choiceIndex=0;choice.Clear();if(count==0)return;
+            var y=height*.64f;
+            var rotations=pending.Skip(1).Any(p=>p.action.transformation?.type=="rotate");
+            if(rotations)
+            {
+                var cells=pending.SelectMany(p=>p.captureCells).ToArray();var minX=cells.Min(c=>c.x);var maxX=cells.Max(c=>c.x);var minY=cells.Min(c=>c.y);var maxY=cells.Max(c=>c.y);
+                var buttons=new List<Button>();var w=64f;var total=(count-1)*(w+6)-6;
+                for(var i=1;i<count;i++)
+                {
+                    var index=i;var candidate=pending[i];
+                    var button=Button(choice,"",(width-total)*.5f+(i-1)*(w+6),y-66,w,52,()=>{choiceIndex=index;match.PreviewChoice(index);for(var n=0;n<buttons.Count;n++)Border(buttons[n],3,n+1==index?"#5aaac8":"#ffffff");},"#ecf9fc");buttons.Add(button);
+                    var cellSize=Mathf.Min(12,Mathf.Min(48f/(maxX-minX+1),34f/(maxY-minY+1)));var offset=new Vector2((w-(maxX-minX+1)*cellSize)*.5f,(46-(maxY-minY+1)*cellSize)*.5f);
+                    Func<Cell,Vector2> point=c=>offset+new Vector2((match.Viewer=="north"?maxX-c.x:c.x-minX)*cellSize,(match.Viewer=="north"?maxY-c.y:c.y-minY)*cellSize);
+                    foreach(var cell in pending[0].footprint){var q=point(cell);var tile=Box(button,"old-footprint",q.x,q.y,cellSize-1,cellSize-1,null,3);Border(tile,1,"#9db9c7");}
+                    foreach(var cell in candidate.footprint){var q=point(cell);Box(button,"new-footprint",q.x,q.y,cellSize-1,cellSize-1,"#5aaac8",3);}
+                    var pivot=pending[0].footprint[candidate.action.transformation.pivot];var center=point(pivot)+Vector2.one*(cellSize*.5f);Box(button,"pivot",center.x-2.5f,center.y-2.5f,5,5,"#ffe28a",3);Enter(button);
+                }
+            }
+            var keep=Button(choice,"そのまま",width*.5f-119,y,110,50,()=>match.ResolveChoice(0),"#fffaf0",14);Enter(keep);
+            var evolve=Button(choice,"成る",width*.5f+1,y,110,50,()=>match.ResolveChoice(choiceIndex>0?choiceIndex:1),"#b8e6ef",14);Enter(evolve);
+            Button(choice,"×",width*.5f+121,y+8,32,32,match.CancelChoice,"#fffaf0",18);
         }
         private void UpdateMarkers()
         {
@@ -266,6 +296,7 @@ namespace Azarashi.UnityView
             if(symbol=="crown"){move(3,7);line(7,12);line(12,4);line(17,12);line(21,7);line(18,19);line(6,19);p.ClosePath();p.Stroke();p.BeginPath();move(6,22);line(18,22);}
             else if(symbol=="helper"){move(12,2);line(21,6);line(19,16);line(12,22);line(5,16);line(3,6);p.ClosePath();p.Stroke();p.BeginPath();move(8,12);line(16,12);move(12,8);line(12,16);}
             else if(symbol=="clock"){p.strokeColor=new Color(.85f,.96f,1,.3f);p.Arc(new Vector2(12*s,12*s),10*s,0,360);p.Stroke();p.BeginPath();p.strokeColor=new Color(.85f,.96f,1,.85f);p.Arc(new Vector2(12*s,12*s),10*s,-90,-90+360*Mathf.Max(.002f,Progress));p.Stroke();p.BeginPath();move(12,5);line(12,12);line(17,15);}
+            else if(symbol=="grid"){move(3,3);line(21,3);line(21,21);line(3,21);p.ClosePath();move(12,3);line(12,21);move(3,12);line(21,12);}
             else if(symbol=="book"){move(12,21);line(12,5);line(4,3);line(3,18);line(12,20);line(21,18);line(20,3);line(12,5);}
             else if(symbol=="chevron-up"||symbol=="chevron-down"){move(5,symbol=="chevron-up"?15:9);line(12,symbol=="chevron-up"?8:16);line(19,symbol=="chevron-up"?15:9);}
             else if(symbol=="replay"){move(4,3);line(20,3);line(20,21);line(4,21);p.ClosePath();move(9,7);line(16,12);line(9,17);p.ClosePath();}

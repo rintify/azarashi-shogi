@@ -1,8 +1,6 @@
-# Unity Web版
+# Unity版
 
-Reactの画面・対局管理・ルール・棋譜・モデル・アニメーションと、RustのWASM探索エンジンを再利用し、GPU描画をUnityへ置き換えるWeb版です。Unity 6000.5.8f1 + WebGL Build Supportを使用します。
-
-この構成はブラウザで動きます。Reactが必要なので、Unity EditorのPlayボタンやmacOS/iOS/Androidの単独アプリとして対局する構成ではありません。
+Unity 6000.5.8f1 + WebGL Build Supportを使用する、Unity単体のゲームです。UIはUnity UI Toolkit、対局管理・入力・アニメーションはC#で実装しています。ブラウザでReactのUIを重ねる構成は廃止しました。
 
 ## ビルド・起動
 
@@ -12,40 +10,27 @@ npm run unity:build
 npm run unity:preview
 ```
 
-<http://127.0.0.1:4174/> を開きます。成果物は `dist-unity/`。HTML、Reactのassets、UnityBuildの全ファイルを一緒に配信します。既存の通常Web版は `npm run dev` / `npm run build` で起動・ビルドできます。
+<http://127.0.0.1:4174/> を開きます。成果物は `dist-unity/` です。Unityが生成するHTML・Build・StreamingAssetsを一緒に配信します。Unity Editorの場所は `UNITY_EDITOR=/path/to/Unity` で指定できます。macOSではRustのネイティブライブラリも自動ビルドするため、Rustのtoolchainが必要です。
 
-Unityの実行ファイルが標準位置にない場合:
+`unity:build -- --reuse` は既存のUnity出力をコピーし直すだけです。ソース変更後は通常のビルドを実行してください。通常のReact版は `npm run dev` / `npm run build` で継続して利用できます。
 
-```sh
-UNITY_EDITOR="/path/to/Unity" npm run unity:build
-```
+## コードの再利用と責務
 
-Unity C#やシェーダーに変更がなく、React側だけ再ビルドする場合:
+- **モデルと見た目の定義:** `scripts/export-unity-assets.tsx` が既存のTSXモデル・氷の盤面・アイコン・配色・照明・駒説明・AI難度設定をUnityアセットへ書き出します。ReactとThree.jsはこのビルド工程で使用し、Unity版の実行時には読み込みません。
+- **描画:** `SceneRenderer` が出力されたメッシュ・材質を読み込みます。座標系の反転はこの境界で処理し、Unity用シェーダーで元の線形色・ACESトーンマッピングを扱います。UnityとThree.jsはPBRと影の方式が異なるため、反射や影までピクセル単位で同一ではありません。
+- **合法手とAI:** 元のRustエンジンを共用します。WebGLでは同じWASMのルールAPIを呼び、探索はWeb Workerで行います。Editorでは同じRustコードをdylibとして呼びます。探索・評価・ルールのアルゴリズムをC#へ移植していません。Rust側の変更はネイティブ呼出用C ABIと計時・中断の接続です。
+- **対局管理:** `NativeMatch` が局面・手番・選択・棋譜を所有し、Rustが返す合法手と移動後局面を適用します。古い探索結果は局面番号で拒否します。
+- **表示と入力:** `NativeHud` はUI Toolkit、`NativeBoard` はモデルとガイド、`NativeCamera` は視点、`NativeMotion` と `NativeEffects` は移動・成り・捕食演出を担当します。UI展開で盤面の表示領域を変えません。
+- **保存:** `NativeStorage` がUnityの永続領域へ棋譜を保存します。WebGLはIndexedDBへ同期します。JSON棋譜は元のReact版と相互読み込みできます。実況用テキストも出力できます。
 
-```sh
-npm run unity:build -- --reuse
-```
+画面には持ち駒、成り選択、敵駒の移動範囲、危険・王冠・助っ人マーク、AI時計、設定、図鑑、リプレイ、勝敗演出をUnity内で表示します。人間対AI、AI対AI、ローカルPvPに対応します。ブラウザ連携はWASM接続・保存同期・ファイル選択/ダウンロード・画面解像度に限定しています。
 
-開発時は、一度ビルドしてから通常のVite開発サーバーのURLに `?renderer=unity` を付けてもUnity描画を選べます。
+## Editorと検証
 
-表示の検証には、棋譜一覧から `docs/fixtures/unity-smoke.json` を読み込めます。ルールエンジンで検証した15手で、配置・移動・捕食・ペンギンの変身・シャチの回転・王の捕食まで再生できます。
+一度 `unity:build` した後、Unity Hubで `unity/` を開き、`Assets/Scenes/Game.unity` をPlayできます。macOSのdylibはビルドスクリプトが `Assets/Plugins/macOS/` に配置します。Windows/Linux Editor用のRustバイナリやモバイルのネイティブ配布設定は今回含みません。
 
-## 所有者と接続
+ビルド前に `NativeValidation` がUnityのJSONシリアライザとRustネイティブ境界で15手の検証棋譜を再生します。配置・複数捕食・ペンギン変身・シャチ回転・王捕食を通し、Unityが出力した棋譜を元のTypeScriptデコーダでも再生して互換性を確認します。画面からも棋譜一覧で `docs/fixtures/unity-smoke.json` を読み込めます。
 
-- `src/scene/GameCanvas.tsx`: 描画バックエンドを選ぶ唯一の入口。通常版はThree.js、Unity版はUnityRendererを使用。
-- `src/unity/UnityRenderer.ts`: React Three Fiberのrenderer契約を実装。Reactによるポインター入力・レイキャストと、既存モデル・アニメーションの更新を継続。
-- `src/unity/SceneEncoder.ts`: 描画済みシーングラフから形状・マテリアル・座標の差分を生成。形状は初回と追加時に転送し、削除時にUnity側のリソースも解放。
-- `src/unity/protocol.ts` / `unity/Assets/Runtime/RenderProtocol.cs`: 描画専用のJSON契約（version 1）。ゲームの合法手・危険マスなどをUnityで再計算しない。
-- `unity/Assets/Runtime/SceneRenderer.cs`: カメラの投影を合わせ、Unityでメッシュと影を描画。左右の座標系変換をこの境界に集約。
-- `unity/Assets/Shaders/`: Unity用の動物・ガイド・海のシェーダー。モデル形状や動きはTSX側の既存定義が所有。
-- `scripts/build-unity.mjs`: Unity Editorのバッチビルド→ビルド情報の生成→ReactのUnity版ビルドを実行。
+生成アセット・Unity Library・ビルド出力はGitへ入れず、ソース・設定・フォントとそのOFLライセンスを管理します。ビルドログは `unity/BuildLogs/native.log` にあります。
 
-React UI・保存・リプレイ・効果音・成り選択・手番制御・TypeScriptルール・AI Worker・Rustソース・同梱Rust WASMは既存実装を共用します。AIをC#へ書き直したり、Unityのメインスレッドへ移したりしません。
-
-## 描画上の違いと配信
-
-Unityは独自のライティング・材質シェーダーで描くため、Three.js版と光沢や明るさが完全には一致しません。Dreiの環境マップ生成はUnityの照明へ置き換え、海の波は既存シェーダーの式をUnity用に移しています。
-
-これはUnity + Reactの複合Webビルドです。Unityが生成した `.data` / `.wasm` だけを投稿してもReact側は起動しません。unityroomなどUnity単体のアップロード形式を使う場合は、その配信方式へReact側も同梱する対応が別途必要です。
-
-Unityの生成物はGitへ入れません。プロジェクト設定・ソース・メタファイルをコミットし、`unity:build` で再生成します。Unityのログは `unity/BuildLogs/webgl.log` に残ります。
+この出力はUnity単体ですが、unityroomのアカウント登録・投稿操作・公開は行っていません。

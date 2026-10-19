@@ -6,6 +6,7 @@ using UnityEditor.Build.Reporting;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.UIElements;
 
 namespace Azarashi.UnityView.Editor
 {
@@ -13,10 +14,14 @@ namespace Azarashi.UnityView.Editor
     {
         public static void Build()
         {
+            NativeValidation.Run();
             var output = Environment.GetEnvironmentVariable("AZARASHI_UNITY_OUTPUT");
             if (string.IsNullOrWhiteSpace(output)) throw new InvalidOperationException("AZARASHI_UNITY_OUTPUT must be set");
             Directory.CreateDirectory("Assets/Scenes");
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            Directory.CreateDirectory("Assets/Resources/Native");
+            var panel=AssetDatabase.LoadAssetAtPath<PanelSettings>("Assets/Resources/Native/PanelSettings.asset");
+            if(panel==null){panel=ScriptableObject.CreateInstance<PanelSettings>();panel.scaleMode=PanelScaleMode.ConstantPixelSize;panel.clearColor=false;AssetDatabase.CreateAsset(panel,"Assets/Resources/Native/PanelSettings.asset");}
             EditorSceneManager.SaveScene(scene, "Assets/Scenes/Game.unity");
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene("Assets/Scenes/Game.unity", true) };
             PlayerSettings.companyName = "Azarashi Shogi";
@@ -24,12 +29,13 @@ namespace Azarashi.UnityView.Editor
             PlayerSettings.colorSpace = ColorSpace.Linear;
             PlayerSettings.runInBackground = true;
             PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Disabled;
+            PlayerSettings.WebGL.template = "PROJECT:Native";
             PlayerSettings.WebGL.initialMemorySize = 64;
             PlayerSettings.WebGL.maximumMemorySize = 512;
             PlayerSettings.WebGL.decompressionFallback = false;
             PlayerSettings.WebGL.dataCaching = true;
             PlayerSettings.WebGL.exceptionSupport = WebGLExceptionSupport.ExplicitlyThrownExceptionsOnly;
-            // The React page owns keyboard focus and DOM input. Unity only renders.
+            // Include the native scene shaders even though runtime meshes are generated from assets.
             var graphics = AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/GraphicsSettings.asset");
             if (graphics.Length > 0)
             {
