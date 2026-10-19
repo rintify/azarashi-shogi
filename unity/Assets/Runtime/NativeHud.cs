@@ -87,7 +87,7 @@ namespace Azarashi.UnityView
         }
         private void BuildGrid()
         {
-            var size=Mathf.Min(width-28,height-218);var cellSize=size/10;var panel=Box(root,"native-coordinate-board",(width-size)*.5f,132+(height-218-size)*.5f,size,size,null,0,true);var buttons=new List<Button>();
+            var size=Mathf.Min(width-28,height-242);var cellSize=size/10;var panel=Box(root,"native-coordinate-board",(width-size)*.5f,156+(height-242-size)*.5f,size,size,null,0,true);panel.SendToBack();var buttons=new List<Button>();
             var moves=match.SelectedMoves.ToArray();var enemy=match.SelectedId!=null&&match.State.pieces.Any(p=>p.id==match.SelectedId&&p.owner!=match.Viewer);
             for(var index=0;index<100;index++)
             {
@@ -116,7 +116,7 @@ namespace Azarashi.UnityView
                 var tray=Box(hud,"placement-tray",(width-w)*.5f,height-184,w,112,"#f4fcff",24,true);Border(tray,3,"#ffffff");Enter(tray);
                 var kinds=new[]{"seal","penguin","bear","orca"};for(var i=0;i<4;i++){var kind=kinds[i];var bw=(w-20)/4;var b=Button(tray,"",10+i*bw,10,bw-6,88,()=>{match.SelectStock(kind);expanded=false;Rebuild();},match.SelectedStock==kind?"#c0edf7":"#fffaf0");Icon(b,kind,false,(bw-44)*.5f,4,38);Text(b,match.Data.Config.pieces.First(p=>p.kind==kind).name,0,44,bw-10,18,11,bold:true,anchor:TextAnchor.MiddleCenter);Text(b,"×"+match.State.stocks.Of(match.State.turn).Count(kind),0,62,bw-10,16,11,anchor:TextAnchor.MiddleCenter);}
             }
-            if(match.SelectedId!=null||match.SelectedStock!=null)Button(hud,"×",width-50,height-108,36,36,match.ClearSelection,"#fff5e4",20);
+            if(match.Pending==null&&(match.SelectedId!=null||match.SelectedStock!=null))Button(hud,"×",width-50,height-108,36,36,match.ClearSelection,"#fff5e4",20);
             Text(hud,"あなたは"+(match.Settings.mode=="local-pvp"?match.Actor(match.State.turn):match.Settings.human=="south"?"先手・青":"後手・橙"),0,height-15,width,14,9,"#e4f4fa",false,TextAnchor.MiddleCenter);
         }
         private void BuildSpectatorDock(){var w=Mathf.Min(420,width-28);StockBar(hud,match.Viewer,height-112,w,true);Button(hud,match.Paused?"再生":"一時停止",width*.5f-76,height-58,96,42,match.TogglePause,"#ffe08a",12);Button(hud,"1手進む",width*.5f+28,height-58,84,42,match.StepAi,"#fff8e9",12);}
@@ -219,7 +219,7 @@ namespace Azarashi.UnityView
         private void UpdateMarkers()
         {
             foreach(var node in markNodes.Values)node.style.display=DisplayStyle.None;
-            if(match.Busy||match.Thinking||match.Dialog!=null||!match.HumanTurn)return;
+            if(gridOpen||match.Busy||match.Thinking||match.Dialog!=null||!match.HumanTurn)return;
             foreach(var entry in match.Marks)
             {
                 var piece=match.State.pieces.FirstOrDefault(p=>p.id==entry.Key);if(piece==null)continue;
