@@ -15,7 +15,7 @@ namespace Azarashi.UnityView
     {
         public string id, shader, texture;
         public float[] color, emissive;
-        public float opacity, roughness, metalness, clearcoat;
+        public float opacity, roughness, metalness, clearcoat, time;
         public bool transparent, additive, depthTest, depthWrite;
         public int side;
     }

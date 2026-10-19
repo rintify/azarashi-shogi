@@ -18,3 +18,13 @@ unity/BuildLogs/
 unity/.vs/
 unity/*.csproj
 unity/*.sln
+.openai/export-unity-assets.*
+unity/Assets/Resources/Native/SceneAssets.json*
+unity/Assets/Resources/Native/GameConfig.json*
+unity/Assets/Resources/Native/azarashi_engine.bytes*
+unity/Assets/Resources/Native/smoke.json*
+unity/Assets/Resources/Native/Icons/
+unity/Assets/Plugins/macOS/*.dylib*
+
+.openai/unity-roundtrip.json
+.openai/validate-unity-record.mjs

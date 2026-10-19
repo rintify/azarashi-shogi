@@ -1,4 +1,4 @@
-/** Rendering-only wire contract. Rules, input, match ownership and AI stay in React/Rust. */
+/** Build-time mesh/material asset contract shared by the TSX exporter and Unity renderer. */
 export const RENDER_PROTOCOL = 1;
 export interface MeshResource {
   id: string;
@@ -23,6 +23,7 @@ export interface MaterialResource {
   depthWrite: boolean;
   side: number;
   texture: string;
+  time: number;
 }
 export interface RenderNode {
   id: string;

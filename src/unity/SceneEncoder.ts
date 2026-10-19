@@ -83,6 +83,7 @@ function materialResource(
     depthWrite: material.depthWrite,
     side: material.side,
     texture: texture(basic.map),
+    time: ocean ? (shader.uniforms.time?.value ?? 0) : 0,
   };
 }
 

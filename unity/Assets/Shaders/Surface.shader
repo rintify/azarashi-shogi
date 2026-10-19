@@ -30,7 +30,7 @@ Shader "Azarashi/Surface" {
             o.Metallic = _Metallic; o.Smoothness = _Smoothness;
         }
         void filmic(Input IN, SurfaceOutputStandard o, inout fixed4 color) {
-            color.rgb = AzarashiFilmic(color.rgb);
+            color.rgb = LinearToGammaSpace(AzarashiFilmic(color.rgb));
         }
         ENDCG
     }

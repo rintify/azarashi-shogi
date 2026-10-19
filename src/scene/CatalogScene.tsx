@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { useFrame, useThree } from '@react-three/fiber';
-import { GameCanvas } from './GameCanvas';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { PCFSoftShadowMap, type Group } from 'three';
 import type { Kind } from '../game/types';
@@ -47,7 +46,7 @@ export function CatalogScene({
   reduced: boolean;
 }) {
   return (
-    <GameCanvas
+    <Canvas
       shadows={{ type: PCFSoftShadowMap }}
       dpr={[1, 1.8]}
       camera={{ position: [2.2, 1.9, 3.2], fov: 32 }}
@@ -78,6 +77,6 @@ export function CatalogScene({
         minPolarAngle={0.35}
         maxPolarAngle={Math.PI / 2 - 0.04}
       />
-    </GameCanvas>
+    </Canvas>
   );
 }
