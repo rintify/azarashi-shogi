@@ -17,6 +17,10 @@ export interface MaterialResource {
   roughness: number;
   metalness: number;
   clearcoat: number;
+  clearcoatRoughness: number;
+  envMapIntensity: number;
+  toneMapped: boolean;
+  flatShading: boolean;
   transparent: boolean;
   additive: boolean;
   depthTest: boolean;

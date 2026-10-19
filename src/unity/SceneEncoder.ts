@@ -77,6 +77,11 @@ function materialResource(
     roughness: surface.roughness ?? 1,
     metalness: surface.metalness ?? 0,
     clearcoat: (material as MeshStandardMaterial & { clearcoat?: number }).clearcoat ?? 0,
+    clearcoatRoughness:
+      (material as MeshStandardMaterial & { clearcoatRoughness?: number }).clearcoatRoughness ?? 0,
+    envMapIntensity: surface.envMapIntensity ?? 1,
+    toneMapped: material.toneMapped,
+    flatShading: surface.flatShading ?? false,
     transparent: material.transparent,
     additive: material.blending === AdditiveBlending,
     depthTest: material.depthTest,

@@ -15,6 +15,7 @@ async function run(command, args, env = {}) {
 }
 if (!process.argv.includes('--reuse')) {
   await access(editor);
+  await run(process.execPath, ['scripts/check-unity-presentation.mjs']);
   await run(process.execPath, ['scripts/check-wasm.mjs']);
   await run(join(root, 'node_modules/.bin/esbuild'), ['scripts/export-unity-assets.tsx', '--bundle', '--platform=node', '--format=cjs', '--packages=external', '--jsx=automatic', '--outfile=.openai/export-unity-assets.cjs']);
   await run(process.execPath, ['.openai/export-unity-assets.cjs']);
@@ -40,6 +41,7 @@ await rm(destination, { recursive: true, force: true });
 await cp(output, destination, { recursive: true });
 await cp(join(root, 'unity/Assets/Shaders/THIRD_PARTY.txt'), join(destination, 'THIRD_PARTY.txt'));
 await cp(join(root, 'unity/Assets/Resources/Native/FontLicense.txt'), join(destination, 'FONT-LICENSE.txt'));
+await cp(join(root, 'node_modules/lucide-react/LICENSE'), join(destination, 'ICON-LICENSE.txt'));
 const html = await readFile(join(destination, 'index.html'), 'utf8');
 if (html.includes('assets/index-') || html.includes('id="root"')) throw new Error('The native Unity build must not contain the React UI host.');
 await writeFile(join(destination, 'unity-build.json'), JSON.stringify({ renderer: 'Unity', ui: 'UI Toolkit', engine: 'original Rust WASM', builtAt: new Date().toISOString() }, null, 2));

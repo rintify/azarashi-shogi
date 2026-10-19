@@ -3,23 +3,30 @@ using System;
 namespace Azarashi.UnityView
 {
     // JsonUtility DTOs deliberately mirror src/unity/protocol.ts. No game rules live in Unity.
-    [Serializable] public sealed class MeshGroup { public int start, count, materialIndex; }
-    [Serializable] public sealed class MeshResource
+    [Serializable]
+    public sealed class MeshGroup
+    {
+        public int start, count, materialIndex;
+    }
+    [Serializable]
+    public sealed class MeshResource
     {
         public string id;
         public float[] positions, normals, uv;
         public int[] indices;
         public MeshGroup[] groups;
     }
-    [Serializable] public sealed class MaterialResource
+    [Serializable]
+    public sealed class MaterialResource
     {
         public string id, shader, texture;
         public float[] color, emissive;
-        public float opacity, roughness, metalness, clearcoat, time;
-        public bool transparent, additive, depthTest, depthWrite;
+        public float opacity, roughness, metalness, clearcoat, clearcoatRoughness, envMapIntensity, time;
+        public bool transparent, additive, depthTest, depthWrite, toneMapped, flatShading;
         public int side;
     }
-    [Serializable] public sealed class RenderNode
+    [Serializable]
+    public sealed class RenderNode
     {
         public string id, mesh;
         public string[] materials;
@@ -27,8 +34,13 @@ namespace Azarashi.UnityView
         public bool visible, castShadow, receiveShadow;
         public int order;
     }
-    [Serializable] public sealed class RenderCamera { public float[] world, projection; public float near, far; }
-    [Serializable] public sealed class RenderFrame
+    [Serializable]
+    public sealed class RenderCamera
+    {
+        public float[] world, projection; public float near, far;
+    }
+    [Serializable]
+    public sealed class RenderFrame
     {
         public int protocol;
         public MeshResource[] meshes;

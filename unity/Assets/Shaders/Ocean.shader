@@ -18,7 +18,7 @@ Shader "Azarashi/Ocean" {
                 float a = sin(p.x*1.7+p.y*.65+t*.35), c = sin(p.x*.35+p.y*.44+t*.15);
                 float ripple = pow(max(0,sin(p.x*.55+p.y*1.8+t*.3)),30) * (.5+.5*sin(p.x*.34-p.y*.2));
                 float3 color = lerp(_Color.rgb,_Emission.rgb,.40+.08*c+.025*a) + float3(.12,.22,.25)*ripple*.13;
-                return float4(LinearToGammaSpace(AzarashiFilmic(color)),1);
+                return float4(AzarashiFilmic(color),1);
             }
             ENDCG
         }

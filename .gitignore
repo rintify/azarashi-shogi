@@ -28,3 +28,14 @@ unity/Assets/Plugins/macOS/*.dylib*
 
 .openai/unity-roundtrip.json
 .openai/validate-unity-record.mjs
+
+unity/Assets/Resources/Native/Presentation.json*
+unity/Assets/Resources/Native/PresentationFixtures.json*
+unity/Assets/Resources/Native/Symbols/
+unity/Assets/Resources/Native/Shadows/
+
+.openai/unity-presentation-fixtures.json
+
+unity/Assets/Resources/Native/Effects/
+
+unity/Assets/Resources/Native/Rules.json*

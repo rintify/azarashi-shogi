@@ -1,4 +1,6 @@
-Filmic.cginc adapts the ACES fitted tone mapping implementation from three.js.
+Filmic.cginc and PhysicalLighting.cginc adapt the ACES fitted tone mapping,
+GGX BRDF, multiscattering and CubeUV environment sampling implementations from three.js.
+Native symbol assets are rasterized from lucide-react (ISC License); see node_modules/lucide-react/LICENSE.
 
 The MIT License
 

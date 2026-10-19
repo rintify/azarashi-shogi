@@ -16,12 +16,19 @@ namespace Azarashi.UnityView.Editor
         {
             NativeValidation.Run();
             var output = Environment.GetEnvironmentVariable("AZARASHI_UNITY_OUTPUT");
-            if (string.IsNullOrWhiteSpace(output)) throw new InvalidOperationException("AZARASHI_UNITY_OUTPUT must be set");
+            if (string.IsNullOrWhiteSpace(output))
+                throw new InvalidOperationException("AZARASHI_UNITY_OUTPUT must be set");
             Directory.CreateDirectory("Assets/Scenes");
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             Directory.CreateDirectory("Assets/Resources/Native");
-            var panel=AssetDatabase.LoadAssetAtPath<PanelSettings>("Assets/Resources/Native/PanelSettings.asset");
-            if(panel==null){panel=ScriptableObject.CreateInstance<PanelSettings>();panel.scaleMode=PanelScaleMode.ConstantPixelSize;panel.clearColor=false;AssetDatabase.CreateAsset(panel,"Assets/Resources/Native/PanelSettings.asset");}
+            var panel = AssetDatabase.LoadAssetAtPath<PanelSettings>("Assets/Resources/Native/PanelSettings.asset");
+            if (panel == null)
+            {
+                panel = ScriptableObject.CreateInstance<PanelSettings>();
+                panel.scaleMode = PanelScaleMode.ConstantPixelSize;
+                panel.clearColor = false;
+                AssetDatabase.CreateAsset(panel, "Assets/Resources/Native/PanelSettings.asset");
+            }
             EditorSceneManager.SaveScene(scene, "Assets/Scenes/Game.unity");
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene("Assets/Scenes/Game.unity", true) };
             PlayerSettings.companyName = "Azarashi Shogi";
@@ -50,20 +57,26 @@ namespace Azarashi.UnityView.Editor
                 foreach (var shaderName in new[] { "Azarashi/Surface", "Azarashi/Unlit", "Azarashi/Ocean" })
                 {
                     var shader = Shader.Find(shaderName);
-                    if (shader == null) throw new Exception("Missing renderer shader: " + shaderName);
+                    if (shader == null)
+                        throw new Exception("Missing renderer shader: " + shaderName);
                     included.Add(shader);
                 }
                 shaders.arraySize = included.Count;
                 var index = 0;
-                foreach (var shader in included) shaders.GetArrayElementAtIndex(index++).objectReferenceValue = shader;
+                foreach (var shader in included)
+                    shaders.GetArrayElementAtIndex(index++).objectReferenceValue = shader;
                 settings.ApplyModifiedPropertiesWithoutUndo();
             }
             AssetDatabase.SaveAssets();
-            var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions {
-                scenes = new[] { "Assets/Scenes/Game.unity" }, locationPathName = output,
-                target = BuildTarget.WebGL, options = BuildOptions.None
+            var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions
+            {
+                scenes = new[] { "Assets/Scenes/Game.unity" },
+                locationPathName = output,
+                target = BuildTarget.WebGL,
+                options = BuildOptions.None
             });
-            if (report.summary.result != BuildResult.Succeeded) throw new Exception("Unity Web build failed: " + report.summary.result);
+            if (report.summary.result != BuildResult.Succeeded)
+                throw new Exception("Unity Web build failed: " + report.summary.result);
         }
     }
 }

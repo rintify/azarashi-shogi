@@ -1,0 +1,13 @@
+{
+  "three": "0.180.0",
+  "sources": [
+    {
+      "path": "src/scene/IceWorld.tsx",
+      "sha256": "de06b124c0c7625183c5462369a2279e937a1c0c8eb664954889c21c54d4bfe5"
+    },
+    {
+      "path": "src/presentation/biteAudio.ts",
+      "sha256": "d09113125ca02f075bd315d12ee709fb2d313f05d0b04ededa2d5929a212ddf1"
+    }
+  ]
+}
