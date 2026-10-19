@@ -6,3 +6,15 @@ coverage/
 playwright-report/
 test-results/
 rust/azarashi-engine/target/
+dist-unity/
+public/UnityBuild/
+unity/[Ll]ibrary/
+unity/[Tt]emp/
+unity/[Oo]bj/
+unity/[Ll]ogs/
+unity/[Uu]ser[Ss]ettings/
+unity/Build/
+unity/BuildLogs/
+unity/.vs/
+unity/*.csproj
+unity/*.sln
