@@ -421,7 +421,7 @@ namespace Azarashi.UnityView
                 KingThreatened = king != null && enemyMoves.Any(m => m.captured.Any(p => p.id == king.id));
                 if (king != null && enemyMoves.Any(m => m.captured.Any(p => p.id == king.id)) && myMoves.Where(m => m.piece.id == king.id).All(m => Assess(m.after, m.piece).unsafeCell))
                     foreach (var group in myMoves.Where(m => m.piece.id != king.id).GroupBy(m => m.piece.id))
-                        if (group.Any(m => !Assess(m.after, m.piece).kingDanger) && (!Marks.TryGetValue(group.Key, out var mark) || mark != "king"))
+                        if (group.Any(m => !m.captured.Any(p => p.id == king.id) && !Assess(m.after, m.piece).kingDanger) && (!Marks.TryGetValue(group.Key, out var mark) || mark != "king"))
                             Marks[group.Key] = "helper";
                 foreach (var piece in State.pieces.Where(p => Marks.TryGetValue(p.id, out var mark) && mark == "danger"))
                     if (Assess(State, piece).Red && myMoves.Where(m => m.piece.id == piece.id).All(m => Assess(m.after, m.piece).Red))
@@ -804,12 +804,17 @@ namespace Azarashi.UnityView
                 last = null;
                 ClearSelection();
                 Refresh();
-                nextReplay = Time.unscaledTime + .3f;
+                nextReplay = Time.unscaledTime + .34f / ReplaySpeed;
             }
             catch (Exception error) { Hud.Notify(error.Message); }
         }
         public void StepReplay(int direction)
         {
+            if (Replaying && direction < 0)
+            {
+                SeekReplay(ReplayCursor - 1);
+                return;
+            }
             if (!Replaying || Motion != null)
                 return;
             var next = Mathf.Clamp(ReplayCursor + direction, 0, ReplayTotal);
@@ -823,7 +828,19 @@ namespace Azarashi.UnityView
             State = replayStates[next];
             last = preview;
             Motion = preview == null ? null : new NativeMotion(Data, before, preview);
+            if (Motion != null) Motion.Duration /= ReplaySpeed;
             Marks.Clear();
+            Hud.Rebuild();
+        }
+        public void ToggleReplay()
+        {
+            if (!Replaying) return;
+            if (ReplayPlaying) ReplayPlaying = false;
+            else
+            {
+                if (ReplayCursor == ReplayTotal) SeekReplay(0);
+                ReplayPlaying = true;
+            }
             Hud.Rebuild();
         }
         public void SeekReplay(int cursor)

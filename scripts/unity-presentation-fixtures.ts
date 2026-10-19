@@ -19,17 +19,19 @@ import { motionAudioCues } from '../src/presentation/motionAudio';
 export async function exportPresentationFixtures(directory: string) {
   const record = JSON.parse(await readFile('docs/fixtures/unity-smoke.json', 'utf8'));
   const cases: any[] = [];
-  const add = (before: GameState, preview: ActionPreview, stage = 'travel') => {
+  const add = (before: GameState, preview: ActionPreview, stage = 'travel', speed = 1) => {
     const after = applyPreview(before, preview);
     const motion = createMotion(before, after, 0)!;
     if (stage === 'choice') {
       motion.stage = 'choice';
       motion.duration = 620;
     }
+    motion.duration /= speed;
     cases.push({
       before,
       preview: { ...preview, after },
       stage,
+      speed,
       duration: motion.duration / 1000,
       playbackDuration: playbackDuration(motion) / 1000,
       landing: landingMoment(motion),
@@ -68,6 +70,8 @@ export async function exportPresentationFixtures(directory: string) {
   for (const action of record.actions) {
     const next = applyAction(state, action);
     add(state, next.lastAction!);
+    add(state, next.lastAction!, 'travel', 0.5);
+    add(state, next.lastAction!, 'travel', 2);
     if (next.lastAction!.action.type === 'move' && next.lastAction!.action.transformation)
       add(state, next.lastAction!, 'choice');
     state = next;

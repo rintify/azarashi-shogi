@@ -30,7 +30,7 @@ namespace Azarashi.UnityView.Editor
         [Serializable]
         private sealed class MotionCase
         {
-            public Position before; public Preview preview; public string stage; public float duration, playbackDuration; public Sample[] samples; public Capture[] captures; public Flight[] flights; public NativeAudioCue[] audio, resolveAudio;
+            public Position before; public Preview preview; public string stage; public float speed, duration, playbackDuration; public Sample[] samples; public Capture[] captures; public Flight[] flights; public NativeAudioCue[] audio, resolveAudio;
         }
         [Serializable]
         private sealed class Sample
@@ -98,6 +98,7 @@ namespace Azarashi.UnityView.Editor
                 if (string.IsNullOrEmpty(item.preview.action.transformation?.type))
                     item.preview.action.transformation = null;
                 var motion = new NativeMotion(data, item.before, item.preview, item.stage == "choice");
+                motion.Duration /= item.speed;
                 Close(motion.Duration, item.duration, "duration");
                 ValidateAudio(motion, item.audio);
                 if (item.stage != "choice")

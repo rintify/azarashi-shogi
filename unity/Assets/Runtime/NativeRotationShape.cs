@@ -40,16 +40,19 @@ namespace Azarashi.UnityView
                 var y = (cell.y - minY) * 15 + 1;
                 painter.strokeColor = new Color(Tint.r, Tint.g, Tint.b, .4f);
                 painter.lineWidth = scale;
-                for (var edge = 0; edge < 4; edge++)
-                    for (var n = 0; n < 3; n++)
-                    {
-                        var a = edge == 0 ? new Vector2(x + 3 + n * 4, y) : edge == 1 ? new Vector2(x + 13, y + 3 + n * 4) : edge == 2 ? new Vector2(x + 10 - n * 4, y + 13) : new Vector2(x, y + 10 - n * 4);
-                        var b = a + (edge == 0 ? Vector2.right : edge == 1 ? Vector2.up : edge == 2 ? Vector2.left : Vector2.down) * 2;
-                        painter.BeginPath();
-                        painter.MoveTo(point(a));
-                        painter.LineTo(point(b));
-                        painter.Stroke();
-                    }
+                // SVG rect rx=4, stroke-dasharray="2 2": carry the dash
+                // phase continuously around its rounded corners.
+                var perimeter = 20 + 8 * Mathf.PI;
+                for (var dash = 0f; dash < perimeter; dash += 4)
+                {
+                    var end = Mathf.Min(perimeter, dash + 2);
+                    painter.BeginPath();
+                    painter.MoveTo(point(new Vector2(x, y) + OutlinePoint(dash)));
+                    for (var distance = dash + .125f; distance < end; distance += .125f)
+                        painter.LineTo(point(new Vector2(x, y) + OutlinePoint(distance)));
+                    painter.LineTo(point(new Vector2(x, y) + OutlinePoint(end)));
+                    painter.Stroke();
+                }
             }
             foreach (var cell in candidate.footprint)
             {
@@ -79,6 +82,21 @@ namespace Azarashi.UnityView
                 painter.Arc(point(new Vector2((pivot.x - minX) * 15 + 7.5f, (pivot.y - minY) * 15 + 7.5f)), 3 * scale, 0, 360);
                 painter.Fill();
             }
+        }
+        private static Vector2 OutlinePoint(float distance)
+        {
+            var corner = 2 * Mathf.PI;
+            var side = 5 + corner;
+            var edge = Mathf.Min(3, Mathf.FloorToInt(distance / side));
+            var local = distance - edge * side;
+            Vector2 p;
+            if (local <= 5) p = new Vector2(4 + local, 0);
+            else
+            {
+                var angle = (local - 5) / 4 - Mathf.PI * .5f;
+                p = new Vector2(9 + 4 * Mathf.Cos(angle), 4 + 4 * Mathf.Sin(angle));
+            }
+            return edge == 0 ? p : edge == 1 ? new Vector2(13 - p.y, p.x) : edge == 2 ? new Vector2(13 - p.x, 13 - p.y) : new Vector2(p.y, 13 - p.x);
         }
     }
 }

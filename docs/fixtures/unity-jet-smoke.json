@@ -1,0 +1,89 @@
+{
+  "id": "unity-jet-smoke-v1",
+  "createdAt": "2026-10-19T00:00:00.000Z",
+  "seed": 123,
+  "version": 1,
+  "rulesVersion": 2,
+  "settings": {
+    "mode": "ai-vs-ai",
+    "human": "south",
+    "difficulty": 1
+  },
+  "actions": [
+    {
+      "type": "place",
+      "kind": "penguin",
+      "at": {
+        "x": 4,
+        "y": 7
+      }
+    },
+    {
+      "type": "place",
+      "kind": "seal",
+      "at": {
+        "x": 4,
+        "y": 2
+      }
+    },
+    {
+      "type": "move",
+      "pieceId": "p0",
+      "to": {
+        "x": 4,
+        "y": 6
+      }
+    },
+    {
+      "type": "move",
+      "pieceId": "p1",
+      "to": {
+        "x": 4,
+        "y": 3
+      }
+    },
+    {
+      "type": "move",
+      "pieceId": "p0",
+      "to": {
+        "x": 4,
+        "y": 5
+      }
+    },
+    {
+      "type": "move",
+      "pieceId": "p1",
+      "to": {
+        "x": 4,
+        "y": 4
+      }
+    },
+    {
+      "type": "move",
+      "pieceId": "p0",
+      "to": {
+        "x": 4,
+        "y": 4
+      },
+      "transformation": {
+        "type": "promote"
+      }
+    },
+    {
+      "type": "place",
+      "kind": "orca",
+      "at": {
+        "x": 5,
+        "y": 2
+      }
+    },
+    {
+      "type": "move",
+      "pieceId": "p0",
+      "to": {
+        "x": 4,
+        "y": 1
+      }
+    }
+  ]
+}

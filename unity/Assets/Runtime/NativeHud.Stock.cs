@@ -20,6 +20,11 @@ namespace Azarashi.UnityView
         }
         private void UpdateGridPulse()
         {
+            foreach (var button in gridCells.Keys.Where(button => button.panel == null).ToArray())
+            {
+                gridCells.Remove(button);
+                gridPulses.Remove(button);
+            }
             foreach (var pulse in gridPulses)
             {
                 var phase = Mathf.Repeat((Time.unscaledTime - pulse.Value) / 2.8f, 1);
@@ -365,7 +370,7 @@ namespace Azarashi.UnityView
             var buttonWidth = Mathf.Min(40, (w - 24) / 7);
             var gap = (w - 24 - buttonWidth * 7) / 6;
             var names = new[] { "first", "left", match.ReplayPlaying ? "pause-filled" : "play-filled", "right", "last", "", "x" };
-            Action[] actions = { () => match.SeekReplay(0), () => match.StepReplay(-1), () => { match.ReplayPlaying = !match.ReplayPlaying; Rebuild(); }, () => { match.ReplayPlaying = false; match.StepReplay(1); }, () => match.SeekReplay(match.ReplayTotal), () => { match.ReplaySpeed = match.ReplaySpeed == .5f ? 1 : match.ReplaySpeed == 1 ? 2 : .5f; Rebuild(); }, match.EndReplay };
+            Action[] actions = { () => match.SeekReplay(0), () => match.SeekReplay(match.ReplayCursor - 1), match.ToggleReplay, () => { match.ReplayPlaying = false; match.StepReplay(1); }, () => match.SeekReplay(match.ReplayTotal), () => { match.ReplaySpeed = match.ReplaySpeed == .5f ? 1 : match.ReplaySpeed == 1 ? 2 : .5f; Rebuild(); }, match.EndReplay };
             for (var i = 0; i < 7; i++)
             {
                 var x = 12 + i * (buttonWidth + gap);
