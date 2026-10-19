@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -8,7 +9,31 @@ namespace Azarashi.UnityView
     {
         private VisualElement catalogStage;
         private bool catalogDragging;
+        private bool resetCatalogCamera;
+        private float catalogYawDelta, catalogPolarDelta;
         private float catalogPolar = 1.2205f, catalogDistance = 3.499f;
+        public static float CatalogWheelDistance(float distance, float delta) => delta == 0 ? distance : Mathf.Clamp(distance * Mathf.Pow(.95f, -Mathf.Sign(delta)), 2.4f, 8);
+        public static float CatalogPinchDistance(float distance, float previous, float current) => Mathf.Clamp(distance * previous / current, 2.4f, 8);
+        public static void StepCatalogOrbit(ref float angle, ref float polar, ref float yawDelta, ref float polarDelta, bool autoRotate)
+        {
+            // Drei enables damping; three-stdlib updates it on each frame and
+            // each pointer movement: .05 damping, .7 autoRotateSpeed, .07 degrees.
+            if (autoRotate) yawDelta += .07f;
+            angle += yawDelta * .05f;
+            polar = Mathf.Clamp(polar + polarDelta * .05f, .35f, Mathf.PI / 2 - .04f);
+            yawDelta *= .95f;
+            polarDelta *= .95f;
+        }
+        private void ApplyCatalogOrbit() => StepCatalogOrbit(ref CatalogAngle, ref catalogPolar, ref catalogYawDelta, ref catalogPolarDelta, CatalogSpins && !catalogDragging);
+        public void ResetCatalog()
+        {
+            CatalogIndex = 0;
+            CatalogSpins = true;
+            shownCatalog = -1;
+            catalogDragging = false;
+            catalogYawDelta = catalogPolarDelta = 0;
+            resetCatalogCamera = true;
+        }
         private void CatalogDialog()
         {
             var w = DialogWidth(720, true);
@@ -60,31 +85,85 @@ namespace Azarashi.UnityView
             if (!catalogStage.ClassListContains("drag-bound"))
             {
                 catalogStage.AddToClassList("drag-bound");
+                var inputStage = catalogStage;
                 var previous = Vector2.zero;
+                var touches = new Dictionary<int, Vector2>();
+                var mousePointer = -1;
+                var mouseButton = -1;
+                var pinchDistance = 0f;
+                System.Func<float> touchDistance = () => touches.Count == 2 ? Vector2.Distance(touches.Values.First(), touches.Values.Last()) : 0;
+                System.Action<Vector2> rotate = delta =>
+                {
+                    catalogYawDelta += delta.x * 360 / Mathf.Max(1, inputStage.contentRect.height);
+                    catalogPolarDelta -= delta.y * Mathf.PI * 2 / Mathf.Max(1, inputStage.contentRect.height);
+                };
                 catalogStage.RegisterCallback<PointerDownEvent>(e =>
                 {
-                    if (e.target != catalogStage)
+                    if (e.target != inputStage || catalogStage != inputStage)
                         return;
-                    catalogDragging = true;
+                    if (e.pointerType == UnityEngine.UIElements.PointerType.touch)
+                    {
+                        touches[e.pointerId] = e.position;
+                        pinchDistance = touchDistance();
+                    }
+                    else
+                    {
+                        // Source right-button / modified-left panning is disabled.
+                        if (e.button != 0 && e.button != 2 || e.button == 0 && (e.ctrlKey || e.commandKey || e.shiftKey)) return;
+                        mousePointer = e.pointerId;
+                        mouseButton = e.button;
+                    }
+                    catalogDragging = touches.Count == 1 || touches.Count == 2 || mousePointer >= 0;
                     previous = e.position;
-                    catalogStage.CapturePointer(e.pointerId);
+                    inputStage.CapturePointer(e.pointerId);
+                    e.StopPropagation();
                 });
                 catalogStage.RegisterCallback<PointerMoveEvent>(e =>
                 {
-                    if (!catalogDragging)
-                        return;
+                    if (catalogStage != inputStage) return;
                     var delta = (Vector2)e.position - previous;
-                    // OrbitControls uses the canvas HEIGHT for both angular axes.
-                    CatalogAngle += delta.x * 360 / Mathf.Max(1, catalogStage.contentRect.height);
-                    catalogPolar -= delta.y * Mathf.PI * 2 / Mathf.Max(1, catalogStage.contentRect.height);
-                    catalogPolar = Mathf.Clamp(catalogPolar, .35f, Mathf.PI / 2 - .04f);
+                    if (touches.TryGetValue(e.pointerId, out var old))
+                    {
+                        touches[e.pointerId] = e.position;
+                        if (touches.Count == 1) rotate((Vector2)e.position - old);
+                        else if (touches.Count == 2)
+                        {
+                            var distance = touchDistance();
+                            if (pinchDistance > 0 && distance > 0) catalogDistance = CatalogPinchDistance(catalogDistance, pinchDistance, distance);
+                            pinchDistance = distance;
+                        }
+                        if (touches.Count <= 2) ApplyCatalogOrbit();
+                    }
+                    else if (e.pointerId == mousePointer)
+                    {
+                        // OrbitControls uses canvas HEIGHT for both rotation axes,
+                        // and one zoom step per middle-button movement event.
+                        if (mouseButton == 0) rotate(delta);
+                        else if (mouseButton == 2) catalogDistance = CatalogWheelDistance(catalogDistance, delta.y);
+                        ApplyCatalogOrbit();
+                    }
                     previous = e.position;
                 });
-                catalogStage.RegisterCallback<PointerUpEvent>(e => { catalogDragging = false; catalogStage.ReleasePointer(e.pointerId); });
-                catalogStage.RegisterCallback<PointerCaptureOutEvent>(_ => catalogDragging = false);
+                System.Action<int> release = pointer =>
+                {
+                    touches.Remove(pointer);
+                    pinchDistance = touchDistance();
+                    if (mousePointer == pointer) { mousePointer = -1; mouseButton = -1; }
+                    if (catalogStage == inputStage) catalogDragging = touches.Count == 1 || touches.Count == 2 || mousePointer >= 0;
+                };
+                catalogStage.RegisterCallback<PointerUpEvent>(e => { release(e.pointerId); inputStage.ReleasePointer(e.pointerId); });
+                catalogStage.RegisterCallback<PointerCancelEvent>(e => { release(e.pointerId); inputStage.ReleasePointer(e.pointerId); });
+                catalogStage.RegisterCallback<PointerCaptureOutEvent>(e => release(e.pointerId));
                 catalogStage.RegisterCallback<WheelEvent>(e =>
                 {
-                    catalogDistance = Mathf.Clamp(catalogDistance * Mathf.Pow(.95f, -e.delta.y), 2.4f, 8);
+                    if (catalogStage != inputStage) return;
+                    // Source three-stdlib OrbitControls applies getZoomScale()
+                    // once per wheel event, independently of its delta magnitude.
+                    if (touches.Count == 0 && mouseButton != 2)
+                    {
+                        catalogDistance = CatalogWheelDistance(catalogDistance, e.delta.y);
+                        ApplyCatalogOrbit();
+                    }
                     e.StopPropagation();
                 });
             }
@@ -181,18 +260,22 @@ namespace Azarashi.UnityView
                 return;
             var rw = Mathf.Clamp(Mathf.RoundToInt(w * uiScale), 1, 1600);
             var rh = Mathf.Clamp(Mathf.RoundToInt(h * uiScale), 1, 1600);
-            if (catalogTexture.width != rw || catalogTexture.height != rh)
+            var resized = catalogTexture.width != rw || catalogTexture.height != rh;
+            if (resized)
             {
                 catalogTexture.Release();
                 catalogTexture.width = rw;
                 catalogTexture.height = rh;
                 catalogTexture.Create();
+            }
+            if (resized || resetCatalogCamera)
+            {
+                resetCatalogCamera = false;
                 CatalogAngle = 0;
                 catalogPolar = Mathf.Acos(1.2f / Mathf.Sqrt(1.8f * 1.8f + 1.2f * 1.2f + 2.75f * 2.75f));
                 catalogDistance = Mathf.Clamp(Mathf.Sqrt(1.8f * 1.8f + 1.2f * 1.2f + 2.75f * 2.75f) * Mathf.Max(1, h / w), 2.4f, 8);
             }
-            if (CatalogSpins && !catalogDragging)
-                CatalogAngle += Time.unscaledDeltaTime * 4.2f;
+            ApplyCatalogOrbit();
             var theta = Mathf.Atan2(1.8f, 2.75f) - CatalogAngle * Mathf.Deg2Rad;
             var offset = new Vector3(Mathf.Sin(catalogPolar) * Mathf.Sin(theta), Mathf.Cos(catalogPolar), -Mathf.Sin(catalogPolar) * Mathf.Cos(theta)) * catalogDistance;
             catalogCamera.aspect = w / h;

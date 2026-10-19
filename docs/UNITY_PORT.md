@@ -19,7 +19,7 @@ Windows/macOSとも、ビルド前の検証に使うRustネイティブライブ
 ## コードの再利用と責務
 
 - **モデルと見た目の定義:** `scripts/export-unity-assets.tsx` が既存のTSXモデル・氷の盤面・アイコン・配色・照明・駒説明・AI難度設定をUnityアセットへ書き出します。ReactとThree.jsはこのビルド工程で使用し、Unity版の実行時には読み込みません。
-- **描画:** `SceneRenderer` が出力されたメッシュ・材質を読み込みます。座標系の反転はこの境界で処理し、Unity用シェーダーで元の線形色・ACESトーンマッピングを扱います。UnityとThree.jsはPBRと影の方式が異なるため、反射や影までピクセル単位で同一ではありません。
+- **描画:** `SceneRenderer` が出力されたメッシュ・材質を読み込みます。座標系の反転はこの境界で処理し、元Three r180のGGX・clearcoat・環境照明・ACESと、RGBA深度のPCFSoftをUnity用シェーダーへ移植しています。盤面・図鑑の影の投影とbiasも元の光源から出力します。GPU・文字描画を含むピクセル単位の完全一致を保証するものではありません。
 - **合法手とAI:** 元のRustエンジンを共用します。WebGLでは同じWASMのルールAPIを呼び、探索はWeb Workerで行います。Editorでは同じRustコードをdylibとして呼びます。探索・評価・ルールのアルゴリズムをC#へ移植していません。Rust側の変更はネイティブ呼出用C ABIと計時・中断の接続です。
 - **対局管理:** `NativeMatch` が局面・手番・選択・棋譜を所有し、Rustが返す合法手と移動後局面を適用します。古い探索結果は局面番号で拒否します。
 - **表示と入力:** `NativeHud` はUI Toolkit、`NativeBoard` はモデルとガイド、`NativeCamera` は視点、`NativeMotion` と `NativeEffects` は移動・成り・捕食演出を担当します。UI展開で盤面の表示領域を変えません。
@@ -34,5 +34,9 @@ Windows/macOSとも、ビルド前の検証に使うRustネイティブライブ
 ビルド前に `NativeValidation` がUnityのJSONシリアライザとRustネイティブ境界で15手の検証棋譜を再生します。配置・複数捕食・ペンギン変身・シャチ回転・王捕食を通し、Unityが出力した棋譜を元のTypeScriptデコーダでも再生して互換性を確認します。画面からも棋譜一覧で `docs/fixtures/unity-smoke.json` を読み込めます。
 
 生成アセット・Unity Library・ビルド出力はGitへ入れず、ソース・設定・フォントとそのOFLライセンスを管理します。ビルドログは `unity/BuildLogs/native.log` にあります。
+
+6000.5.8f1のWebGL UI Toolkitには大きなUI更新時のステージング確保の不具合があるため、通常ビルドはプロジェクト専用のEditorコピーを自動準備し、WebGL用モジュールに領域統合・端数調整を反映します。インストール済みUnityは変更しません。適用対象・元モジュール・修正コードのハッシュを検査し、毎回5つの境界ケースを検証します。詳細と最新の実画面検証結果は[UNITY_PRESENTATION.md](UNITY_PRESENTATION.md)に記録しています。
+
+`docs/fixtures/unity-jet-smoke.json`は、元のルールエンジンで生成・検証した9手の追加棋譜です。8手目から進めるとジェットの飛行・炎・王の捕食を確認できます。15手棋譜には王の着地、雪煙、複数捕食と光球、ペンギン変身、シャチ回転が含まれます。
 
 この出力はUnity単体ですが、unityroomのアカウント登録・投稿操作・公開は行っていません。

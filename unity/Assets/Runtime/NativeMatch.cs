@@ -242,6 +242,7 @@ namespace Azarashi.UnityView
         public void Open(string dialog)
         {
             CancelThinking();
+            if (dialog == "catalog" && Dialog != "catalog") Hud.ResetCatalog();
             Dialog = dialog;
             ReplayPlaying = false;
             ClearSelection();

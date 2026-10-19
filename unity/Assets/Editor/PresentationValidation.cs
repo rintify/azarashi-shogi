@@ -11,8 +11,11 @@ namespace Azarashi.UnityView.Editor
         [Serializable]
         private sealed class Fixture
         {
-            public MotionCase[] cases; public GuideCase[] guides; public CameraOrbit[] cameraOrbits; public ChoiceCase[] choices;
+            public MotionCase[] cases; public GuideCase[] guides; public CameraOrbit[] cameraOrbits; public ChoiceCase[] choices; public CatalogZoom[] catalogZooms; public CatalogDamping[] catalogDamping;
         }
+        [Serializable] private sealed class CatalogZoom { public float distance, delta, previous, current, expected; }
+        [Serializable] private sealed class CatalogDamping { public float polar, yawDelta, polarDelta; public bool automatic; public CatalogSample[] samples; }
+        [Serializable] private sealed class CatalogSample { public float angle, polar; }
         [Serializable] private sealed class ChoiceCase
         {
             public PieceState selected; public string owner; public Preview[] options; public int[] offered; public bool warning;
@@ -77,6 +80,24 @@ namespace Azarashi.UnityView.Editor
                 }
             }
             var fixture = JsonUtility.FromJson<Fixture>(File.ReadAllText(Path.GetFullPath("../.openai/unity-presentation-fixtures.json")));
+            foreach (var item in fixture.catalogZooms)
+                Close(item.previous == 0 ? NativeHud.CatalogWheelDistance(item.distance, item.delta) : NativeHud.CatalogPinchDistance(item.distance, item.previous, item.current), item.expected, "catalog zoom");
+            var dampingCount = 0;
+            foreach (var item in fixture.catalogDamping)
+            {
+                var angle = 0f;
+                var polar = item.polar;
+                var yawDelta = item.yawDelta;
+                var polarDelta = item.polarDelta;
+                foreach (var sample in item.samples)
+                {
+                    NativeHud.StepCatalogOrbit(ref angle, ref polar, ref yawDelta, ref polarDelta, item.automatic);
+                    Close(angle, sample.angle, "catalog damping angle");
+                    Close(polar, sample.polar, "catalog damping polar");
+                    dampingCount++;
+                }
+            }
+            Debug.Log("Catalog controls parity passed against original OrbitControls: " + fixture.catalogZooms.Length + " wheel/pinch cases and " + dampingCount + " damping samples.");
             var ownKingWarnings = 0;
             foreach (var item in fixture.choices)
             {

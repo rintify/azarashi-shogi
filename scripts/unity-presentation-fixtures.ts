@@ -15,6 +15,8 @@ import type { GameState, ActionPreview } from '../src/game/types';
 import { sampleCameraOrbit } from '../src/presentation/cameraOrbit';
 import { offeredMoveOptions, requiresChoice } from '../src/components/choiceOptions';
 import { motionAudioCues } from '../src/presentation/motionAudio';
+import { PerspectiveCamera } from 'three';
+import { OrbitControls } from 'three-stdlib';
 
 export async function exportPresentationFixtures(directory: string) {
   const record = JSON.parse(await readFile('docs/fixtures/unity-smoke.json', 'utf8'));
@@ -161,6 +163,59 @@ export async function exportPresentationFixtures(directory: string) {
       cases,
       guides,
       cameraOrbits,
+      catalogZooms: [2.4, 3.499, 8].flatMap((distance) => {
+        const make = () => {
+          const camera = new PerspectiveCamera();
+          camera.position.z = distance;
+          const controls = new OrbitControls(camera);
+          controls.minDistance = 2.4;
+          controls.maxDistance = 8;
+          return controls;
+        };
+        return [
+          ...[-120, -3, -0.01, 0, 0.01, 3, 120].map((delta) => {
+            const controls = make();
+            if (delta < 0) controls.dollyIn();
+            if (delta > 0) controls.dollyOut();
+            return { distance, delta, previous: 0, current: 0, expected: controls.getDistance() };
+          }),
+          ...[50, 100, 200].map((current) => {
+            const controls = make();
+            controls.dollyOut(current / 100);
+            return { distance, delta: 0, previous: 100, current, expected: controls.getDistance() };
+          }),
+        ];
+      }),
+      catalogDamping: ['yaw', 'polar', 'polar-limit', 'auto'].map((kind) => {
+        const camera = new PerspectiveCamera();
+        camera.position.set(1.8, 1.2, 2.75);
+        const controls = new OrbitControls(camera);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.minPolarAngle = 0.35;
+        controls.maxPolarAngle = Math.PI / 2 - 0.04;
+        controls.autoRotateSpeed = 0.7;
+        const theta = controls.getAzimuthalAngle();
+        const polar = controls.getPolarAngle();
+        const yawDelta = kind === 'yaw' ? 0.8 : 0;
+        const polarDelta = kind === 'polar' ? -0.4 : kind === 'polar-limit' ? -2 : 0;
+        if (yawDelta) controls.setAzimuthalAngle(theta - yawDelta);
+        if (polarDelta) controls.setPolarAngle(polar + polarDelta);
+        controls.autoRotate = kind === 'auto';
+        return {
+          polar,
+          yawDelta: (yawDelta * 180) / Math.PI,
+          polarDelta,
+          automatic: controls.autoRotate,
+          samples: Array.from({ length: 61 }, (_, i) => {
+            if (i > 0 || controls.autoRotate) controls.update();
+            return {
+              angle: ((theta - controls.getAzimuthalAngle()) * 180) / Math.PI,
+              polar: controls.getPolarAngle(),
+            };
+          }),
+        };
+      }),
       choices: cases.flatMap(({ before }) => {
         const groups = new Map<string, ActionPreview[]>();
         for (const preview of legalPreviews(before)) {
