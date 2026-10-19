@@ -48,6 +48,16 @@ namespace Azarashi.UnityView
             seen.Add(key);
             return (T)v;
         }
+        public void TrackContainer(VisualElement owner, string role, VisualElement container)
+        {
+            // ScrollView owns its internal contentContainer. Its children still belong
+            // to this retained tree, although that container was not created by Get.
+            if (!building || !paths.TryGetValue(owner, out var ownerPath))
+                throw new InvalidOperationException("Track layout containers while building their owner.");
+            var key = ownerPath + "/" + role;
+            paths[container] = key;
+            seen.Add(key);
+        }
         public void End()
         {
             building = false;
@@ -85,6 +95,12 @@ namespace Azarashi.UnityView
                     views.Remove(child);
                     exiting.Remove(child);
                 }
+                var containers = new List<VisualElement>();
+                foreach (var item in paths)
+                    if (item.Value.StartsWith(key + "/"))
+                        containers.Add(item.Key);
+                foreach (var container in containers)
+                    paths.Remove(container);
             }
         }
     }
@@ -144,10 +160,10 @@ namespace Azarashi.UnityView
             {
                 var old = new Label(label.text) { pickingMode = PickingMode.Ignore };
                 old.style.position = UnityEngine.UIElements.Position.Absolute;
-                old.style.left = label.style.left;
-                old.style.top = label.style.top;
-                old.style.width = label.style.width;
-                old.style.height = label.style.height;
+                old.style.left = label.layout.x;
+                old.style.top = label.layout.y;
+                old.style.width = label.layout.width;
+                old.style.height = label.layout.height;
                 old.style.fontSize = label.resolvedStyle.fontSize;
                 old.style.color = label.resolvedStyle.color;
                 old.style.unityTextAlign = label.resolvedStyle.unityTextAlign;

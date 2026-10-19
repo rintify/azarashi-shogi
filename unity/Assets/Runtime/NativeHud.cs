@@ -146,6 +146,7 @@ namespace Azarashi.UnityView
         private Label Text(VisualElement parent, string text, float x, float y, float w, float h, int size = 14, string color = "#375775", bool bold = false, TextAnchor anchor = TextAnchor.MiddleLeft)
         {
             var v = activeViews.Get(parent, "label", () => new Label(text) { pickingMode = PickingMode.Ignore });
+            v.style.display = DisplayStyle.Flex;
             if (text.Length > 0)
                 NativeUi.Swap(v, text);
             v.enableRichText = false;
@@ -162,15 +163,20 @@ namespace Azarashi.UnityView
             v.style.paddingRight = 0;
             v.style.paddingTop = 0;
             v.style.paddingBottom = 0;
+            v.style.marginLeft = 0;
+            v.style.marginRight = 0;
+            v.style.marginTop = 0;
+            v.style.marginBottom = 0;
             return v;
         }
-        private void Icon(VisualElement parent, string kind, bool promoted, float x, float y, float size)
+        private VisualElement Icon(VisualElement parent, string kind, bool promoted, float x, float y, float size)
         {
             if (!icons.TryGetValue(kind + "-" + (promoted ? 1 : 0), out var texture) || texture == null)
-                return;
+                return null;
             var v = Box(parent, "animal-icon", x, y, size, size);
             v.style.backgroundImage = new StyleBackground(texture);
             v.style.unityBackgroundScaleMode = ScaleMode.ScaleToFit;
+            return v;
         }
         private Button Button(VisualElement parent, string label, float x, float y, float w, float h, Action action, string fill = "#fff8e9", int size = 14)
         {
@@ -233,18 +239,25 @@ namespace Azarashi.UnityView
             if (landscape)
             {
                 margin = 16;
-                size = 36;
-                buttonHeight = 36;
+                // The later max-width:760px CSS rule also applies in landscape.
+                size = mobile ? 34 : 36;
+                buttonHeight = mobile ? 38 : 36;
             }
-            var brand = Box(hud, "brand", margin, headerTop, mobile ? 90 : 250, 50, null, 0, true);
+            var mascotWidth = mobile ? width <= 360 ? 20 : 26 : 44;
+            var mascotHeight = mobile ? width <= 360 ? 26 : 30 : 44;
+            // .brand-catalog is a grid: mascot + 1px gap + the 15px caption line.
+            // The source header centers its title and nav against that complete grid.
+            var brandHeight = mascotHeight + 16;
+            var brand = Box(hud, "brand", margin, headerTop, mobile ? 90 : 250, brandHeight, null, 0, true);
             NativeUi.EnterOnce(brand, true);
-            var brandButton = Button(brand, "", 0, 0, mobile ? 26 : 44, mobile ? 30 : 44, () => match.Open("catalog"));
+            var brandButton = Button(brand, "", 0, 0, mascotWidth, mascotHeight, () => match.Open("catalog"));
             brandButton.style.backgroundColor = Color.clear;
             Border(brandButton, 0, "#ffffff");
             NoSkin(brandButton);
-            Icon(brandButton, "seal", false, 0, 0, mobile ? 26 : 44);
-            Text(brand, "図鑑", 0, mobile ? 31 : 45, mobile ? 26 : 44, 13, 9, "#ffffff", true, TextAnchor.MiddleCenter);
-            var title = Text(brand, "アザラシ将棋", mobile ? 29 : 54, 0, mobile ? 102 : 200, mobile ? 30 : 44, mobile ? 13 : 18, "#ffffff", true);
+            Icon(brandButton, "seal", false, 0, (mascotHeight - mascotWidth) * .5f, mascotWidth);
+            Text(brand, "図鑑", 0, mascotHeight + 1, mascotWidth, 15, 9, "#ffffff", true, TextAnchor.MiddleCenter);
+            var titleHeight = mobile ? 30 : 44;
+            var title = Text(brand, "アザラシ将棋", mascotWidth + (mobile ? 3 : 10), (brandHeight - titleHeight) * .5f, mobile ? 102 : 200, titleHeight, landscape ? 14 : mobile ? width <= 360 ? 12 : 13 : 18, "#ffffff", true);
             title.style.display = width <= 350 ? DisplayStyle.None : DisplayStyle.Flex;
             title.style.textShadow = new TextShadow { offset = new Vector2(0, 3), color = C("#3985a5"), blurRadius = 0 };
             var labels = new[] { match.Muted ? "mute" : "sound", "book", "replay", "reset", match.TopView ? "cube" : "view", gridOpen ? "x" : "grid" };
@@ -254,7 +267,7 @@ namespace Azarashi.UnityView
                 var pressed = i == 0 && !match.Muted || i == 4 && match.TopView || i == 5 && gridOpen;
                 var color = pressed ? "#795e49" : i == 1 ? "#7a6ea1" : i == 2 ? "#a36471" : "#507497";
                 var fill = pressed ? "#ffe08d" : i == 1 ? "#e6e4ff" : i == 2 ? "#ffdedc" : "#fff9e9";
-                var b = Button(hud, "", width - margin - (labels.Length - i) * (size + gap) + gap, headerTop, size, buttonHeight, actions[i], fill);
+                var b = Button(hud, "", width - margin - (labels.Length - i) * (size + gap) + gap, headerTop + (brandHeight - buttonHeight) * .5f, size, buttonHeight, actions[i], fill);
                 NativeUi.EnterOnce(b, true);
                 Symbol(b, labels[i], (size - 18) * .5f, (buttonHeight - 18) * .5f, 18, color);
             }
@@ -267,7 +280,7 @@ namespace Azarashi.UnityView
             status.style.textShadow = new TextShadow { offset = new Vector2(0, 2), color = C("#3986a3"), blurRadius = 0 };
             var bottom = compact || landscape ? 22 : 20;
             var playTop = landscape ? 52 : compact ? 116 : mobile ? 132 : 144;
-            playArea = new Rect(landscape ? 14 : mobile ? 0 : 8, playTop, width - (landscape ? 274 : mobile ? 0 : 16), Mathf.Max(80, height - playTop - (landscape ? 20 : 74)));
+            playArea = new Rect(landscape ? 14 : mobile ? 0 : 8, playTop, width - (landscape ? width >= 840 ? 128 : 274 : mobile ? 0 : 16), Mathf.Max(80, height - playTop - (landscape ? 20 : 74)));
             if (match.Replaying)
                 BuildReplayDock();
             else if (match.State.phase == "finished" && !match.Busy)

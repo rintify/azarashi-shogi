@@ -59,16 +59,51 @@ namespace Azarashi.UnityView
         private float DockWidth => height <= 520 && width >= 500 ? 240 : width <= 760 ? width - 20 : Mathf.Min(420, width - 24);
         private float DockLeft => (height <= 520 && width >= 500) ? width - 14 - DockWidth : (width - DockWidth) * .5f;
         private float DockBottom => (height <= 670 && width <= 760) || (height <= 520 && width >= 500) ? 22 : 20;
-        private void StockTokens(VisualElement p, string owner, float left, float top, float iconSize, float step)
+        private static void Inline(VisualElement element, bool autoWidth = false)
+        {
+            element.style.position = UnityEngine.UIElements.Position.Relative;
+            element.style.left = 0;
+            element.style.top = 0;
+            if (autoWidth)
+                element.style.width = StyleKeyword.Auto;
+        }
+        private void StockTokens(VisualElement p, string owner, float left, float top, float iconSize, float step, bool alignRight = false)
         {
             var kinds = new[] { "seal", "penguin", "bear", "orca" };
+            var landscape = height <= 520 && width >= 500;
+            var mobile = width <= 760;
+            var gap = landscape ? 3 : width <= 360 ? 6 : mobile ? 10 : 14;
+            if (alignRight)
+            {
+                var row = Box(p, "opponent-stock-flow", 0, top, 0, 24);
+                row.style.left = StyleKeyword.Auto;
+                row.style.right = landscape ? 10 : mobile ? 12 : 14;
+                row.style.width = StyleKeyword.Auto;
+                row.style.flexDirection = FlexDirection.Row;
+                row.style.alignItems = Align.Center;
+                p = row;
+            }
             for (var i = 0; i < 4; i++)
             {
                 var kind = kinds[i];
-                var target = Box(p, "stock-token", left + i * step, top, iconSize + 12, 24);
+                var target = Box(p, "stock-token", alignRight ? 0 : left + i * step, alignRight ? 0 : top, iconSize + 12, 24);
+                if (alignRight)
+                {
+                    Inline(target, true);
+                    target.style.flexDirection = FlexDirection.Row;
+                    target.style.alignItems = Align.Center;
+                    target.style.marginRight = i == 3 ? 0 : gap;
+                }
                 stockTargets[owner + ":" + kind] = target;
-                Icon(target, kind, false, 0, (24 - iconSize) * .5f, iconSize);
-                var number = Text(target, StockCount(owner, kind).ToString(), iconSize + 3, 0, 15, 24, 11, "#587088");
+                var icon = Icon(target, kind, false, 0, (24 - iconSize) * .5f, iconSize);
+                var number = Text(target, StockCount(owner, kind).ToString(), iconSize + 3, 0, 15, 24, alignRight && landscape ? 9 : 11, "#587088");
+                if (alignRight)
+                {
+                    if (icon != null)
+                        Inline(icon);
+                    Inline(number, true);
+                    number.style.marginLeft = landscape ? 1 : 3;
+                }
                 counts[owner + ":" + kind] = number;
             }
         }
@@ -89,14 +124,26 @@ namespace Azarashi.UnityView
                 StockTokens(p, owner, w - (landscape ? 151 : 206), (h - 24) * .5f, landscape ? 18 : mobile ? 21 : 22, landscape ? 33 : 42);
                 return;
             }
-            var dot = Box(p, "presence", 12, (h - 6) * .5f, 6, 6, match.Thinking ? "#edb460" : "#9db7c3", 3);
+            var nameRow = Box(p, "opponent-name-flow", landscape ? 10 : mobile ? 12 : 14, 0, 0, h - 4);
+            nameRow.style.width = StyleKeyword.Auto;
+            nameRow.style.flexDirection = FlexDirection.Row;
+            nameRow.style.alignItems = Align.Center;
+            var dot = Box(nameRow, "presence", 0, 0, 6, 6, match.Thinking ? "#edb460" : "#9db7c3", 3);
+            Inline(dot);
+            dot.style.marginRight = 7;
             var actor = match.Actor(owner);
-            opponentLabel = Text(p, actor, 25, 0, actor.Length * 12 + 4, h, 12, "#375775", true);
+            opponentLabel = Text(nameRow, actor, 0, 0, 0, h - 4, 12, "#375775", true);
+            Inline(opponentLabel, true);
+            opponentLabel.style.letterSpacing = .36f;
             if (match.Settings.mode != "local-pvp")
-                Text(p, "Lv." + (owner == "south" ? match.Settings.southLevel : match.Settings.difficulty), 29 + actor.Length * 12, 0, 34, h, 10, "#918591");
+            {
+                var level = Text(nameRow, "Lv." + (owner == "south" ? match.Settings.southLevel : match.Settings.difficulty), 0, 0, 0, h - 4, 10, "#918591");
+                Inline(level, true);
+                level.style.marginLeft = 3;
+            }
             var icon = landscape ? 16 : width <= 360 ? 19 : mobile ? 21 : 22;
             var step = landscape ? 29 : width <= 360 ? 36 : mobile ? 40 : 45;
-            StockTokens(p, owner, w - 12 - (step * 3 + icon + 24), (h - 24) * .5f, icon, step);
+            StockTokens(p, owner, 0, (h - 4 - 24) * .5f, icon, step, true);
         }
         private Button FlatButton(VisualElement parent, string symbol, float x, float y, float w, float h, Action action, int size = 18)
         {
@@ -231,10 +278,10 @@ namespace Azarashi.UnityView
                     b.SetEnabled(!match.Busy);
             }
         }
-        private void Slider(VisualElement parent, float value, float min, float max, float x, float y, float w, Action<float> changed, bool onRelease = false)
+        private void Slider(VisualElement parent, float value, float min, float max, float x, float y, float w, Action<float> changed, bool replay = false)
         {
             var slider = activeViews.Get(parent, "slider", () => new NativeSlider());
-            slider.Bind(value, min, max, x, y, w, changed, onRelease);
+            slider.Bind(value, min, max, x, y, w, changed, replay);
         }
     }
 }

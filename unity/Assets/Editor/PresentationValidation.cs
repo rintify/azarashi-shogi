@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace Azarashi.UnityView.Editor
 {
@@ -54,6 +55,7 @@ namespace Azarashi.UnityView.Editor
         }
         public static void Run(NativeGameData data)
         {
+            ValidateRetainedScroll();
             // Exported material colors are already linear. ShaderLab Color properties
             // convert from sRGB on upload, even when their values are set with SetVector.
             foreach (var name in new[] { "Azarashi/Surface", "Azarashi/Ocean", "Azarashi/Unlit" })
@@ -143,6 +145,34 @@ namespace Azarashi.UnityView.Editor
             }
             finally { UnityEngine.Object.DestroyImmediate(host); }
             Debug.Log("Presentation parity passed: " + count + " motion samples, " + fixture.guides.Length + " guide states, " + cameraCount + " camera samples and camera startup against original TypeScript.");
+        }
+        private static void ValidateRetainedScroll()
+        {
+            var root = new VisualElement();
+            var tree = new NativeViewTree();
+            try
+            {
+                tree.Begin(root);
+                var scroll = tree.Get(root, "scroll", () => new ScrollView());
+                tree.TrackContainer(scroll, "content", scroll.contentContainer);
+                var first = tree.Get(scroll.contentContainer, "copy", () => new Label("source text"));
+                tree.End();
+                tree.Begin(root);
+                var secondScroll = tree.Get(root, "scroll", () => new ScrollView());
+                tree.TrackContainer(secondScroll, "content", secondScroll.contentContainer);
+                var second = tree.Get(secondScroll.contentContainer, "copy", () => new Label("source text"));
+                tree.End();
+                if (first != second || scroll != secondScroll || scroll.contentContainer.childCount != 1)
+                    throw new Exception("Retained scroll content duplicated after a layout update.");
+                tree.Begin(root);
+                scroll = tree.Get(root, "scroll", () => new ScrollView());
+                tree.TrackContainer(scroll, "content", scroll.contentContainer);
+                tree.End();
+                if (first.enabledSelf)
+                    throw new Exception("Retired scroll content still accepts input.");
+                Debug.Log("Retained scroll validation passed: stable identity, one child after rebuild, inactive exit.");
+            }
+            finally { NativeUi.Forget(root); }
         }
     }
 }

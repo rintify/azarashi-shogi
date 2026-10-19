@@ -12,6 +12,18 @@ namespace Azarashi.UnityView
         {
             var shade = Box(root, "dialog-shade", 0, 0, width, height, "#347ba466", 0, true);
             dialogLayer = shade;
+            if (!shade.ClassListContains("dismiss-bound"))
+            {
+                shade.AddToClassList("dismiss-bound");
+                var outside = false;
+                shade.RegisterCallback<PointerDownEvent>(evt => outside = evt.target == shade);
+                shade.RegisterCallback<PointerUpEvent>(evt =>
+                {
+                    if (outside && evt.target == shade)
+                        match.Close();
+                    outside = false;
+                });
+            }
             var w = Mathf.Min(maxWidth, width * .92f);
             var h = Mathf.Min(desiredHeight, height - 24);
             var card = Box(shade, "native-dialog", (width - w) * .5f, (height - h) * .5f, w, h, "#fffcf3", 28, true);
@@ -21,9 +33,9 @@ namespace Azarashi.UnityView
             card.style.transitionDuration = new List<TimeValue> { new TimeValue(.28f) };
             if (match.Dialog == "settings")
                 Icon(card, "seal", false, 24, 18, 44);
-            else
+            else if (match.Dialog != "rules")
                 Symbol(card, match.Dialog == "catalog" ? "book" : match.Dialog == "replays" ? "replay" : "book", 24, 26, 24, "#18394c");
-            Text(card, title, match.Dialog == "settings" ? 78 : 58, 16, w - 140, 48, 19, "#18394c", true);
+            Text(card, title, match.Dialog == "settings" ? 78 : match.Dialog == "rules" ? 24 : 58, 16, w - 140, 48, 19, "#18394c", true);
             FlatButton(card, "x", w - 64, 20, 40, 40, match.Close, 20);
             if (!card.ClassListContains("arrived"))
             {
@@ -58,15 +70,64 @@ namespace Azarashi.UnityView
         private ScrollView ScrollRegion(VisualElement card, string name, float x, float y, float w, float h)
         {
             var scroll = activeViews.Get(card, name, () => new ScrollView(ScrollViewMode.Vertical));
-            scroll.verticalScrollerVisibility = ScrollerVisibility.Hidden;
+            activeViews.TrackContainer(scroll, "content", scroll.contentContainer);
+            scroll.verticalScrollerVisibility = ScrollerVisibility.Auto;
             scroll.horizontalScrollerVisibility = ScrollerVisibility.Hidden;
             scroll.style.position = UnityEngine.UIElements.Position.Absolute;
             scroll.style.left = x;
             scroll.style.top = y;
-            scroll.style.width = w;
+            // Modal dimensions include their two 4px borders, as CSS border-box does.
+            scroll.style.width = w - 8;
             scroll.style.height = h;
             scroll.style.backgroundColor = Color.clear;
+            scroll.contentContainer.style.width = Length.Percent(100);
+            // Match the 15px Chromium scrollbar measured in the source on Windows.
+            var bar = scroll.verticalScroller;
+            bar.style.width = 15;
+            bar.style.minWidth = 15;
+            bar.style.backgroundColor = Color.clear;
+            Border(bar, 0, "#ffffff00");
+            foreach (var button in new[] { bar.lowButton, bar.highButton })
+            {
+                button.style.width = 15;
+                button.style.height = 15;
+                button.style.minHeight = 15;
+                button.style.backgroundColor = Color.clear;
+                button.style.unityBackgroundImageTintColor = C("#8b8b8b");
+                Border(button, 0, "#ffffff00");
+            }
+            var tracker = bar.slider.Q<VisualElement>(className: "unity-base-slider__tracker");
+            if (tracker != null)
+            {
+                tracker.style.backgroundColor = Color.clear;
+                Border(tracker, 0, "#ffffff00");
+            }
+            var thumb = bar.slider.Q<VisualElement>(className: "unity-base-slider__dragger");
+            if (thumb != null)
+            {
+                thumb.style.width = 9;
+                thumb.style.left = 3;
+                thumb.style.backgroundColor = C("#8b8b8b");
+                Border(thumb, 0, "#ffffff00");
+                Round(thumb, 4);
+            }
+            if (!scroll.ClassListContains("viewport-bound"))
+            {
+                scroll.AddToClassList("viewport-bound");
+                scroll.contentViewport.RegisterCallback<GeometryChangedEvent>(evt =>
+                {
+                    if (Mathf.Abs(evt.oldRect.width - evt.newRect.width) <= .5f)
+                        return;
+                    dialogSignature = null;
+                    Rebuild();
+                });
+            }
             return scroll;
+        }
+        private static float ScrollContentWidth(ScrollView scroll, float fallback)
+        {
+            var measured = scroll.contentViewport.contentRect.width;
+            return measured >= 1 ? Mathf.Min(fallback, measured) : fallback;
         }
         private void SettingsDialog()
         {
@@ -81,9 +142,9 @@ namespace Azarashi.UnityView
             var w = Mathf.Min(540, width * .92f);
             var h = Mathf.Min(desired, height - 24);
             var scroll = ScrollRegion(card, "settings-scroll", 24, 76, w - 48, h - 100);
-            var panel = Box(scroll.contentContainer, "settings-content", 0, 0, w - 52, contentHeight);
+            var available = ScrollContentWidth(scroll, w - 56);
+            var panel = Box(scroll.contentContainer, "settings-content", 0, 0, available, contentHeight);
             scroll.contentContainer.style.height = contentHeight;
-            var available = w - 52;
             var intro = Text(panel, "遊び方を選んではじめよう。今の対局はリプレイに残ります。", 0, 0, available, 42, 12, "#537184");
             intro.style.whiteSpace = WhiteSpace.Normal;
             Text(panel, "対戦モード", 0, 58, available, 20, 13, "#18394c", true);
@@ -164,17 +225,18 @@ namespace Azarashi.UnityView
             var h = Mathf.Min(desired, height - 24);
             Text(card, "対局はこの端末に自動保存されます。", 24, 76, w - 48, 26, 12, "#537184");
             var scroll = ScrollRegion(card, "replay-scroll", 24, 114, w - 48, h - 204);
+            var available = ScrollContentWidth(scroll, w - 56);
             var y = 0f;
             if (match.Replays.Count == 0)
             {
-                var empty = Box(scroll.contentContainer, "replay-empty", 0, 0, w - 52, 150);
-                Icon(empty, "seal", false, (w - 52 - 65) * .5f, 18, 65);
-                Text(empty, "まだ棋譜がありません", 0, 95, w - 52, 24, 12, "#6a899b", false, TextAnchor.MiddleCenter);
+                var empty = Box(scroll.contentContainer, "replay-empty", 0, 0, available, 150);
+                Icon(empty, "seal", false, (available - 65) * .5f, 18, 65);
+                Text(empty, "まだ棋譜がありません", 0, 95, available, 24, 12, "#6a899b", false, TextAnchor.MiddleCenter);
                 y = 150;
             }
             foreach (var record in match.Replays)
             {
-                var row = Box(scroll.contentContainer, "replay-" + record.id, 0, y, w - 52, width < 600 ? 136 : 106, "#e6f3f7", 22, true);
+                var row = Box(scroll.contentContainer, "replay-" + record.id, 0, y, available, width < 600 ? 136 : 106, "#e6f3f7", 22, true);
                 Border(row, 2, "#ffffff");
                 NativeUi.Skin(row, "replayCard", 22);
                 Icon(row, record.settings.mode == "ai-vs-ai" ? "penguin" : "seal", false, 10, 15, 32);
@@ -183,14 +245,14 @@ namespace Azarashi.UnityView
                 Text(row, (DateTime.TryParse(record.createdAt, out var date) ? date.ToLocalTime().ToString("M/d HH:mm") : "") + " · " + record.actions.Count + "手", 52, 39, w - 110, 18, 10, "#668294");
                 Text(row, match.Record?.id == record.id ? "いまの対局" : "保存した対局", 52, 62, w - 110, 17, 10, "#668294");
                 var actionY = width < 600 ? 86 : 61;
-                var play = Button(row, "再生", w - 254, actionY, 72, 44, () => match.Watch(record), "#64bad1", 12);
+                var play = Button(row, "再生", available - 202, actionY, 72, 44, () => match.Watch(record), "#64bad1", 12);
                 Round(play, 17);
                 play.style.color = Color.white;
                 NoSkin(play);
                 Symbol(play, "play", 8, 11, 18, "#ffffff");
                 play.style.paddingLeft = 20;
-                FlatButton(row, "download", w - 174, actionY, 32, 44, () => match.Export(record, false), 19);
-                var text = FlatButton(row, "text", w - 134, actionY, 44, 44, () => match.Export(record, true), 19);
+                FlatButton(row, "download", available - 122, actionY, 32, 44, () => match.Export(record, false), 19);
+                var text = FlatButton(row, "text", available - 82, actionY, 44, 44, () => match.Export(record, true), 19);
                 Text(text, "解説用", 0, 27, 44, 14, 9, "#5d8799", false, TextAnchor.MiddleCenter);
                 y += width < 600 ? 148 : 118;
             }
@@ -219,7 +281,7 @@ namespace Azarashi.UnityView
             var h = Mathf.Min(desired, height - 24);
             var content = JsonUtility.FromJson<RulesContent>(Resources.Load<TextAsset>("Native/Rules").text);
             var scroll = ScrollRegion(card, "rules-scroll", 24, 78, w - 48, h - 104);
-            var available = w - 52;
+            var available = ScrollContentWidth(scroll, w - 56);
             var y = 0f;
             var introHeight = ParagraphHeight(content.intro, available, 12);
             Text(scroll.contentContainer, content.intro, 0, y, available, introHeight, 12, "#537184").style.whiteSpace = WhiteSpace.Normal;
