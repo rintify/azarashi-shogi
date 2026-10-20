@@ -43,7 +43,7 @@ Windows/macOSとも、ビルド前の検証に使うRustネイティブライブ
 
 `npm run unityroom:build` で、Release・Gzip・Decompression Fallbackオフの専用ビルドを `dist-unityroom/` に生成します。通常の `dist-unity/` は変更しません。ログは `unity/BuildLogs/unityroom.log` です。
 
-unityroomの「Webビルド設定」でUnity `6000.5.x` を選び、「Webビルドアップロード」で `dist-unityroom/Build` フォルダーを選択します。対象は `Unityroom.loader.js`、`Unityroom.data.gz`、`Unityroom.framework.js.gz`、`Unityroom.wasm.gz` の4ファイルです。`index.html` のアップロードは不要です。既存の `public/seal.svg` を512pxへ描画した `dist-unityroom/icon.png` も生成します。
+unityroomの「Webビルド設定」でUnity `6000.5.x` を選び、「Webビルドアップロード」で `dist-unityroom/Build` フォルダーを選択します。対象は `Unityroom.loader.js`、`Unityroom.data.gz`、`Unityroom.framework.js.gz`、`Unityroom.wasm.gz` の4ファイルです。`index.html` のアップロードは不要です。盤上のセイウチの撮影画像をもとに加工した512pxの掲載用アイコン `public/unityroom-icon.jpg` を、`dist-unityroom/icon.jpg` にコピーします。
 
 ビルド時にGzipの解凍・Unityデータヘッダー・WebAssemblyの検証を実施します。配布用ライセンス文はUnityのdataペイロードにも同梱しています。出力だけを再検査する場合は `node scripts/package-unityroom.mjs` を使用できます（Unityの再ビルドは行いません）。
 
