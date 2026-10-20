@@ -62,6 +62,7 @@ namespace Azarashi.UnityView.Editor
         }
         public static void Run(NativeGameData data)
         {
+            ValidateTransitions();
             ValidateRetainedScroll();
             ValidateRetainedOrder();
             UirStagingPatch.ValidateBounds();
@@ -225,6 +226,34 @@ namespace Azarashi.UnityView.Editor
                 }
                 Debug.Log("Source shadow projection parity passed: " + s.samples.Length + " receiver samples, map=" + s.mapSize[0]);
             }
+        }
+        private static void ValidateTransitions()
+        {
+            var transition = new NativeUi.ScalarTransition();
+            var now = 0f;
+            foreach (var target in new[] { 7f, 0f, 7f, 3f, 0f })
+            {
+                var before = transition.Value(now);
+                transition.Retarget(target, .26f, now);
+                Close(transition.Value(now), before, "interrupted transition continuity");
+                for (var i = 0; i <= 8; i++)
+                {
+                    var sample = transition.Value(now + i * .01f);
+                    if (sample < Mathf.Min(before, target) || sample > Mathf.Max(before, target))
+                        throw new Exception("Backdrop interpolation exceeded its endpoints.");
+                }
+                now += .09f;
+            }
+            Close(transition.Value(now + 1), 0, "blur closes fully");
+            var element = new VisualElement();
+            NativeUi.Enter(element);
+            var opacity = element.style.opacity.value;
+            var scale = element.style.scale.value.value.x;
+            NativeUi.Exit(element);
+            Close(element.style.opacity.value, opacity, "immediate exit opacity");
+            Close(element.style.scale.value.value.x, scale, "immediate exit scale");
+            NativeUi.Forget(element);
+            Debug.Log("UI transition validation passed: blur reversals preserve value, stay bounded and finish exactly; interrupted entrance keeps its pose.");
         }
         private static void ValidateRetainedScroll()
         {

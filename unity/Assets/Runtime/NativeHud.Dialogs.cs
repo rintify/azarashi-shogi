@@ -15,6 +15,8 @@ namespace Azarashi.UnityView
             if (!shade.ClassListContains("dismiss-bound"))
             {
                 shade.AddToClassList("dismiss-bound");
+                shade.AddToClassList("native-fade-only");
+                Enter(shade);
                 var outside = false;
                 shade.RegisterCallback<PointerDownEvent>(evt => outside = evt.target == shade);
                 shade.RegisterCallback<PointerUpEvent>(evt =>
@@ -69,8 +71,6 @@ namespace Azarashi.UnityView
         {
             card.AddToClassList("arrived");
             Enter(card);
-            card.style.transitionProperty = new List<StylePropertyName> { new StylePropertyName("height"), new StylePropertyName("top") };
-            card.style.transitionDuration = new List<TimeValue> { new TimeValue(.28f) };
         }
         private void BuildDialog(string dialog)
         {

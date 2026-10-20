@@ -134,17 +134,17 @@ namespace Azarashi.UnityView
                 if (float.IsNaN(measured) || measured < 80) return;
                 var cardHeight = Mathf.Min(measured, height - 24);
                 var top = (height - cardHeight) / 2;
-                if (Mathf.Abs(card.style.height.value.value - cardHeight) > .5f)
-                    card.style.height = cardHeight;
-                if (Mathf.Abs(card.style.top.value.value - top) > .5f)
-                    card.style.top = top;
                 if (!card.ClassListContains("arrived"))
                 {
+                    card.style.height = cardHeight;
+                    card.style.top = top;
                     // Commit the measured geometry before beginning the source
                     // entrance animation; don't animate from a full-screen card.
                     card.AddToClassList("arrived");
                     card.schedule.Execute(() => { if (card.panel != null && card.enabledInHierarchy && match.Dialog != null) ArriveDialog(card); });
                 }
+                else
+                    NativeUi.ResizeTo(card, cardHeight, top, .28f);
             };
             // The header is already a viewport overlay, outside content order.
             return content;

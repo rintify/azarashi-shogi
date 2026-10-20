@@ -467,11 +467,11 @@ namespace Azarashi.UnityView
             RestoreModalFocus();
             views.Tick();
             dialogViews.Tick();
-            var blur = match.Dialog != null || dialogLayer?.parent != null;
+            var blur = match.Dialog != null;
             if (blur != backdropBlurred)
             {
                 backdropBlurred = blur;
-                NativeUi.Blur(presentation, blur ? 7 : 0);
+                NativeUi.BlurTo(presentation, blur ? 7 : 0, blur ? .26f : .18f);
             }
             NativeUi.Tick();
             UpdateGridPulse();

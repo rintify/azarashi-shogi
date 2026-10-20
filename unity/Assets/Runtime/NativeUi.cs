@@ -178,6 +178,8 @@ namespace Azarashi.UnityView
         }
         public static float Cubic(float t, float x1, float y1, float x2, float y2)
         {
+            if (t <= 0) return 0;
+            if (t >= 1) return 1;
             var lo = 0f;
             var hi = 1f;
             for (var i = 0; i < 16; i++)
@@ -196,15 +198,46 @@ namespace Azarashi.UnityView
         }
         private static void Animate(VisualElement element, float duration, float delay, float opacity0, float opacity1, float y0, float y1, float scale0, float scale1, bool spring)
         {
+            var previous = tweens.Find(t => t.element == element);
+            if (previous != null)
+            {
+                // Reverse an in-flight transition from its current pose, rather
+                // than snapping to the opening/closing animation's first frame.
+                var progress = Mathf.Clamp01((Time.unscaledTime - previous.start - previous.delay) / previous.duration);
+                var ease = Ease(progress, previous.spring);
+                opacity0 = Mathf.LerpUnclamped(previous.fromOpacity, previous.toOpacity, ease);
+                y0 = Mathf.LerpUnclamped(previous.fromY, previous.toY, ease);
+                scale0 = Mathf.LerpUnclamped(previous.fromScale, previous.toScale, ease);
+                delay = 0;
+            }
             tweens.RemoveAll(t => t.element == element);
             tweens.Add(new Tween { element = element, start = Time.unscaledTime, duration = duration, delay = delay, fromOpacity = opacity0, toOpacity = opacity1, fromY = y0, toY = y1, fromScale = scale0, toScale = scale1, spring = spring });
             element.style.opacity = opacity0;
             element.style.translate = new Translate(0, y0);
             element.style.scale = new Scale(Vector3.one * scale0);
         }
-        public static void Enter(VisualElement element, float delay = 0, bool control = false) => Animate(element, control ? .3f : .26f, delay, 0, 1, control ? 8 : 12, 0, control ? .86f : .96f, 1, true);
+        public static void Enter(VisualElement element, float delay = 0, bool control = false)
+        {
+            if (element.ClassListContains("native-fade-only"))
+            {
+                Animate(element, .26f, delay, 0, 1, 0, 0, 1, 1, false);
+                foreach (var child in element.Children())
+                    if (child.name == "native-dialog" && child.ClassListContains("arrived")) Enter(child);
+            }
+            else
+                Animate(element, control ? .3f : .26f, delay, 0, 1, control ? 8 : 12, 0, control ? .86f : .96f, 1, true);
+        }
         public static void Header(VisualElement element, float delay = 0) => Animate(element, .42f, delay, 0, 1, -8, 0, 1, 1, true);
-        public static void Exit(VisualElement element) => Animate(element, .18f, 0, element.resolvedStyle.opacity, 0, 0, 9, 1, .96f, false);
+        public static void Exit(VisualElement element)
+        {
+            var shade = element.ClassListContains("native-fade-only");
+            Animate(element, .18f, 0, element.resolvedStyle.opacity, 0,
+                element.resolvedStyle.translate.y, shade ? 0 : 9,
+                element.resolvedStyle.scale.value.x, shade ? 1 : .96f, false);
+            if (shade)
+                foreach (var child in element.Children())
+                    if (child.name == "native-dialog") Exit(child);
+        }
         public static void StopAnimation(VisualElement element) => tweens.RemoveAll(t => t.element == element);
         public static void Swap(TextElement label, string value)
         {
@@ -286,6 +319,8 @@ namespace Azarashi.UnityView
         }
         public static void Forget(VisualElement element)
         {
+            blurAnimations.Remove(element);
+            sizeAnimations.Remove(element);
             tweens.RemoveAll(t => t.element == element);
             if (element is Button button)
                 controls.Remove(button);
@@ -374,6 +409,53 @@ namespace Azarashi.UnityView
         }
         private static readonly Dictionary<VisualElement, Shadow> shadows = new Dictionary<VisualElement, Shadow>();
         private static Dictionary<string, CssShadow[]> shadowStyles;
+        public sealed class ScalarTransition
+        {
+            public float From, To, Started, Duration;
+            public float Value(float now) => Mathf.LerpUnclamped(From, To, Ease(Mathf.Clamp01((now - Started) / Mathf.Max(.0001f, Duration))));
+            public void Retarget(float target, float duration, float now)
+            {
+                From = Value(now);
+                To = target;
+                Started = now;
+                Duration = duration;
+            }
+        }
+        private static readonly Dictionary<VisualElement, ScalarTransition> blurAnimations = new Dictionary<VisualElement, ScalarTransition>();
+        private static readonly List<VisualElement> finishedBlurs = new List<VisualElement>();
+        private sealed class SizeTransition { public ScalarTransition height, top; }
+        private static readonly Dictionary<VisualElement, SizeTransition> sizeAnimations = new Dictionary<VisualElement, SizeTransition>();
+        private static readonly List<VisualElement> finishedSizes = new List<VisualElement>();
+        public static void ResizeTo(VisualElement element, float height, float top, float duration)
+        {
+            if (sizeAnimations.TryGetValue(element, out var animation))
+            {
+                if (Mathf.Abs(animation.height.To - height) <= .5f && Mathf.Abs(animation.top.To - top) <= .5f) return;
+            }
+            else
+            {
+                var h = element.style.height.value.value;
+                var y = element.style.top.value.value;
+                if (Mathf.Abs(h - height) <= .5f && Mathf.Abs(y - top) <= .5f) return;
+                sizeAnimations[element] = animation = new SizeTransition
+                {
+                    height = new ScalarTransition { From = h, To = h },
+                    top = new ScalarTransition { From = y, To = y }
+                };
+            }
+            animation.height.Retarget(height, duration, Time.unscaledTime);
+            animation.top.Retarget(top, duration, Time.unscaledTime);
+        }
+        public static void BlurTo(VisualElement element, float sigma, float duration)
+        {
+            if (!blurAnimations.TryGetValue(element, out var animation))
+            {
+                var filter = element.style.filter.value;
+                var current = filter != null && filter.Count == 1 && filter[0].type == FilterFunctionType.Blur ? filter[0].GetParameter(0).floatValue : 0;
+                blurAnimations[element] = animation = new ScalarTransition { From = current, To = current };
+            }
+            animation.Retarget(sigma, duration, Time.unscaledTime);
+        }
         public static void Blur(VisualElement element, float sigma)
         {
             var previous = element.style.filter.value;
@@ -526,6 +608,33 @@ namespace Azarashi.UnityView
         }
         public static void Tick()
         {
+            finishedBlurs.Clear();
+            foreach (var item in blurAnimations)
+            {
+                if (item.Key.panel == null)
+                {
+                    finishedBlurs.Add(item.Key);
+                    continue;
+                }
+                Blur(item.Key, item.Value.Value(Time.unscaledTime));
+                if (Time.unscaledTime >= item.Value.Started + item.Value.Duration)
+                    finishedBlurs.Add(item.Key);
+            }
+            foreach (var element in finishedBlurs) blurAnimations.Remove(element);
+            finishedSizes.Clear();
+            foreach (var item in sizeAnimations)
+            {
+                if (item.Key.panel == null)
+                {
+                    finishedSizes.Add(item.Key);
+                    continue;
+                }
+                item.Key.style.height = item.Value.height.Value(Time.unscaledTime);
+                item.Key.style.top = item.Value.top.Value(Time.unscaledTime);
+                if (Time.unscaledTime >= item.Value.height.Started + item.Value.height.Duration)
+                    finishedSizes.Add(item.Key);
+            }
+            foreach (var element in finishedSizes) sizeAnimations.Remove(element);
             foreach (var item in controls)
             {
                 var c = item.Value;
