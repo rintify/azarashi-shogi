@@ -16,6 +16,8 @@ namespace Azarashi.UnityView
                 {
                     if (match.Dialog == "catalog" && (evt.keyCode == UnityEngine.KeyCode.LeftArrow || evt.keyCode == UnityEngine.KeyCode.RightArrow))
                         ChangeCatalog(evt.keyCode == UnityEngine.KeyCode.LeftArrow ? -1 : 1);
+                    else if (match.Dialog == "rules" && (evt.keyCode == UnityEngine.KeyCode.LeftArrow || evt.keyCode == UnityEngine.KeyCode.RightArrow))
+                        TutorialGo(tutorialPage + (evt.keyCode == UnityEngine.KeyCode.LeftArrow ? -1 : 1));
                     else if (evt.keyCode == UnityEngine.KeyCode.Tab)
                         CycleFocus(card, evt.shiftKey);
                     else

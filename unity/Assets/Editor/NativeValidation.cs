@@ -17,6 +17,21 @@ namespace Azarashi.UnityView.Editor
             {
                 var engine = host.AddComponent<NativeEngine>();
                 engine.Initialize(data);
+                foreach (var sample in new[] { ("seal", false, 1), ("seal", true, 8), ("penguin", false, 8), ("bear", false, 16), ("orca", false, 14), ("orca", true, 14), ("walrus", false, 24) })
+                {
+                    var moves = NativeHowTo.Destinations(engine, data.Config.initial.rulesVersion, sample.Item1, sample.Item2);
+                    if (moves.Length != sample.Item3 || moves.Any(c => c.x == 4 && c.y == 4))
+                        throw new Exception("Illustrated tutorial movement diverges: " + sample.Item1 + "/" + sample.Item2);
+                }
+                if (NativeHowTo.SwipePage(0, 11, 100, 0, .3f, 320) != 0 ||
+                    NativeHowTo.SwipePage(10, 11, -100, 0, .3f, 320) != 10 ||
+                    NativeHowTo.SwipePage(4, 11, -80, 5, .3f, 320) != 5 ||
+                    NativeHowTo.SwipePage(4, 11, 80, 5, .3f, 320) != 3 ||
+                    NativeHowTo.SwipePage(4, 11, 30, 90, .1f, 320) != 4 ||
+                    NativeHowTo.SwipePage(4, 11, 10, 0, .1f, 320) != 4 ||
+                    NativeHowTo.SwipePage(4, 11, -30, 0, .05f, 320) != 5)
+                    throw new Exception("Illustrated tutorial swipe navigation diverges.");
+                Debug.Log("Illustrated tutorial validation passed: seven movement diagrams use Rust legal moves; swipe bounds, direction, flick and vertical rejection.");
                 var record = NativeJson.Record(Resources.Load<TextAsset>("Native/smoke").text);
                 var state = data.Config.initial.Copy();
                 var captures = 0;

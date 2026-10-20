@@ -475,6 +475,7 @@ namespace Azarashi.UnityView
                 NativeUi.BlurTo(presentation, blur ? 7 : 0, blur ? .26f : .18f);
             }
             NativeUi.Tick();
+            TickTutorial();
             UpdateGridPulse();
             if (match.State == null)
                 return;

@@ -277,45 +277,6 @@ namespace Azarashi.UnityView
             Border(cancel, 0, "#ffffff00");
             NativeUi.Bind(cancel, match.Close, Color.clear, Color.clear);
         }
-        private void RulesDialog()
-        {
-            var parent = FlowDialog("あそびかた");
-            var copy = JsonUtility.FromJson<RulesContent>(Resources.Load<TextAsset>("Native/Rules").text);
-            FlowText(parent, copy.intro, lineHeight: 21.6f).style.marginTop = 14;
-            var animals = FlowBox(parent, "rule-animal-list");
-            animals.style.marginTop = animals.style.marginBottom = 20;
-            foreach (var piece in match.Data.Config.pieces)
-            {
-                var row = FlowBox(animals, "rule-" + piece.kind, "#e9f5f8", 10);
-                Row(row);
-                row.style.paddingLeft = row.style.paddingRight = row.style.paddingTop = row.style.paddingBottom = 12;
-                row.style.marginBottom = piece == match.Data.Config.pieces.Last() ? 0 : 10;
-                var icon = Icon(row, piece.kind, false, 0, 0, 30);
-                Inline(icon);
-                icon.style.flexShrink = 0;
-                icon.style.marginRight = 12;
-                var text = FlowBox(row, "animal-copy");
-                text.style.flexGrow = 1;
-                text.style.flexShrink = 1;
-                text.style.minWidth = 0;
-                FlowText(text, piece.name + " ×" + piece.count, 13, "#18394c", true);
-                FlowText(text, piece.description, lineHeight: 21.6f);
-            }
-            for (var i = 0; i < copy.steps.Length; i++)
-            {
-                var step = FlowBox(parent, "rule-step");
-                step.style.paddingLeft = 22;
-                step.style.marginBottom = i == copy.steps.Length - 1 ? 20 : 14;
-                Text(step, (i + 1) + ".", 0, 0, 20, 21, 13, "#18394c");
-                FlowText(step, copy.steps[i].title, 13, "#18394c", true);
-                FlowText(step, copy.steps[i].body, lineHeight: 21.6f);
-            }
-            var note = FlowBox(parent, "rule-note", "#fff0d4", 8);
-            note.style.paddingLeft = note.style.paddingRight = note.style.paddingTop = note.style.paddingBottom = 12;
-            note.style.marginBottom = 20;
-            FlowText(note, copy.note, lineHeight: 21.6f);
-            FlowAction(parent, "盤面に戻る", null, match.Close, "#49afc7", "#ffffff", "primary");
-        }
         private void ReplayDialog()
         {
             var parent = FlowDialog("対局のリプレイ");

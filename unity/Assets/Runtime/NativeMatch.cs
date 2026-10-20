@@ -152,6 +152,8 @@ namespace Azarashi.UnityView
             {
                 wasReady = true;
                 Restore();
+                if (NativeStorage.Read("howto", "azarashi-shogi.howto.v1") != "seen")
+                    Open("rules");
             }
             audio.Sync(Motion, Muted);
             if (Motion != null)
@@ -251,6 +253,7 @@ namespace Azarashi.UnityView
         {
             CancelThinking();
             if (dialog == "catalog" && Dialog != "catalog") Hud.ResetCatalog();
+            if (dialog == "rules" && Dialog != "rules") Hud.ResetTutorial();
             Dialog = dialog;
             ReplayPlaying = false;
             ClearSelection();
@@ -266,6 +269,11 @@ namespace Azarashi.UnityView
         }
         public void Close()
         {
+            if (Dialog == "rules")
+            {
+                NativeStorage.Write("howto", "seen");
+                NativeStorage.Flush();
+            }
             Dialog = null;
             Hud.Rebuild();
         }
