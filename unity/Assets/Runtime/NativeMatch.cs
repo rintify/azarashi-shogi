@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using UnityEngine;
 
 namespace Azarashi.UnityView
@@ -103,6 +104,10 @@ namespace Azarashi.UnityView
         private NativeCamera orbit;
         private Vector2 down;
         private bool pointerDown, wasReady, stepRequested;
+        private int activeTouch = -1;
+#if UNITY_WEBGL && !UNITY_EDITOR
+        [DllImport("__Internal")] private static extern void AzarashiConfigureCanvas();
+#endif
         private float nextReplay, turnStarted;
         private readonly List<string> history = new List<string>();
         private NativeAudio audio;
@@ -118,6 +123,9 @@ namespace Azarashi.UnityView
 
         private void Awake()
         {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            AzarashiConfigureCanvas();
+#endif
             name = "NativeMatch";
             Data = new NativeGameData();
             Engine = new GameObject("NativeEngine").AddComponent<NativeEngine>();
@@ -546,7 +554,34 @@ namespace Azarashi.UnityView
                     ClearSelection();
             }
             var mouse = (Vector2)Input.mousePosition;
-            if (Input.GetMouseButtonDown(0) && !Hud.Blocks(mouse))
+            var pressed = Input.GetMouseButtonDown(0);
+            var released = Input.GetMouseButtonUp(0);
+            if (Input.touchCount > 0)
+            {
+                // A second finger or canceled browser gesture must not turn into
+                // a board move when the remaining finger is released.
+                var touch = Input.GetTouch(0);
+                if (Input.touchCount != 1 || touch.phase == TouchPhase.Canceled)
+                {
+                    activeTouch = -1;
+                    pointerDown = false;
+                    hover = null;
+                    HoverPreview = null;
+                    return;
+                }
+                mouse = touch.position;
+                pressed = touch.phase == TouchPhase.Began;
+                if (pressed) activeTouch = touch.fingerId;
+                released = touch.phase == TouchPhase.Ended && activeTouch == touch.fingerId;
+                if (released) activeTouch = -1;
+            }
+            else if (activeTouch >= 0)
+            {
+                activeTouch = -1;
+                pointerDown = false;
+                return;
+            }
+            if (pressed && !Hud.Blocks(mouse))
             {
                 Hud.BoardPointerDown();
                 pointerDown = true;
@@ -566,9 +601,9 @@ namespace Azarashi.UnityView
                 hover = null;
                 HoverPreview = null;
             }
-            if (Input.GetMouseButtonUp(0))
+            if (released)
             {
-                if (pointerDown && (down - mouse).magnitude < 8 && !Hud.Blocks(mouse))
+                if (pointerDown && IsTap(down, mouse, Hud.PixelRatio) && !Hud.Blocks(mouse))
                 {
                     if (ResolveCell(mouse, out var clicked))
                         Click(clicked);
@@ -576,6 +611,7 @@ namespace Azarashi.UnityView
                 pointerDown = false;
             }
         }
+        public static bool IsTap(Vector2 from, Vector2 to, float pixelRatio) => (from - to).sqrMagnitude < 64 * pixelRatio * pixelRatio;
         private bool ResolveCell(Vector2 screen, out Cell cell)
         {
             if (Board.PieceAt(screen, out var id, out var point))

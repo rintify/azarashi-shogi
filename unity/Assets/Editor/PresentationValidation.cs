@@ -63,6 +63,10 @@ namespace Azarashi.UnityView.Editor
         public static void Run(NativeGameData data)
         {
             ValidateTransitions();
+            foreach (var ratio in new[] { 1f, 1.8f, 2f, 3f })
+                if (!NativeMatch.IsTap(Vector2.zero, new Vector2(7 * ratio, 0), ratio) || NativeMatch.IsTap(Vector2.zero, new Vector2(9 * ratio, 0), ratio))
+                    throw new Exception("Tap tolerance changed with display pixel density.");
+            Debug.Log("Board input validation passed: the tap threshold stays at 8 CSS pixels across four pixel densities.");
             ValidateRetainedScroll();
             ValidateRetainedOrder();
             UirStagingPatch.ValidateBounds();

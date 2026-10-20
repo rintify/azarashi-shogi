@@ -54,6 +54,7 @@ namespace Azarashi.UnityView
         private Camera catalogCamera;
         private RenderTexture catalogTexture;
         public Rect PlayArea => new Rect(playArea.x * uiScale, playArea.y * uiScale, playArea.width * uiScale, playArea.height * uiScale);
+        public float PixelRatio => uiScale;
 #if UNITY_WEBGL && !UNITY_EDITOR
         [DllImport("__Internal")] private static extern float AzarashiPixelRatio();
 #endif

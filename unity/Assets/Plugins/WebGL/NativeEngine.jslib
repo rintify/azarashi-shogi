@@ -1,4 +1,12 @@
 mergeInto(LibraryManager.library, {
+  AzarashiConfigureCanvas:function(){
+    // Hosting sites supply their own HTML, so keep the source template's
+    // resolution limit and touch policy in the native player's bridge too.
+    Module.devicePixelRatio=Math.min(window.devicePixelRatio||1,1.8);
+    Module.matchWebGLToCanvasSize=true;
+    Module.canvas.style.touchAction='none';
+    Module.canvas.style.overscrollBehavior='none';
+  },
   AzarashiFlushStorage__deps: ['$FS', '$IDBFS'],
   AzarashiFlushStorage:function(){
     if(Module.azarashiSyncing){Module.azarashiSyncAgain=true;return;}
