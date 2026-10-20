@@ -13,12 +13,17 @@ namespace Azarashi.UnityView
         private readonly Dictionary<string, int> cursors = new Dictionary<string, int>();
         private readonly HashSet<string> seen = new HashSet<string>();
         private readonly Dictionary<string, float> exiting = new Dictionary<string, float>();
+        private readonly Dictionary<VisualElement, VisualElement> previousSibling = new Dictionary<VisualElement, VisualElement>();
+        private readonly List<string> expired = new List<string>();
+        public int ReordersLastBuild { get; private set; }
         private bool building;
         public void Begin(VisualElement root)
         {
             building = true;
             cursors.Clear();
             seen.Clear();
+            previousSibling.Clear();
+            ReordersLastBuild = 0;
             paths[root] = "root";
         }
         public T Get<T>(VisualElement parent, string role, Func<T> create) where T : VisualElement
@@ -26,6 +31,7 @@ namespace Azarashi.UnityView
             if (!building || !paths.TryGetValue(parent, out var path))
             {
                 var fresh = create();
+                Prepare(fresh);
                 parent.Add(fresh);
                 return fresh;
             }
@@ -36,6 +42,7 @@ namespace Azarashi.UnityView
             if (!views.TryGetValue(key, out var v))
             {
                 v = create();
+                Prepare(v);
                 views[key] = v;
                 paths[v] = key;
                 parent.Add(v);
@@ -45,11 +52,24 @@ namespace Azarashi.UnityView
                 v.SetEnabled(true);
                 NativeUi.Enter(v);
             }
-            // Retention preserves identity, not the previous DOM order. Conditional
-            // fields can be inserted before existing buttons in the source layout.
-            v.BringToFront();
+            // Preserve source order without reparenting every retained node.
+            // Apply immediately so explicit SendToBack/BringToFront still wins.
+            if (previousSibling.TryGetValue(parent, out var previous) && parent.IndexOf(v) < parent.IndexOf(previous))
+            {
+                v.PlaceInFront(previous);
+                ReordersLastBuild++;
+            }
+            previousSibling[parent] = v;
             seen.Add(key);
             return (T)v;
+        }
+        private static void Prepare(VisualElement element)
+        {
+            // Declare animated usage before attachment, so the first hover or
+            // entrance doesn't regenerate the element and descendant geometry.
+            if ((element.usageHints & UsageHints.GroupTransform) == 0)
+                element.usageHints |= UsageHints.DynamicTransform;
+            element.usageHints |= UsageHints.DynamicColor;
         }
         public void TrackContainer(VisualElement owner, string role, VisualElement container)
         {
@@ -90,11 +110,12 @@ namespace Azarashi.UnityView
         }
         public void Tick()
         {
-            var remove = new List<string>();
+            if (exiting.Count == 0) return;
+            expired.Clear();
             foreach (var item in exiting)
                 if (Time.unscaledTime - item.Value >= .18f)
-                    remove.Add(item.Key);
-            foreach (var key in remove)
+                    expired.Add(item.Key);
+            foreach (var key in expired)
             {
                 if (!views.TryGetValue(key, out var v))
                     continue;
@@ -115,7 +136,9 @@ namespace Azarashi.UnityView
                     if (item.Value.StartsWith(key + "/"))
                         containers.Add(item.Key);
                 foreach (var container in containers)
+                {
                     paths.Remove(container);
+                }
             }
         }
     }
@@ -338,6 +361,16 @@ namespace Azarashi.UnityView
             public string name, dangerColor;
             public float radius;
             public bool text;
+            public bool layoutValid;
+            public Rect box;
+            public float laidRadius;
+            public string copy;
+            public FontDefinition font;
+            public float fontSize, letterSpacing, wordSpacing, paddingLeft, paddingRight, paddingTop, paddingBottom;
+            public FontStyle fontStyle;
+            public TextAnchor anchor;
+            public WhiteSpace whiteSpace;
+            public bool richText;
         }
         private static readonly Dictionary<VisualElement, Shadow> shadows = new Dictionary<VisualElement, Shadow>();
         private static Dictionary<string, CssShadow[]> shadowStyles;
@@ -372,7 +405,7 @@ namespace Azarashi.UnityView
             }
             if (!shadows.TryGetValue(element, out var shadow))
             {
-                shadow = new Shadow { host = new VisualElement { name = "css-shadow", pickingMode = PickingMode.Ignore } };
+                shadow = new Shadow { host = new VisualElement { name = "css-shadow", pickingMode = PickingMode.Ignore, usageHints = UsageHints.DynamicTransform } };
                 shadow.host.style.position = UnityEngine.UIElements.Position.Absolute;
                 shadow.text = text;
                 shadows[element] = shadow;
@@ -383,6 +416,7 @@ namespace Azarashi.UnityView
                 shadow.name = name;
                 shadow.dangerColor = dangerColor;
                 shadow.host.Clear();
+                shadow.layoutValid = false;
                 if (!shadowStyles.TryGetValue(name, out var layers) || layers == null)
                     throw new InvalidOperationException("Missing source CSS shadow: " + name);
                 foreach (var layer in layers)
@@ -432,6 +466,24 @@ namespace Azarashi.UnityView
             shadow.host.style.opacity = style.opacity;
             shadow.host.style.display = style.display;
             var radius = Mathf.Min(shadow.radius, box.width / 2, box.height / 2);
+            var sourceText = element as TextElement;
+            var changed = !shadow.layoutValid || shadow.box != box || shadow.laidRadius != radius;
+            if (shadow.text)
+                changed |= shadow.copy != sourceText.text || shadow.richText != sourceText.enableRichText || !shadow.font.Equals(style.unityFontDefinition)
+                    || shadow.fontSize != style.fontSize || shadow.fontStyle != style.unityFontStyleAndWeight || shadow.anchor != style.unityTextAlign
+                    || shadow.letterSpacing != style.letterSpacing || shadow.wordSpacing != style.wordSpacing || shadow.whiteSpace != style.whiteSpace
+                    || shadow.paddingLeft != style.paddingLeft || shadow.paddingRight != style.paddingRight || shadow.paddingTop != style.paddingTop || shadow.paddingBottom != style.paddingBottom;
+            if (!changed) return;
+            shadow.layoutValid = true;
+            shadow.box = box;
+            shadow.laidRadius = radius;
+            if (shadow.text)
+            {
+                shadow.copy = sourceText.text; shadow.richText = sourceText.enableRichText; shadow.font = style.unityFontDefinition;
+                shadow.fontSize = style.fontSize; shadow.fontStyle = style.unityFontStyleAndWeight; shadow.anchor = style.unityTextAlign;
+                shadow.letterSpacing = style.letterSpacing; shadow.wordSpacing = style.wordSpacing; shadow.whiteSpace = style.whiteSpace;
+                shadow.paddingLeft = style.paddingLeft; shadow.paddingRight = style.paddingRight; shadow.paddingTop = style.paddingTop; shadow.paddingBottom = style.paddingBottom;
+            }
             foreach (var shape in shadow.host.Children())
             {
                 var layer = (CssShadow)shape.userData;

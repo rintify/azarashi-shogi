@@ -186,7 +186,7 @@ namespace Azarashi.UnityView
                 }
                 CenteredSymbol(button, "triangle", 22, "#4a95b1").style.rotate = new Rotate(i == 0 ? -90 : 90);
             }
-            var spin = FlowAction(catalogStage, CatalogSpins ? "回転中" : "回転する", CatalogSpins ? "pause" : "play", () => { CatalogSpins = !CatalogSpins; Rebuild(); }, "#ffffffcc", "#567d91", symbolFirst: true, iconSize: 15);
+            var spin = FlowAction(catalogStage, CatalogSpins ? "回転中" : "回転する", CatalogSpins ? "pause" : "play", () => { CatalogSpins = !CatalogSpins; RebuildDialog(); }, "#ffffffcc", "#567d91", symbolFirst: true, iconSize: 15);
             spin.style.position = UnityEngine.UIElements.Position.Absolute;
             spin.style.left = 12;
             spin.style.top = StyleKeyword.Auto;
@@ -250,7 +250,7 @@ namespace Azarashi.UnityView
         private void ChangeCatalog(int delta)
         {
             CatalogIndex = (CatalogIndex + delta + match.Data.Config.variants.Length) % match.Data.Config.variants.Length;
-            Rebuild();
+            RebuildDialog();
         }
         private void UpdateCatalogCamera()
         {

@@ -8,7 +8,7 @@ namespace Azarashi.UnityView
 {
     public sealed partial class NativeHud
     {
-        private VisualElement Modal(string title, float desiredHeight, float maxWidth = 540, bool flow = false)
+        private VisualElement Modal(string title, float desiredHeight, float maxWidth = 540, bool flow = false, bool measured = false)
         {
             var shade = Box(root, "dialog-shade", 0, 0, width, height, "#347ba466", 0, true);
             dialogLayer = shade;
@@ -28,7 +28,7 @@ namespace Azarashi.UnityView
             var h = Mathf.Min(desiredHeight, height - 24);
             var card = activeViews.Get(shade, "box-native-dialog", () => new VisualElement
             {
-                name = "native-dialog", pickingMode = PickingMode.Position, userData = "native-ui"
+                name = "native-dialog", pickingMode = PickingMode.Position, userData = "native-ui", usageHints = UsageHints.GroupTransform
             });
             card.style.position = UnityEngine.UIElements.Position.Absolute;
             card.style.left = (width - w) * .5f;
@@ -47,8 +47,6 @@ namespace Azarashi.UnityView
             card.style.paddingLeft = card.style.paddingRight = card.style.paddingTop = card.style.paddingBottom = 0;
             NativeUi.Skin(card, "dialog", 28);
             ModalFocus(shade, card);
-            card.style.transitionProperty = new List<StylePropertyName> { new StylePropertyName("height"), new StylePropertyName("top") };
-            card.style.transitionDuration = new List<TimeValue> { new TimeValue(.28f) };
             if (!flow)
             {
             if (match.Dialog == "settings")
@@ -60,14 +58,24 @@ namespace Azarashi.UnityView
             }
             if (!card.ClassListContains("arrived"))
             {
-                card.AddToClassList("arrived");
-                Enter(card);
+                if (measured)
+                    card.style.opacity = 0;
+                else
+                    ArriveDialog(card);
             }
             return card;
+        }
+        private void ArriveDialog(VisualElement card)
+        {
+            card.AddToClassList("arrived");
+            Enter(card);
+            card.style.transitionProperty = new List<StylePropertyName> { new StylePropertyName("height"), new StylePropertyName("top") };
+            card.style.transitionDuration = new List<TimeValue> { new TimeValue(.28f) };
         }
         private void BuildDialog(string dialog)
         {
             measureFlowDialog = null;
+            flowMeasureDirty = true;
             if (dialog == "settings")
                 SettingsDialog();
             else if (dialog == "replays")

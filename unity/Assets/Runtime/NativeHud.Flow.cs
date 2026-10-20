@@ -9,6 +9,7 @@ namespace Azarashi.UnityView
     public sealed partial class NativeHud
     {
         private Action measureFlowDialog;
+        private bool flowMeasureDirty;
         private VisualElement FlowBox(VisualElement parent, string name, string fill = null, float radius = 0)
         {
             var box = Box(parent, name, 0, 0, 0, 0, fill, radius);
@@ -67,7 +68,7 @@ namespace Azarashi.UnityView
         }
         private VisualElement FlowDialog(string title)
         {
-            var card = Modal(title, height - 24, 540, true);
+            var card = Modal(title, height - 24, 540, true, true);
             var w = DialogWidth();
             var padding = match.Dialog == "replays" && width <= 760 ? 16 : 24;
             var scroll = ScrollRegion(card, "dialog-scroll", 0, 0, w, height - 32);
@@ -119,11 +120,10 @@ namespace Azarashi.UnityView
             {
                 scroll.AddToClassList("sticky-bound");
                 scroll.verticalScroller.valueChanged += value => header.style.top = Mathf.Max(0, (match.Dialog == "replays" && width <= 760 ? 16 : 24) - value);
-                content.RegisterCallback<GeometryChangedEvent>(_ => measureFlowDialog?.Invoke());
+                content.RegisterCallback<GeometryChangedEvent>(_ => flowMeasureDirty = true);
             }
-            // A retained rebuild can reset the card size while leaving content
-            // geometry unchanged. Measure flow children independently of the
-            // ScrollView viewport's minimum extent on every layout tick.
+            // Measure after content geometry changes or a retained state update,
+            // independently of the ScrollView viewport's minimum extent.
             measureFlowDialog = () =>
             {
                 var bottom = 0f;
@@ -138,9 +138,15 @@ namespace Azarashi.UnityView
                     card.style.height = cardHeight;
                 if (Mathf.Abs(card.style.top.value.value - top) > .5f)
                     card.style.top = top;
+                if (!card.ClassListContains("arrived"))
+                {
+                    // Commit the measured geometry before beginning the source
+                    // entrance animation; don't animate from a full-screen card.
+                    card.AddToClassList("arrived");
+                    card.schedule.Execute(() => { if (card.panel != null && card.enabledInHierarchy && match.Dialog != null) ArriveDialog(card); });
+                }
             };
-            header.BringToFront();
-            header.schedule.Execute(header.BringToFront);
+            // The header is already a viewport overlay, outside content order.
             return content;
         }
         private void SettingLabel(VisualElement parent, string title, string value = null)
@@ -174,7 +180,7 @@ namespace Azarashi.UnityView
         {
             SettingLabel(parent, title, "Lv." + level + " · " + match.Data.Level(level).name);
             var slider = activeViews.Get(parent, "level-slider", () => new NativeSlider());
-            slider.Bind(level, 1, match.Data.Config.levels.Length, 0, 0, DialogWidth() - 56, changed, false);
+            slider.Bind(level, 1, match.Data.Config.levels.Length, 0, 0, DialogWidth() - 56, changed, false, true);
             Inline(slider, true);
             slider.style.height = 36;
             slider.style.marginTop = 14;
@@ -199,7 +205,7 @@ namespace Azarashi.UnityView
             for (var i = 0; i < 3; i++)
             {
                 var mode = values[i];
-                var button = FlowOption(modes, current.mode == mode, () => { current.mode = mode; Rebuild(); }, width <= 400 ? 4 : 7);
+                var button = FlowOption(modes, current.mode == mode, () => { current.mode = mode; RebuildDialog(); }, width <= 400 ? 4 : 7);
                 button.style.marginRight = i == 2 ? 0 : 10;
                 var portraits = FlowBox(button, "mode-portraits");
                 Row(portraits, true);
@@ -228,7 +234,7 @@ namespace Azarashi.UnityView
                 for (var i = 0; i < 2; i++)
                 {
                     var side = i == 0 ? "south" : "north";
-                    var option = FlowOption(sides, current.human == side, () => { current.human = side; Rebuild(); });
+                    var option = FlowOption(sides, current.human == side, () => { current.human = side; RebuildDialog(); });
                     option.style.marginRight = i == 0 ? 10 : 0;
                     FlowText(option, i == 0 ? "先手" : "後手", 14, current.human == side ? "#196783" : "#18394c", true).style.unityTextAlign = TextAnchor.MiddleCenter;
                     var detail = FlowText(option, i == 0 ? "あなたから開始" : "NPCから開始", 11, "#597d8f");
@@ -237,7 +243,7 @@ namespace Azarashi.UnityView
                 }
             }
             if (watching)
-                LevelSlider(content, "先手AIの強さ", current.southLevel, v => { current.southLevel = Mathf.RoundToInt(v); Rebuild(); });
+                LevelSlider(content, "先手AIの強さ", current.southLevel, v => { current.southLevel = Mathf.RoundToInt(v); RebuildDialog(); });
             if (local)
             {
                 var note = FlowBox(content, "local-play-note", "#e6f3f2", 18);
@@ -247,7 +253,7 @@ namespace Azarashi.UnityView
             }
             else
             {
-                LevelSlider(content, watching ? "後手AIの強さ" : "相手の強さ", current.difficulty, v => { current.difficulty = Mathf.RoundToInt(v); Rebuild(); });
+                LevelSlider(content, watching ? "後手AIの強さ" : "相手の強さ", current.difficulty, v => { current.difficulty = Mathf.RoundToInt(v); RebuildDialog(); });
                 var range = FlowBox(content, "range-labels");
                 Row(range);
                 range.style.marginTop = 6;

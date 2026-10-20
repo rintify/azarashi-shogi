@@ -269,8 +269,18 @@ namespace Azarashi.UnityView.Editor
             tree.End();
             if (action != retainedAction || root.IndexOf(inserted) >= root.IndexOf(action))
                 throw new Exception("Retained form fields moved after the action buttons.");
+            for (var pass = 0; pass < 50; pass++)
+            {
+                tree.Begin(root);
+                tree.Get(root, "intro", () => new Label());
+                tree.Get(root, "new-mode-note", () => new Label());
+                tree.Get(root, "action", () => new Button());
+                tree.End();
+                if (tree.ReordersLastBuild != 0)
+                    throw new Exception("Unchanged retained form reordered its native hierarchy.");
+            }
             NativeUi.Forget(root);
-            Debug.Log("Retained form validation passed: inserted content precedes the same action button.");
+            Debug.Log("Retained form validation passed: source order and zero hierarchy moves across 50 unchanged updates.");
         }
     }
 }

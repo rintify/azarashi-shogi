@@ -39,7 +39,7 @@ namespace Azarashi.UnityView
         private readonly Dictionary<string, Texture2D> icons = new Dictionary<string, Texture2D>();
         private readonly List<VisualElement> orbs = new List<VisualElement>();
         private float uiScale = 1, width = 1280, height = 720, clockAmount;
-        private bool expanded, gridOpen, dirty = true, lastBusy;
+        private bool expanded, gridOpen, dirty = true, hudDirty = true, lastBusy;
         private int choiceCount = -1, choiceIndex;
         private string resultKey, message;
         private string replayWarning;
@@ -125,7 +125,7 @@ namespace Azarashi.UnityView
             }
             message = text;
             messageUntil = Time.unscaledTime + 6;
-            dirty = true;
+            Rebuild();
         }
         public void ClearReplayWarning()
         {
@@ -135,7 +135,9 @@ namespace Azarashi.UnityView
         public void Rebuild()
         {
             dirty = true;
+            hudDirty = true;
         }
+        private void RebuildDialog() => dirty = true;
         private VisualElement Box(VisualElement parent, string name, float x, float y, float w, float h, string fill = null, float radius = 0, bool block = false)
         {
             parent = PresentationParent(parent);
@@ -256,126 +258,130 @@ namespace Azarashi.UnityView
             dirty = false;
             if (match.Pending?.Length > 1)
                 gridOpen = false;
-            views.Begin(presentation);
-            counts.Clear();
-            stockTargets.Clear();
-            var vignette = Box(root, "screen-vignette", 0, 0, width, height);
-            vignette.style.backgroundImage = new StyleBackground(Resources.Load<Texture2D>("Native/Effects/vignette"));
-            hud = Box(root, "native-hud", 0, 0, width, height);
-            hud.style.transitionProperty = new List<StylePropertyName> { new StylePropertyName("opacity") };
-            hud.style.transitionDuration = new List<TimeValue> { new TimeValue(.25f) };
-            hud.style.opacity = 1;
-            hud.SetEnabled(true);
-            markers = Box(root, "native-markers", 0, 0, width, height);
-            var mobile = width <= 760;
-            var compact = mobile && height <= 670;
-            var landscape = height <= 520 && width >= 500;
-            var margin = mobile ? width <= 360 ? 10 : 14 : 24;
-            var size = mobile ? 34 : 44;
-            var buttonHeight = mobile ? 38 : 44;
-            var gap = mobile ? 3 : 6;
-            var headerTop = landscape ? 10 : mobile ? 12 : 20;
-            if (landscape)
+            if (hudDirty)
             {
-                margin = 16;
-                // The later max-width:760px CSS rule also applies in landscape.
-                size = mobile ? 34 : 36;
-                buttonHeight = mobile ? 38 : 36;
-            }
-            var mascotWidth = mobile ? width <= 360 ? 20 : 26 : 44;
-            var mascotHeight = mobile ? width <= 360 ? 26 : 30 : 44;
-            // .brand-catalog is a grid: mascot + 1px gap + the 15px caption line.
-            // The source header centers its title and nav against that complete grid.
-            var brandHeight = mascotHeight + 16;
-            var brand = Box(hud, "brand", margin, headerTop, mobile ? 90 : 250, brandHeight, null, 0, true);
-            NativeUi.EnterOnce(brand, true);
-            var brandButton = Button(brand, "", 0, 0, mascotWidth, mascotHeight, () => match.Open("catalog"));
-            brandButton.style.backgroundColor = Color.clear;
-            NativeUi.Bind(brandButton, () => match.Open("catalog"), Color.clear, Color.clear);
-            Border(brandButton, 0, "#ffffff");
-            NoSkin(brandButton);
-            Icon(brandButton, "seal", false, 0, (mascotHeight - mascotWidth) * .5f, mascotWidth);
-            var catalogCaption = Text(brand, "図鑑", 0, mascotHeight + 1, mascotWidth, 15, 9, "#ffffff", true, TextAnchor.MiddleCenter);
-            NativeUi.TextShadows(catalogCaption, "textCatalogCaption");
-            var titleHeight = mobile ? 30 : 44;
-            var title = Text(brand, "アザラシ将棋", mascotWidth + (mobile ? 3 : 10), (brandHeight - titleHeight) * .5f, mobile ? 102 : 200, titleHeight, landscape ? 14 : mobile ? width <= 360 ? 12 : 13 : 18, "#ffffff", true);
-            title.style.display = width <= 350 ? DisplayStyle.None : DisplayStyle.Flex;
-            title.style.letterSpacing = (mobile ? -.02f : .03f) * (landscape ? 14 : mobile ? width <= 360 ? 12 : 13 : 18);
-            NativeUi.TextShadows(title, "textBrand");
-            var labels = new[] { match.Muted ? "mute" : "sound", "book", "replay", "reset", match.TopView ? "cube" : "view", gridOpen ? "x" : "grid" };
-            Action[] actions = { () => { match.ToggleSound(); Rebuild(); }, () => match.Open("rules"), () => match.Open("replays"), () => match.Open("settings"), () => { match.TopView = !match.TopView; Rebuild(); }, () => { gridOpen = !gridOpen; Rebuild(); } };
-            for (var i = 0; i < labels.Length; i++)
-            {
-                var pressed = i == 0 && !match.Muted || i == 4 && match.TopView || i == 5 && gridOpen;
-                var color = pressed ? "#795e49" : i == 1 ? "#7a6ea1" : i == 2 ? "#a36471" : "#507497";
-                var fill = pressed ? "#ffe08d" : i == 1 ? "#e6e4ff" : i == 2 ? "#ffdedc" : "#fff9e9";
-                var b = Button(hud, "", width - margin - (labels.Length - i) * (size + gap) + gap, headerTop + (brandHeight - buttonHeight) * .5f, size, buttonHeight, actions[i], fill);
-                Border(b, 2, pressed ? "#fff8dc" : "#ffffff");
-                NativeUi.Bind(b, actions[i], C(fill), C(pressed || i == 1 || i == 2 ? fill : "#fff1bd"));
-                NativeUi.EnterOnce(b, true);
-                CenteredSymbol(b, labels[i], 18, color);
-            }
-            var opponent = NativeGameData.Other(match.Viewer);
-            var stockWidth = landscape ? 240 : mobile ? width - 28 : Mathf.Min(420, width - 32);
-            var opponentTop = landscape || compact ? 54 : mobile ? 64 : 78;
-            StockBar(hud, opponent, opponentTop, stockWidth, false);
-            var bannerTop = landscape ? 100 : compact ? 98 : mobile ? 115 : 132;
-            BuildStatus(bannerTop, landscape);
-            var bottom = compact || landscape ? 22 : 20;
-            var playTop = landscape ? 52 : compact ? 116 : mobile ? 132 : 144;
-            playArea = new Rect(landscape ? 14 : mobile ? 0 : 8, playTop, width - (landscape ? width >= 840 ? 128 : 274 : mobile ? 0 : 16), Mathf.Max(80, height - playTop - (landscape ? 20 : 74)));
-            if (match.Replaying)
-                BuildReplayDock();
-            else if (match.State.phase == "finished" && match.Motion == null)
-            {
-                if (match.ResultDismissed)
+                hudDirty = false;
+                views.Begin(presentation);
+                counts.Clear();
+                stockTargets.Clear();
+                var vignette = Box(root, "screen-vignette", 0, 0, width, height);
+                vignette.style.backgroundImage = new StyleBackground(Resources.Load<Texture2D>("Native/Effects/vignette"));
+                hud = Box(root, "native-hud", 0, 0, width, height);
+                hud.style.transitionProperty = new List<StylePropertyName> { new StylePropertyName("opacity") };
+                hud.style.transitionDuration = new List<TimeValue> { new TimeValue(.25f) };
+                hud.style.opacity = 1;
+                hud.SetEnabled(true);
+                markers = Box(root, "native-markers", 0, 0, width, height);
+                var mobile = width <= 760;
+                var compact = mobile && height <= 670;
+                var landscape = height <= 520 && width >= 500;
+                var margin = mobile ? width <= 360 ? 10 : 14 : 24;
+                var size = mobile ? 34 : 44;
+                var buttonHeight = mobile ? 38 : 44;
+                var gap = mobile ? 3 : 6;
+                var headerTop = landscape ? 10 : mobile ? 12 : 20;
+                if (landscape)
                 {
-                    var actionsRow = Box(hud, "result-actions", DockLeft, height - DockBottom - 44, DockWidth, 44);
-                    Row(actionsRow, true);
-                    var reopen = FlowAction(actionsRow, "結果を見る", null, () => { match.ResultDismissed = false; Rebuild(); }, "#48afc8", "#ffffff", "primary");
-                    reopen.style.height = 44;
-                    reopen.style.marginRight = 10;
-                    FlowAction(actionsRow, "新しい対局", null, () => match.Open("settings"), "#48afc8", "#ffffff", "primary").style.height = 44;
+                    margin = 16;
+                    // The later max-width:760px CSS rule also applies in landscape.
+                    size = mobile ? 34 : 36;
+                    buttonHeight = mobile ? 38 : 36;
                 }
+                var mascotWidth = mobile ? width <= 360 ? 20 : 26 : 44;
+                var mascotHeight = mobile ? width <= 360 ? 26 : 30 : 44;
+                // .brand-catalog is a grid: mascot + 1px gap + the 15px caption line.
+                // The source header centers its title and nav against that complete grid.
+                var brandHeight = mascotHeight + 16;
+                var brand = Box(hud, "brand", margin, headerTop, mobile ? 90 : 250, brandHeight, null, 0, true);
+                NativeUi.EnterOnce(brand, true);
+                var brandButton = Button(brand, "", 0, 0, mascotWidth, mascotHeight, () => match.Open("catalog"));
+                brandButton.style.backgroundColor = Color.clear;
+                NativeUi.Bind(brandButton, () => match.Open("catalog"), Color.clear, Color.clear);
+                Border(brandButton, 0, "#ffffff");
+                NoSkin(brandButton);
+                Icon(brandButton, "seal", false, 0, (mascotHeight - mascotWidth) * .5f, mascotWidth);
+                var catalogCaption = Text(brand, "図鑑", 0, mascotHeight + 1, mascotWidth, 15, 9, "#ffffff", true, TextAnchor.MiddleCenter);
+                NativeUi.TextShadows(catalogCaption, "textCatalogCaption");
+                var titleHeight = mobile ? 30 : 44;
+                var title = Text(brand, "アザラシ将棋", mascotWidth + (mobile ? 3 : 10), (brandHeight - titleHeight) * .5f, mobile ? 102 : 200, titleHeight, landscape ? 14 : mobile ? width <= 360 ? 12 : 13 : 18, "#ffffff", true);
+                title.style.display = width <= 350 ? DisplayStyle.None : DisplayStyle.Flex;
+                title.style.letterSpacing = (mobile ? -.02f : .03f) * (landscape ? 14 : mobile ? width <= 360 ? 12 : 13 : 18);
+                NativeUi.TextShadows(title, "textBrand");
+                var labels = new[] { match.Muted ? "mute" : "sound", "book", "replay", "reset", match.TopView ? "cube" : "view", gridOpen ? "x" : "grid" };
+                Action[] actions = { () => { match.ToggleSound(); Rebuild(); }, () => match.Open("rules"), () => match.Open("replays"), () => match.Open("settings"), () => { match.TopView = !match.TopView; Rebuild(); }, () => { gridOpen = !gridOpen; Rebuild(); } };
+                for (var i = 0; i < labels.Length; i++)
+                {
+                    var pressed = i == 0 && !match.Muted || i == 4 && match.TopView || i == 5 && gridOpen;
+                    var color = pressed ? "#795e49" : i == 1 ? "#7a6ea1" : i == 2 ? "#a36471" : "#507497";
+                    var fill = pressed ? "#ffe08d" : i == 1 ? "#e6e4ff" : i == 2 ? "#ffdedc" : "#fff9e9";
+                    var b = Button(hud, "", width - margin - (labels.Length - i) * (size + gap) + gap, headerTop + (brandHeight - buttonHeight) * .5f, size, buttonHeight, actions[i], fill);
+                    Border(b, 2, pressed ? "#fff8dc" : "#ffffff");
+                    NativeUi.Bind(b, actions[i], C(fill), C(pressed || i == 1 || i == 2 ? fill : "#fff1bd"));
+                    NativeUi.EnterOnce(b, true);
+                    CenteredSymbol(b, labels[i], 18, color);
+                }
+                var opponent = NativeGameData.Other(match.Viewer);
+                var stockWidth = landscape ? 240 : mobile ? width - 28 : Mathf.Min(420, width - 32);
+                var opponentTop = landscape || compact ? 54 : mobile ? 64 : 78;
+                StockBar(hud, opponent, opponentTop, stockWidth, false);
+                var bannerTop = landscape ? 100 : compact ? 98 : mobile ? 115 : 132;
+                BuildStatus(bannerTop, landscape);
+                var bottom = compact || landscape ? 22 : 20;
+                var playTop = landscape ? 52 : compact ? 116 : mobile ? 132 : 144;
+                playArea = new Rect(landscape ? 14 : mobile ? 0 : 8, playTop, width - (landscape ? width >= 840 ? 128 : 274 : mobile ? 0 : 16), Mathf.Max(80, height - playTop - (landscape ? 20 : 74)));
+                if (match.Replaying)
+                    BuildReplayDock();
+                else if (match.State.phase == "finished" && match.Motion == null)
+                {
+                    if (match.ResultDismissed)
+                    {
+                        var actionsRow = Box(hud, "result-actions", DockLeft, height - DockBottom - 44, DockWidth, 44);
+                        Row(actionsRow, true);
+                        var reopen = FlowAction(actionsRow, "結果を見る", null, () => { match.ResultDismissed = false; Rebuild(); }, "#48afc8", "#ffffff", "primary");
+                        reopen.style.height = 44;
+                        reopen.style.marginRight = 10;
+                        FlowAction(actionsRow, "新しい対局", null, () => match.Open("settings"), "#48afc8", "#ffffff", "primary").style.height = 44;
+                    }
+                }
+                else if (match.Settings.mode == "ai-vs-ai")
+                    BuildSpectatorDock();
+                else
+                    BuildStockDock();
+                clock = Box(root, "native-thinking-clock", width + 80, landscape || compact ? 96 : mobile ? 110 : 128, 48, 45);
+                clockIcon = activeViews.Get(clock, "clock", () => new NativeSymbol("clock") { pickingMode = PickingMode.Ignore });
+                clockIcon.style.position = UnityEngine.UIElements.Position.Absolute;
+                clockIcon.style.left = 12;
+                clockIcon.style.top = 3;
+                clockIcon.style.width = 24;
+                clockIcon.style.height = 24;
+                Text(clock, "AI 思考中", 0, 29, 48, 10, 8, "#ffffff99", false, TextAnchor.MiddleCenter);
+                turnNotice = Box(root, "turn-notice", 0, 164, 0, 0, "#ffffffb8", 20);
+                turnNotice.style.left = StyleKeyword.Auto;
+                turnNotice.style.right = 16;
+                turnNotice.style.width = turnNotice.style.height = StyleKeyword.Auto;
+                turnNotice.style.paddingTop = turnNotice.style.paddingBottom = 7;
+                turnNotice.style.paddingLeft = turnNotice.style.paddingRight = 11;
+                Row(turnNotice);
+                NativeUi.Skin(turnNotice, "turnNotice", 20);
+                var turnColor = match.State.turn == "south" ? "#3badd0" : "#e9a05c";
+                turnNoticeSpark = Symbol(turnNotice, "snowflake", 0, 0, 14, turnColor);
+                Inline(turnNoticeSpark);
+                turnNoticeSpark.style.marginRight = 6;
+                turnNoticeCopy = FlowText(turnNotice, "", 13, turnColor, true);
+                turnNoticeCopy.style.letterSpacing = .26f;
+                var suffix = FlowText(turnNotice, "の番", 13, turnColor, true);
+                suffix.style.marginLeft = 1.56f;
+                if (gridOpen)
+                    BuildGrid();
+                else
+                {
+                    gridCells.Clear();
+                    gridPulses.Clear();
+                }
+                choice = Box(root, "native-promotion", 0, 0, width, height);
+                result = Box(root, "native-result", 0, 0, width, height);
+                views.End();
             }
-            else if (match.Settings.mode == "ai-vs-ai")
-                BuildSpectatorDock();
-            else
-                BuildStockDock();
-            clock = Box(root, "native-thinking-clock", width + 80, landscape || compact ? 96 : mobile ? 110 : 128, 48, 45);
-            clockIcon = activeViews.Get(clock, "clock", () => new NativeSymbol("clock") { pickingMode = PickingMode.Ignore });
-            clockIcon.style.position = UnityEngine.UIElements.Position.Absolute;
-            clockIcon.style.left = 12;
-            clockIcon.style.top = 3;
-            clockIcon.style.width = 24;
-            clockIcon.style.height = 24;
-            Text(clock, "AI 思考中", 0, 29, 48, 10, 8, "#ffffff99", false, TextAnchor.MiddleCenter);
-            turnNotice = Box(root, "turn-notice", 0, 164, 0, 0, "#ffffffb8", 20);
-            turnNotice.style.left = StyleKeyword.Auto;
-            turnNotice.style.right = 16;
-            turnNotice.style.width = turnNotice.style.height = StyleKeyword.Auto;
-            turnNotice.style.paddingTop = turnNotice.style.paddingBottom = 7;
-            turnNotice.style.paddingLeft = turnNotice.style.paddingRight = 11;
-            Row(turnNotice);
-            NativeUi.Skin(turnNotice, "turnNotice", 20);
-            var turnColor = match.State.turn == "south" ? "#3badd0" : "#e9a05c";
-            turnNoticeSpark = Symbol(turnNotice, "snowflake", 0, 0, 14, turnColor);
-            Inline(turnNoticeSpark);
-            turnNoticeSpark.style.marginRight = 6;
-            turnNoticeCopy = FlowText(turnNotice, "", 13, turnColor, true);
-            turnNoticeCopy.style.letterSpacing = .26f;
-            var suffix = FlowText(turnNotice, "の番", 13, turnColor, true);
-            suffix.style.marginLeft = 1.56f;
-            if (gridOpen)
-                BuildGrid();
-            else
-            {
-                gridCells.Clear();
-                gridPulses.Clear();
-            }
-            choice = Box(root, "native-promotion", 0, 0, width, height);
-            result = Box(root, "native-result", 0, 0, width, height);
-            views.End();
             var signature = match.Dialog + ":" + (draft == null ? "" : JsonUtility.ToJson(draft)) + ":" + width + ":" + height + ":" + CatalogIndex + ":" + CatalogSpins + ":" + match.Replays.Count;
             if (signature != dialogSignature)
             {
@@ -429,7 +435,7 @@ namespace Azarashi.UnityView
             {
                 width = w;
                 height = h;
-                dirty = true;
+                Rebuild();
             }
             ResizeSceneTexture();
             document.panelSettings.scale = uiScale;
@@ -438,7 +444,7 @@ namespace Azarashi.UnityView
             if (lastBusy != match.Busy)
             {
                 lastBusy = match.Busy;
-                dirty = true;
+                Rebuild();
             }
             if (lastDockRevision != match.State.revision || match.Busy)
             {
@@ -446,15 +452,18 @@ namespace Azarashi.UnityView
                 if (expanded)
                 {
                     expanded = false;
-                    dirty = true;
+                    Rebuild();
                 }
             }
             if (match.Dialog != "settings")
                 draft = null;
             if (dirty)
                 Build();
-            if (match.Dialog != null)
+            if (match.Dialog != null && flowMeasureDirty)
+            {
+                flowMeasureDirty = false;
                 measureFlowDialog?.Invoke();
+            }
             RestoreModalFocus();
             views.Tick();
             dialogViews.Tick();

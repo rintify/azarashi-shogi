@@ -77,18 +77,23 @@ namespace Azarashi.UnityView
         private void Change(float next, bool notify)
         {
             // Both source range inputs (AI levels and replay ply) use step=1.
-            value = Mathf.Clamp(Mathf.Round(next), minimum, maximum);
+            var rounded = Mathf.Clamp(Mathf.Round(next), minimum, maximum);
+            var hasChanged = rounded != value;
+            value = rounded;
             var t = (value - minimum) / Mathf.Max(1, maximum - minimum);
             fill.style.width = ThumbSize * .5f + (width - ThumbSize) * t;
             thumb.style.left = (width - ThumbSize) * t;
-            if (notify)
+            if (notify && hasChanged)
                 changed?.Invoke(value);
         }
-        public void Bind(float value, float min, float max, float x, float y, float w, Action<float> callback, bool replay)
+        public void Bind(float value, float min, float max, float x, float y, float w, Action<float> callback, bool replay, bool flow = false)
         {
             minimum = min;
             maximum = max;
-            width = w;
+            // A flow slider may be narrower because of the auto scrollbar.
+            // Keep its measured width when rebinding; unchanged geometry won't
+            // send another event to correct a fixed-width fallback afterward.
+            width = flow && layout.width > 0 && !float.IsNaN(layout.width) ? layout.width : w;
             this.value = value;
             changed = callback;
             var accent = replay ? new Color(44f / 255, 159f / 255, 197f / 255) : new Color(38f / 255, 127f / 255, 158f / 255);
@@ -99,11 +104,11 @@ namespace Azarashi.UnityView
             thumb.style.backgroundColor = accent;
             style.left = x;
             style.top = y;
-            style.width = w;
-            track.style.width = w;
+            style.width = flow ? new StyleLength(StyleKeyword.Auto) : new StyleLength(w);
+            track.style.width = width;
             var t = (value - min) / Mathf.Max(1, max - min);
-            fill.style.width = ThumbSize * .5f + (w - ThumbSize) * t;
-            thumb.style.left = (w - ThumbSize) * t;
+            fill.style.width = ThumbSize * .5f + (width - ThumbSize) * t;
+            thumb.style.left = (width - ThumbSize) * t;
         }
     }
 }
