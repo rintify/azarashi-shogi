@@ -7,6 +7,7 @@ playwright-report/
 test-results/
 rust/azarashi-engine/target/
 dist-unity/
+dist-unityroom/
 public/UnityBuild/
 unity/[Ll]ibrary/
 unity/[Tt]emp/
@@ -42,3 +43,4 @@ unity/Assets/Resources/Native/Shadows/
 unity/Assets/Resources/Native/Effects/
 
 unity/Assets/Resources/Native/Rules.json*
+unity/Assets/Resources/Native/DistributionNotices.txt*

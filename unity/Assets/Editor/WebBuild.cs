@@ -35,15 +35,16 @@ namespace Azarashi.UnityView.Editor
             PlayerSettings.productName = "アザラシ将棋";
             PlayerSettings.colorSpace = ColorSpace.Linear;
             PlayerSettings.runInBackground = true;
-            PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Disabled;
+            var unityroom = Environment.GetEnvironmentVariable("AZARASHI_UNITYROOM") == "1";
+            PlayerSettings.WebGL.compressionFormat = unityroom ? WebGLCompressionFormat.Gzip : WebGLCompressionFormat.Disabled;
             PlayerSettings.WebGL.template = "PROJECT:Native";
             PlayerSettings.WebGL.initialMemorySize = 64;
             PlayerSettings.WebGL.maximumMemorySize = 512;
             PlayerSettings.WebGL.decompressionFallback = false;
             PlayerSettings.WebGL.dataCaching = true;
-            PlayerSettings.WebGL.nameFilesAsHashes = true;
+            PlayerSettings.WebGL.nameFilesAsHashes = !unityroom;
             PlayerSettings.WebGL.exceptionSupport = WebGLExceptionSupport.ExplicitlyThrownExceptionsOnly;
-            PlayerSettings.WebGL.debugSymbolMode = WebGLDebugSymbolMode.External;
+            PlayerSettings.WebGL.debugSymbolMode = unityroom ? WebGLDebugSymbolMode.Off : WebGLDebugSymbolMode.External;
             // Include the native scene shaders even though runtime meshes are generated from assets.
             var graphics = AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/GraphicsSettings.asset");
             if (graphics.Length > 0)

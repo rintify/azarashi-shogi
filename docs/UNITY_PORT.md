@@ -39,4 +39,14 @@ Windows/macOSとも、ビルド前の検証に使うRustネイティブライブ
 
 `docs/fixtures/unity-jet-smoke.json`は、元のルールエンジンで生成・検証した9手の追加棋譜です。8手目から進めるとジェットの飛行・炎・王の捕食を確認できます。15手棋譜には王の着地、雪煙、複数捕食と光球、ペンギン変身、シャチ回転が含まれます。
 
-この出力はUnity単体ですが、unityroomのアカウント登録・投稿操作・公開は行っていません。
+## unityroomへのビルド・アップロード
+
+`npm run unityroom:build` で、Release・Gzip・Decompression Fallbackオフの専用ビルドを `dist-unityroom/` に生成します。通常の `dist-unity/` は変更しません。ログは `unity/BuildLogs/unityroom.log` です。
+
+unityroomの「Webビルド設定」でUnity `6000.5.x` を選び、「Webビルドアップロード」で `dist-unityroom/Build` フォルダーを選択します。対象は `Unityroom.loader.js`、`Unityroom.data.gz`、`Unityroom.framework.js.gz`、`Unityroom.wasm.gz` の4ファイルです。`index.html` のアップロードは不要です。既存の `public/seal.svg` を512pxへ描画した `dist-unityroom/icon.png` も生成します。
+
+ビルド時にGzipの解凍・Unityデータヘッダー・WebAssemblyの検証を実施します。配布用ライセンス文はUnityのdataペイロードにも同梱しています。出力だけを再検査する場合は `node scripts/package-unityroom.mjs` を使用できます（Unityの再ビルドは行いません）。
+
+2026-10-20、[アザラシ将棋](https://unityroom.com/games/azarashi-shogi)を新規登録し、4ファイルのアップロード完了を確認しました。Unityroom側のゲーム画面で起動・合法手表示・王の移動・Rust AIの応手まで操作し、3手目へ進むことを確認しています。公開範囲・実況ポリシーはユーザー選択待ちのため、この時点では非公開です。スマートフォン実機は未確認なので「モバイルブラウザで遊べる」は有効にしていません。
+
+設定要件は[unityroom公式ヘルプ](https://help.unityroom.com/unityroom-351dc3ed5de980eebd79eef3b153be31)に従っています。

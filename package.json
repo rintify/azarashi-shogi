@@ -19,6 +19,7 @@
     "pretest": "node scripts/check-wasm.mjs",
     "benchmark:ai": "node scripts/check-wasm.mjs && vitest bench --run src/ai/wasm.bench.ts",
     "unity:build": "node scripts/build-unity.mjs",
+    "unityroom:build": "node scripts/build-unity.mjs --unityroom",
     "unity:preview": "vite preview --host 127.0.0.1 --outDir dist-unity --port 4174"
   },
   "dependencies": {
