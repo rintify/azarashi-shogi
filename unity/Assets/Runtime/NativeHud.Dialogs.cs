@@ -101,7 +101,7 @@ namespace Azarashi.UnityView
         {
             var scroll = activeViews.Get(card, name, () => new ScrollView(ScrollViewMode.Vertical));
             activeViews.TrackContainer(scroll, "content", scroll.contentContainer);
-            scroll.verticalScrollerVisibility = ScrollerVisibility.Auto;
+            scroll.verticalScrollerVisibility = ScrollerVisibility.Hidden;
             scroll.horizontalScrollerVisibility = ScrollerVisibility.Hidden;
             scroll.style.position = UnityEngine.UIElements.Position.Absolute;
             scroll.style.left = x;
@@ -111,39 +111,8 @@ namespace Azarashi.UnityView
             scroll.style.height = h;
             scroll.style.backgroundColor = Color.clear;
             scroll.contentContainer.style.width = Length.Percent(100);
-            // Match the 15px Chromium scrollbar measured in the source on Windows.
-            var bar = scroll.verticalScroller;
-            bar.style.width = 15;
-            bar.style.minWidth = 15;
-            bar.style.backgroundColor = Color.clear;
-            Border(bar, 0, "#ffffff00");
-            foreach (var button in new[] { bar.lowButton, bar.highButton })
-            {
-                button.style.width = 15;
-                button.style.height = 15;
-                button.style.minHeight = 15;
-                button.style.backgroundColor = Color.clear;
-                button.style.unityBackgroundImageTintColor = C("#8b8b8b");
-                Border(button, 0, "#ffffff00");
-            }
-            var tracker = bar.slider.Q<VisualElement>(className: "unity-base-slider__tracker");
-            if (tracker != null)
-            {
-                tracker.style.backgroundColor = Color.clear;
-                Border(tracker, 0, "#ffffff00");
-            }
-            var thumb = bar.slider.Q<VisualElement>(className: "unity-base-slider__dragger");
-            if (thumb != null)
-            {
-                thumb.style.width = 9;
-                thumb.style.left = 3;
-                thumb.style.backgroundColor = C("#8b8b8b");
-                Border(thumb, 0, "#ffffff00");
-                Round(thumb, 4);
-            }
-            // Flow content already wraps to the viewport width. Do not rebuild
-            // the dialog when an auto scrollbar changes that width: rebuilding
-            // changes its geometry again and creates a layout feedback loop.
+            // Scrolling remains available through wheel, touch and keyboard.
+            // Hidden scrollers reserve no gutter, so content width stays stable.
             return scroll;
         }
         [Serializable]
