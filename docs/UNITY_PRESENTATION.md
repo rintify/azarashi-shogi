@@ -30,6 +30,10 @@ CSSの影は`Presentation.json`のレイヤー（座標、blur、spread、色、
 
 環境照明と音の再生成は開発サーバーの `?unity-environment` 画面から行う。環境は元のIceWorldを実際のWebGLで描画して保存し、音は元のscheduleBiteとscheduleToneをOfflineAudioContextでレンダリングする。出力は `Native/Lighting/Environment.bytes`、`Native/Audio/Bite.bytes`、`Native/Audio/Tones.bytes`。`PresentationSources.json` は採取元のSHA-256を保持し、変更後の古い素材の使用をビルド前に拒否する。
 
+Web版の効果音は `NativeAudio.jslib` がこのPCMをモノラルのWeb Audioバッファへコピーして再生する。Unity側の元の動作キュー時刻は維持し、EditorではAudioClipを使う。ブラウザーのpointerdown・touchend・keydown内で音声コンテキストを再開し、iOSの中断後にも再開できるようにする。ミュート解除時には元の着地音を確認音として鳴らす。通常の動作終了時には再生中の余韻を止めず、取り消し・ミュート時は停止する。再開待ちの古いキューは再生しない。
+
+2026-10-20の音声修正では `node scripts/check-unity-audio.mjs` でPCM転送・タッチ再開・時刻・余韻・ミュート・遅延再開とキャンセル・解放を検証した。新しい実Webビルドを独立した4192番オリジンの `?audio-check` で操作し、8音声バッファの読み込み、確認音・王の移動/着地・AIの応手の計5再生、AudioContextのrunning、出力波形ピーク0.06912、コンソールエラー/警告0件を確認。これはブラウザーの音声出力信号の測定であり、利用者の端末スピーカーやiPhone/Android実機での聴取確認ではない。診断用クエリーを付けない通常プレイヤーには計測UIや解析ノードを追加しない。
+
 ## 検証
 
 `unity-presentation-fixtures.ts` が元のTypeScript関数から動作とガイドの照合データを生成する。Unity Editorの `PresentationValidation` が移動・変身・王の伸縮・飛行と持ち駒の到着時刻、全32,768通りのガイド状態を照合する。対局の15手の棋譜もRust経由で再生して確認する。

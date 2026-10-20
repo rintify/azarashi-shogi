@@ -1,0 +1,19 @@
+fileFormatVersion: 2
+guid: bb756d850d074b05bde0f61a915588bf
+PluginImporter:
+  externalObjects: {}
+  serializedVersion: 3
+  platformData:
+  - first:
+      Any:
+    second:
+      enabled: 0
+      settings: {}
+  - first:
+      WebGL: WebGL
+    second:
+      enabled: 1
+      settings: {}
+  userData:
+  assetBundleName:
+  assetBundleVariant:

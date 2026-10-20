@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using UnityEngine;
 namespace Azarashi.UnityView
@@ -16,6 +17,12 @@ namespace Azarashi.UnityView
         private float started;
         private string stage;
         private bool muted;
+#if UNITY_WEBGL && !UNITY_EDITOR
+        [DllImport("__Internal")] private static extern void AzarashiAudioAdd(string name, float[] samples, int length, int rate);
+        [DllImport("__Internal")] private static extern void AzarashiAudioPlay(string name, float delay);
+        [DllImport("__Internal")] private static extern void AzarashiAudioStop(bool pendingOnly);
+        [DllImport("__Internal")] private static extern void AzarashiAudioMute(bool muted);
+#endif
         private void Awake()
         {
             var bytes = Resources.Load<TextAsset>("Native/Audio/Bite").bytes;
@@ -39,9 +46,21 @@ namespace Azarashi.UnityView
         }
         private void AddClip(string name, float[] samples, int rate)
         {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            AzarashiAudioAdd(name, samples, samples.Length, rate);
+#else
             var clip = AudioClip.Create("Original " + name, samples.Length, 1, rate, false);
-            clip.SetData(samples, 0);
+            if (!clip.SetData(samples, 0)) throw new InvalidOperationException("Could not load original audio: " + name);
             clips.Add(name, clip);
+#endif
+        }
+        public void Preview()
+        {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            AzarashiAudioPlay("landing", 0);
+#else
+            AudioSource.PlayClipAtPoint(clips["landing"], Camera.main != null ? Camera.main.transform.position : Vector3.zero);
+#endif
         }
         public static NativeAudioCue[] Cues(NativeMotion motion)
         {
@@ -64,7 +83,13 @@ namespace Azarashi.UnityView
         {
             var nextStage = motion?.Waiting == true ? "choice" : motion?.Stage;
             if (current == motion && started == (motion?.Started ?? 0) && stage == nextStage && muted == isMuted) return;
-            foreach (var source in sources) source.Stop();
+            var completed = current != null && motion == null && current.Done;
+#if UNITY_WEBGL && !UNITY_EDITOR
+            AzarashiAudioMute(isMuted);
+            AzarashiAudioStop(completed && !isMuted);
+#else
+            if (!completed || isMuted) foreach (var source in sources) source.Stop();
+#endif
             current = motion;
             started = motion?.Started ?? 0;
             stage = nextStage;
@@ -75,6 +100,9 @@ namespace Azarashi.UnityView
             foreach (var cue in Cues(motion))
             {
                 if (cue.at < elapsed - .04f) continue;
+#if UNITY_WEBGL && !UNITY_EDITOR
+                AzarashiAudioPlay(cue.clip, Mathf.Max(0, cue.at - elapsed));
+#else
                 if (index == sources.Count)
                 {
                     var source = gameObject.AddComponent<AudioSource>();
@@ -85,6 +113,7 @@ namespace Azarashi.UnityView
                 var player = sources[index++];
                 player.clip = clips[cue.clip];
                 player.PlayScheduled(AudioSettings.dspTime + Mathf.Max(0, cue.at - elapsed));
+#endif
             }
         }
         private void OnDestroy()

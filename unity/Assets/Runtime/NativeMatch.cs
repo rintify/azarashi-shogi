@@ -262,6 +262,7 @@ namespace Azarashi.UnityView
             audio.Sync(Motion, Muted);
             NativeStorage.Write("sound", Muted ? "off" : "on");
             NativeStorage.Flush();
+            if (!Muted) audio.Preview();
         }
         public void Close()
         {
