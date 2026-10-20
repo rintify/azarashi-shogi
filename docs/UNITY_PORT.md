@@ -47,6 +47,6 @@ unityroomの「Webビルド設定」でUnity `6000.5.x` を選び、「Webビル
 
 ビルド時にGzipの解凍・Unityデータヘッダー・WebAssemblyの検証を実施します。配布用ライセンス文はUnityのdataペイロードにも同梱しています。出力だけを再検査する場合は `node scripts/package-unityroom.mjs` を使用できます（Unityの再ビルドは行いません）。
 
-2026-10-20、[アザラシ将棋](https://unityroom.com/games/azarashi-shogi)を新規登録し、4ファイルのアップロード完了を確認しました。Unityroom側のゲーム画面で起動・合法手表示・王の移動・Rust AIの応手まで操作し、3手目へ進むことを確認しています。公開範囲・実況ポリシーはユーザー選択待ちのため、この時点では非公開です。スマートフォン実機は未確認なので「モバイルブラウザで遊べる」は有効にしていません。
+2026-10-20、[アザラシ将棋](https://unityroom.com/games/azarashi-shogi)を新規登録し、4ファイルのアップロード完了を確認しました。Unityroom側のゲーム画面で起動・合法手表示・王の移動・Rust AIの応手まで操作し、3手目へ進むことを確認しています。ユーザー指定に従い公開範囲は非公開のまま維持し、実況ポリシーはunityroom標準の「実況OK」に設定済みです。スマートフォン実機は未確認なので「モバイルブラウザで遊べる」は有効にしていません。
 
 設定要件は[unityroom公式ヘルプ](https://help.unityroom.com/unityroom-351dc3ed5de980eebd79eef3b153be31)に従っています。
