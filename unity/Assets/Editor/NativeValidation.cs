@@ -22,7 +22,28 @@ namespace Azarashi.UnityView.Editor
                     var moves = NativeHowTo.Destinations(engine, data.Config.initial.rulesVersion, sample.Item1, sample.Item2);
                     if (moves.Length != sample.Item3 || moves.Any(c => c.x == 4 && c.y == 4))
                         throw new Exception("Illustrated tutorial movement diverges: " + sample.Item1 + "/" + sample.Item2);
+                    var wide = sample.Item1 == "walrus" || sample.Item1 == "orca" && sample.Item2 ? 2 : 1;
+                    var tall = sample.Item1 == "walrus" || sample.Item1 == "orca" && !sample.Item2 ? 2 : 1;
+                    var size = wide == 2 || tall == 2 ? 6 : 5;
+                    foreach (var move in moves)
+                    {
+                        var center = NativeHowTo.Center(move, wide, tall, 2);
+                        if (center.x - wide * .5f < 0 || center.y - tall * .5f < 0 || center.x + wide * .5f > size || center.y + tall * .5f > size)
+                            throw new Exception("Tutorial destination footprint cropped: " + sample.Item1);
+                        if (Mathf.Abs(center.x - (move.x - 2) - wide * .5f) > .001f || Mathf.Abs(center.y - (move.y - 2) - tall * .5f) > .001f)
+                            throw new Exception("Tutorial marker is not the footprint centre.");
+                    }
                 }
+                var placements = NativeHowTo.Placements(engine, data.Config.initial.rulesVersion);
+                if (placements.Length != 12 || !placements.Any(c => c.Same(new Cell(3, 3))))
+                    throw new Exception("Tutorial placement diagram must include all 12 adjacent free cells, including diagonals.");
+                var rotation = NativeHowTo.Rotation(engine, data.Config.initial.rulesVersion);
+                if (rotation.captureCells.Length != 3 || !rotation.footprint.Any(c => c.Same(new Cell(4, 3))))
+                    throw new Exception("Tutorial rotation must retain the captured pivot and cover the L-shaped union.");
+                var capture = NativeHowTo.Capture(engine, data.Config.initial.rulesVersion, false);
+                var ownKing = NativeHowTo.Capture(engine, data.Config.initial.rulesVersion, true);
+                if (capture.captured.Length != 2 || ownKing.captured.Length != 1 || ownKing.after.result?.winner != "north")
+                    throw new Exception("Tutorial capture diagrams do not match their stated results.");
                 if (NativeHowTo.SwipePage(0, 11, 100, 0, .3f, 320) != 0 ||
                     NativeHowTo.SwipePage(10, 11, -100, 0, .3f, 320) != 10 ||
                     NativeHowTo.SwipePage(4, 11, -80, 5, .3f, 320) != 5 ||
