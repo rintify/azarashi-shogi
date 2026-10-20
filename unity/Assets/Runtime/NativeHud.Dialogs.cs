@@ -26,7 +26,23 @@ namespace Azarashi.UnityView
             }
             var w = DialogWidth(maxWidth);
             var h = Mathf.Min(desiredHeight, height - 24);
-            var card = Box(shade, "native-dialog", (width - w) * .5f, (height - h) * .5f, w, h, "#fffcf3", 28, true);
+            var card = activeViews.Get(shade, "box-native-dialog", () => new VisualElement
+            {
+                name = "native-dialog", pickingMode = PickingMode.Position, userData = "native-ui"
+            });
+            card.style.position = UnityEngine.UIElements.Position.Absolute;
+            card.style.left = (width - w) * .5f;
+            card.style.width = w;
+            // Retained flow dialogs are measured below. Resetting their height to
+            // the viewport maximum on each rebuild restarts the size transition
+            // and can repeatedly show/hide the auto scrollbar.
+            if (!flow || !card.ClassListContains("arrived"))
+            {
+                card.style.top = (height - h) * .5f;
+                card.style.height = h;
+            }
+            card.style.backgroundColor = C("#fffcf3");
+            Round(card, 28);
             Border(card, 4, "#ffffff");
             card.style.paddingLeft = card.style.paddingRight = card.style.paddingTop = card.style.paddingBottom = 0;
             NativeUi.Skin(card, "dialog", 28);
@@ -117,23 +133,10 @@ namespace Azarashi.UnityView
                 Border(thumb, 0, "#ffffff00");
                 Round(thumb, 4);
             }
-            if (!scroll.ClassListContains("viewport-bound"))
-            {
-                scroll.AddToClassList("viewport-bound");
-                scroll.contentViewport.RegisterCallback<GeometryChangedEvent>(evt =>
-                {
-                    if (Mathf.Abs(evt.oldRect.width - evt.newRect.width) <= .5f)
-                        return;
-                    dialogSignature = null;
-                    Rebuild();
-                });
-            }
+            // Flow content already wraps to the viewport width. Do not rebuild
+            // the dialog when an auto scrollbar changes that width: rebuilding
+            // changes its geometry again and creates a layout feedback loop.
             return scroll;
-        }
-        private static float ScrollContentWidth(ScrollView scroll, float fallback)
-        {
-            var measured = scroll.contentViewport.contentRect.width;
-            return measured >= 1 ? Mathf.Min(fallback, measured) : fallback;
         }
         [Serializable]
         private sealed class RulesContent

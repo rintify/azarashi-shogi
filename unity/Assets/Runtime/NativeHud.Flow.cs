@@ -83,7 +83,11 @@ namespace Azarashi.UnityView
             var headerHeight = match.Dialog == "settings" ? 60 : 56;
             var spacer = FlowBox(content, "header-space");
             spacer.style.height = headerHeight;
-            var header = Box(content, "sticky-header", padding, Mathf.Max(padding, scroll.scrollOffset.y), 0, headerHeight, "#fffcf3");
+            // Keep the sticky overlay outside the measured scroll content. Moving
+            // an absolute child inside it changes ScrollView's content bounds,
+            // which changes the scroll range and feeds back into the thumb.
+            activeViews.TrackContainer(scroll, "viewport", scroll.contentViewport);
+            var header = Box(scroll.contentViewport, "sticky-header", padding, Mathf.Max(0, padding - scroll.scrollOffset.y), 0, headerHeight, "#fffcf3");
             header.style.width = StyleKeyword.Auto;
             header.style.right = padding;
             header.style.flexDirection = FlexDirection.Row;
@@ -109,12 +113,12 @@ namespace Azarashi.UnityView
             var close = FlatButton(header, "x", 0, 0, 40, 40, match.Close, match.Dialog == "replays" ? 24 : 20);
             Inline(close);
             close.style.flexShrink = 0;
-            // A sticky header stays in its original flow slot, then pins to the
-            // inside border when the entire dialog (including its padding) scrolls.
+            // The spacer reserves the original flow slot; the overlay pins to
+            // the inside border as the dialog padding scrolls out of view.
             if (!scroll.ClassListContains("sticky-bound"))
             {
                 scroll.AddToClassList("sticky-bound");
-                scroll.verticalScroller.valueChanged += value => header.style.top = Mathf.Max(match.Dialog == "replays" && width <= 760 ? 16 : 24, value);
+                scroll.verticalScroller.valueChanged += value => header.style.top = Mathf.Max(0, (match.Dialog == "replays" && width <= 760 ? 16 : 24) - value);
                 content.RegisterCallback<GeometryChangedEvent>(_ => measureFlowDialog?.Invoke());
             }
             // A retained rebuild can reset the card size while leaving content
@@ -129,8 +133,11 @@ namespace Azarashi.UnityView
                 var measured = bottom + content.resolvedStyle.paddingBottom + 8;
                 if (float.IsNaN(measured) || measured < 80) return;
                 var cardHeight = Mathf.Min(measured, height - 24);
-                card.style.height = cardHeight;
-                card.style.top = (height - cardHeight) / 2;
+                var top = (height - cardHeight) / 2;
+                if (Mathf.Abs(card.style.height.value.value - cardHeight) > .5f)
+                    card.style.height = cardHeight;
+                if (Mathf.Abs(card.style.top.value.value - top) > .5f)
+                    card.style.top = top;
             };
             header.BringToFront();
             header.schedule.Execute(header.BringToFront);
