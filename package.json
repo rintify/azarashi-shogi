@@ -17,10 +17,7 @@
     "predev": "node scripts/check-wasm.mjs",
     "prebuild": "node scripts/check-wasm.mjs",
     "pretest": "node scripts/check-wasm.mjs",
-    "benchmark:ai": "node scripts/check-wasm.mjs && vitest bench --run src/ai/wasm.bench.ts",
-    "unity:build": "node scripts/build-unity.mjs",
-    "unityroom:build": "node scripts/build-unity.mjs --unityroom",
-    "unity:preview": "vite preview --host 127.0.0.1 --outDir dist-unity --port 4174"
+    "benchmark:ai": "node scripts/check-wasm.mjs && vitest bench --run src/ai/wasm.bench.ts"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.0",

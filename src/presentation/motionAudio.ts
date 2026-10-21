@@ -15,7 +15,7 @@ export interface MotionAudioCue {
   at: number;
 }
 
-/** Seconds from the beginning of this motion stage. Shared with the Unity asset contract. */
+/** Seconds from the beginning of this motion stage. */
 export function motionAudioCues(motion: MoveMotion): MotionAudioCue[] {
   if (motion.stage === 'return') return [];
   const cues: MotionAudioCue[] = [];
@@ -42,7 +42,7 @@ export function motionAudioCues(motion: MoveMotion): MotionAudioCue[] {
   return cues;
 }
 
-/** The original Web Audio oscillator and envelope, also rendered offline for Unity. */
+/** Schedule a tone using the Web Audio oscillator and envelope. */
 export function scheduleTone(ctx: BaseAudioContext, start: number, cue: ToneCue): () => void {
   const [frequency, length, volume] = TONE_CUES[cue];
   const oscillator = ctx.createOscillator(),

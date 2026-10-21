@@ -4,6 +4,6 @@ export default defineConfig({
   plugins: [react()],
   base: './',
   server: {
-    watch: { ignored: ['**/unity/**', '**/rust/**', '**/.openai/**', '**/dist-unity/**'] },
+    watch: { ignored: ['**/rust/**', '**/.openai/**'] },
   },
 });

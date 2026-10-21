@@ -33,11 +33,7 @@ impl search::Host for WorkerHost {
         }
         #[cfg(not(target_arch = "wasm32"))]
         {
-            if NATIVE_CANCEL.load(std::sync::atomic::Ordering::Relaxed) {
-                f64::INFINITY
-            } else {
-                self.started.elapsed().as_secs_f64() * 1000.0
-            }
+            self.started.elapsed().as_secs_f64() * 1000.0
         }
     }
     fn progress(&mut self, _depth: u8, _nodes: u64, _elapsed_ms: f64) {
@@ -110,35 +106,6 @@ pub unsafe extern "C" fn engine_inspect(pointer: u32, length: u32) -> u64 {
 #[no_mangle]
 pub extern "C" fn engine_rules_version() -> u32 {
     model::RULES_VERSION
-}
-
-// Unity Editor/native ABI: the same JSON request/response and search implementation.
-// WASM keeps its existing 32-bit owned-buffer ABI and Worker execution unchanged.
-#[cfg(not(target_arch = "wasm32"))]
-static NATIVE_CANCEL: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
-#[cfg(not(target_arch = "wasm32"))]
-#[no_mangle]
-pub extern "C" fn azarashi_cancel() {
-    NATIVE_CANCEL.store(true, std::sync::atomic::Ordering::Relaxed);
-}
-/// # Safety
-/// Input must remain readable for `length` bytes. Release the returned C string with azarashi_free.
-#[cfg(not(target_arch = "wasm32"))]
-#[no_mangle]
-pub unsafe extern "C" fn azarashi_process(pointer: *const u8, length: usize, inspect: bool) -> *mut std::ffi::c_char {
-    if !inspect { NATIVE_CANCEL.store(false, std::sync::atomic::Ordering::Relaxed); }
-    let input = unsafe { std::slice::from_raw_parts(pointer, length) };
-    let output = process(input, inspect).unwrap_or_else(|error| {
-        serde_json::to_vec(&serde_json::json!({ "error": error })).unwrap()
-    });
-    std::ffi::CString::new(output).unwrap().into_raw()
-}
-/// # Safety
-/// `pointer` must be a live string returned by azarashi_process and released exactly once.
-#[cfg(not(target_arch = "wasm32"))]
-#[no_mangle]
-pub unsafe extern "C" fn azarashi_free(pointer: *mut std::ffi::c_char) {
-    if !pointer.is_null() { drop(unsafe { std::ffi::CString::from_raw(pointer) }); }
 }
 
 #[cfg(test)]
